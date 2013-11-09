@@ -50,7 +50,35 @@ int main() {
     string part_filename = dataLoader.getPathForScenario(parameters.partInputFile);
     cout << part_filename << endl;
     PartReader partReader;
-    vector<Particle> particles = partReader.read(part_filename);
+	//vector<Particle> particles = partReader.read(part_filename);
+
+	// Compute smooth length
+    float h = (parameters.xMax - parameters.xMin) / parameters.xN;
+
+	// Compute particle count
+	int partCount = 20000;
+	int ParticlesPerAxis = (int)ceil(pow(partCount, 1/3.0));
+	partCount = ParticlesPerAxis * ParticlesPerAxis * ParticlesPerAxis;
+
+	// Build particles blcok
+	vector<Particle> particles;
+	particles.resize(partCount);
+	float d = h * 0.990;
+	float offsetX = 0.1;
+	float offsetY = 0.1;
+	float offsetZ = 0.1;
+	for (int i = 0; i< partCount; i++)
+	{
+		int x = ((int)(i / pow(ParticlesPerAxis, 1)) % ParticlesPerAxis);
+		int y = ((int)(i / pow(ParticlesPerAxis, 0)) % ParticlesPerAxis);
+		int z = ((int)(i / pow(ParticlesPerAxis, 2)) % ParticlesPerAxis);
+
+		ZeroMemory(&particles[i], sizeof(Particle));
+		particles[i].m = 1;
+		particles[i].x[0] = offsetX + (x + (y % 2) * .5) * d;
+		particles[i].x[1] = offsetY + (y) * d;
+		particles[i].x[2] = offsetZ + (z + (y % 2) * .5) * d;
+	}
 
     // For visualization
     CVisual renderer(&dataLoader, WINDOW_WIDTH, WINDOW_HEIGHT);
@@ -161,7 +189,6 @@ int main() {
     clflags << "-DCELL_LENGTH_Z=" << (parameters.zMax - parameters.zMin) / parameters.zN << "f ";
     clflags << "-DTIMESTEP=" << parameters.timeStepLength << "f ";
     clflags << "-DREST_DENSITY=" << parameters.restDensity << "f ";
-    float h = (parameters.xMax - parameters.xMin) / parameters.xN;
     clflags << "-DPBF_H=" << h << "f ";
     clflags << "-DPBF_H_2=" << pow(h, 2) << "f ";
     clflags << "-DPOLY6_FACTOR=" << 315.0f / (64.0f * M_PI * pow(h, 9)) << "f ";

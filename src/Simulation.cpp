@@ -112,6 +112,8 @@ Simulation::init(void) {
   // setup buffers
   mPositions = new cl_float4[mNumParticles];
   mVelocities = new cl_float4[mNumParticles];
+  mPredictions = new cl_float4[mNumParticles];
+  mDeltas = new cl_float4[mNumParticles];
 #if !defined(USE_LINKEDCELL)
   mRadixCells = new cl_uint2[_NKEYS];
 #endif // USE_LINKEDCELL
@@ -200,22 +202,20 @@ Simulation::init(void) {
   mQueue.finish();
 }
 
-void
-Simulation::initCells(void) {
+void Simulation::initCells(void) 
+{
   const cl_uint cellCount = mNumberCells.s[0]
                             * mNumberCells.s[1] * mNumberCells.s[2];
   mCells = new cl_int[cellCount];
   mParticlesList = new cl_int[mNumParticles];
 
   // Init cells
-  for (cl_uint i = 0; i < cellCount; ++i) {
+  for (cl_uint i = 0; i < cellCount; ++i) 
     mCells[i] = END_OF_CELL_LIST;
-  }
 
   // Init particles
-  for (cl_uint i = 0; i < mNumParticles; ++i) {
+  for (cl_uint i = 0; i < mNumParticles; ++i)
     mParticlesList[i] = END_OF_CELL_LIST;
-  }
 
   // Write buffer for cells
   mCellsBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeCells);
@@ -229,31 +229,29 @@ Simulation::initCells(void) {
                             0, mBufferSizeParticlesList, mParticlesList);
 }
 
-void
-Simulation::updatePositions(void) {
+void Simulation::updatePositions(void) 
+{
   mKernels["updatePositions"].setArg(0, mPositionsBuffer);
   mKernels["updatePositions"].setArg(1, mPredictedBuffer);
   mKernels["updatePositions"].setArg(2, mVelocitiesBuffer);
   mKernels["updatePositions"].setArg(3, mDeltaVelocityBuffer);
   mKernels["updatePositions"].setArg(4, mNumParticles);
 
-  mQueue.enqueueNDRangeKernel(mKernels["updatePositions"], 0,
-                              mGlobalRange, mLocalRange);
+  mQueue.enqueueNDRangeKernel(mKernels["updatePositions"], 0, mGlobalRange, mLocalRange);
 }
 
-void
-Simulation::updateVelocities(void) {
+void Simulation::updateVelocities(void) 
+{
   mKernels["updateVelocities"].setArg(0, mPositionsBuffer);
   mKernels["updateVelocities"].setArg(1, mPredictedBuffer);
   mKernels["updateVelocities"].setArg(2, mVelocitiesBuffer);
   mKernels["updateVelocities"].setArg(3, mNumParticles);
 
-  mQueue.enqueueNDRangeKernel(mKernels["updateVelocities"], 0,
-                              mGlobalRange, mLocalRange);
+  mQueue.enqueueNDRangeKernel(mKernels["updateVelocities"], 0, mGlobalRange, mLocalRange);
 }
 
-void
-Simulation::applyVorticityAndViscosity(void) {
+void Simulation::applyVorticityAndViscosity(void) 
+{
   mKernels["applyVorticityAndViscosity"].setArg(0, mPredictedBuffer);
   mKernels["applyVorticityAndViscosity"].setArg(1, mVelocitiesBuffer);
   mKernels["applyVorticityAndViscosity"].setArg(2, mDeltaVelocityBuffer);
@@ -266,29 +264,26 @@ Simulation::applyVorticityAndViscosity(void) {
 #endif // USE_LINKEDCELL
   mKernels["applyVorticityAndViscosity"].setArg(5, mNumParticles);
 
-  mQueue.enqueueNDRangeKernel(mKernels["applyVorticityAndViscosity"],
-                              0, mGlobalRange, mLocalRange);
+  mQueue.enqueueNDRangeKernel(mKernels["applyVorticityAndViscosity"], 0, mGlobalRange, mLocalRange);
 }
 
-void
-Simulation::predictPositions(void) {
+void Simulation::predictPositions(void) 
+{
   mKernels["predictPositions"].setArg(0, mPositionsBuffer);
   mKernels["predictPositions"].setArg(1, mPredictedBuffer);
   mKernels["predictPositions"].setArg(2, mVelocitiesBuffer);
   mKernels["predictPositions"].setArg(3, mNumParticles);
 
-  mQueue.enqueueNDRangeKernel(mKernels["predictPositions"], 0,
-                              mGlobalRange, mLocalRange);
+  mQueue.enqueueNDRangeKernel(mKernels["predictPositions"], 0, mGlobalRange, mLocalRange);
 }
 
-void
-Simulation::updatePredicted(void) {
+void Simulation::updatePredicted(void) 
+{
   mKernels["updatePredicted"].setArg(0, mPredictedBuffer);
   mKernels["updatePredicted"].setArg(1, mDeltaBuffer);
   mKernels["updatePredicted"].setArg(2, mNumParticles);
 
-  mQueue.enqueueNDRangeKernel(mKernels["updatePredicted"], 0,
-                              mGlobalRange, mLocalRange);
+  mQueue.enqueueNDRangeKernel(mKernels["updatePredicted"], 0, mGlobalRange, mLocalRange);
 }
 
 void
@@ -505,9 +500,14 @@ Simulation::step(void) {
   for (unsigned int i = 0; i < solver_iterations; ++i) {
     // start = glfwGetTime();
     this->computeScaling();
+
     // mQueue.finish();
     // end = glfwGetTime();
     // printf("computeScaling:     %f msec\n", (end - start) * 1000);
+	/*mQueue.enqueueReadBuffer(mPredictedBuffer, CL_TRUE, 0, mBufferSizeParticles, mPredictions);
+	if (mQueue.finish() != CL_SUCCESS)
+		_asm nop;*/
+
 
 #if defined(USE_DEBUG)
     cout << "computeScaling \n" << endl;
@@ -515,6 +515,10 @@ Simulation::step(void) {
 
     // start = glfwGetTime();
     this->computeDelta();
+	/*mQueue.enqueueReadBuffer(mDeltaBuffer, CL_TRUE, 0, mBufferSizeParticles, mDeltas);
+	if (mQueue.finish() != CL_SUCCESS)
+		_asm nop;*/
+
     // mQueue.finish();
     // end = glfwGetTime();
     // printf("computeDelta:       %f msec\n", (end - start) * 1000);
@@ -575,12 +579,10 @@ Simulation::step(void) {
   // printf("releasing gl:       %f msec\n", (end - start) * 1000);
 }
 
-void
-Simulation::dumpData( cl_float4 * (&positions), cl_float4 * (&velocities) ) {
-  mQueue.enqueueReadBuffer(mPositionsBuffer, CL_TRUE,
-                           0, mBufferSizeParticles, mPositions);
-  mQueue.enqueueReadBuffer(mVelocitiesBuffer, CL_TRUE,
-                           0, mBufferSizeParticles, mVelocities);
+void Simulation::dumpData( cl_float4 * (&positions), cl_float4 * (&velocities) ) 
+{
+  mQueue.enqueueReadBuffer(mPositionsBuffer, CL_TRUE, 0, mBufferSizeParticles, mPositions);
+  mQueue.enqueueReadBuffer(mVelocitiesBuffer, CL_TRUE, 0, mBufferSizeParticles, mVelocities);
 
   // just a safety measure to be absolutely sure everything is transferred
   // from device to host

@@ -13,7 +13,7 @@ __kernel void computeScaling(__global float4 *predicted,
   if (i >= N) return;
 
   const int END_OF_CELL_LIST = -1;
-  const float e = 10000.0f;
+  const float e = 1000.0f * REST_DENSITY;
 
   // calculate $$$\Delta p_i$$$
   int current_cell[3];

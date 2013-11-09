@@ -89,17 +89,19 @@ void Runner::run(const ConfigParameters &parameters,
     time += parameters.timeStepLength;
 
     if (shouldGenerateWaves) {
-      static const cl_float wave_push_length = (sizesMax.s[0]
-          - sizesMin.s[0]) / 3.0f;
-      static const cl_float wave_frequency = 1.0f;
-      static const cl_float wave_start = -M_PI / 2.0f;
+      static const cl_float wave_push_length = (sizesMax.s[0] - sizesMin.s[0]) / 4.0f;
+      static const cl_float wave_frequency = 0.70f;
+      static const cl_float wave_start = 0;
 
-      const cl_float waveValue = sin(2.0f * M_PI * wave_frequency
-                                     * wave + wave_start)
+      cl_float waveValue = sin(2.0f * M_PI * wave_frequency
+                                     * wave + wave_start)	
                                  * wave_push_length / 2.0f
                                  + wave_push_length / 2.0f;
 
-      simulation.setWaveGenerator(waveValue);
+	  float t = wave_frequency * wave + wave_start;
+	  waveValue = (1 - cos(2.0f * M_PI * pow(fmod(t, 1.0f), 3.0f))) * wave_push_length / 2.0f;
+      
+	  simulation.setWaveGenerator(waveValue);
       wave += parameters.timeStepLength;
     }
 

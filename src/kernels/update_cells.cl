@@ -5,14 +5,13 @@ __kernel void updateCells(const __global float4 *predicted,
   // Get particle and assign them to a cell
   const uint i = get_global_id(0);
   if (i >= N) return;
+  
+  float3 NewPos = fmod(1.0 + predicted[i].xyz, (float3)1.0); 
 
   // Get cell that belongs to particle
-  uint cell_pos = (int) ( (predicted[i].x - SYSTEM_MIN_X)
-                          / CELL_LENGTH_X )
-                  + (int) ( (predicted[i].y - SYSTEM_MIN_Y)
-                            / CELL_LENGTH_Y ) * NUMBER_OF_CELLS_X
-                  + (int) ( (predicted[i].z - SYSTEM_MIN_Z)
-                            / CELL_LENGTH_Z ) * NUMBER_OF_CELLS_X * NUMBER_OF_CELLS_Y;
+  uint cell_pos = (int) ( (NewPos.x - SYSTEM_MIN_X) / CELL_LENGTH_X ) +
+                  (int) ( (NewPos.y - SYSTEM_MIN_Y) / CELL_LENGTH_Y ) * NUMBER_OF_CELLS_X +
+                  (int) ( (NewPos.z - SYSTEM_MIN_Z) / CELL_LENGTH_Z ) * NUMBER_OF_CELLS_X * NUMBER_OF_CELLS_Y;
 
   // Exchange cells[cell_pos] and particle_list at i
   particles_list[i] = atomic_xchg(&cells[cell_pos], i);

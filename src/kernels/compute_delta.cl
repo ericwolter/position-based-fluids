@@ -1,3 +1,20 @@
+uint rand(uint2 *state)
+{
+    enum { A=4294883355U};
+    uint x=(*state).x, c=(*state).y;  // Unpack the state
+    uint res=x^c;                     // Calculate the result
+    uint hi=mul_hi(x,A);              // Step the RNG
+    x=x*A+c;
+    c=hi+(x<c);
+    *state=(uint2)(x,c);              // Pack the state back up
+    return res;                       // Return the next result
+}
+
+float frand(uint2 *state)
+{
+    return rand(state) / 4294967295.0f;
+}
+
 __kernel void computeDelta(__global float4 *delta,
                            const __global float4 *predicted,
                            const __global float *scaling,
@@ -15,14 +32,13 @@ __kernel void computeDelta(__global float4 *delta,
 
   const int END_OF_CELL_LIST = -1;
 
+  uint2 randSeed = (uint2)(1+get_global_id(0), 1);
+  
   int current_cell[3];
 
-  current_cell[0] = (int) ( (predicted[i].x - SYSTEM_MIN_X)
-                            / CELL_LENGTH_X );
-  current_cell[1] = (int) ( (predicted[i].y - SYSTEM_MIN_Y)
-                            / CELL_LENGTH_Y );
-  current_cell[2] = (int) ( (predicted[i].z - SYSTEM_MIN_Z)
-                            / CELL_LENGTH_Z );
+  current_cell[0] = (int) ( (predicted[i].x - SYSTEM_MIN_X) / CELL_LENGTH_X );
+  current_cell[1] = (int) ( (predicted[i].y - SYSTEM_MIN_Y) / CELL_LENGTH_Y );
+  current_cell[2] = (int) ( (predicted[i].z - SYSTEM_MIN_Z) / CELL_LENGTH_Z );
 
   // Sum of lambdas
   float4 sum = (float4) 0.0f;
@@ -62,22 +78,20 @@ __kernel void computeDelta(__global float4 *delta,
                                       * (PBF_H - r_length)
                                       * (PBF_H - r_length);
 
-              // float poly6_r = poly6_factor * (PBF_H_2 - r_length_2)
-              //                 * (PBF_H_2 - r_length_2)
-              //                 * (PBF_H_2 - r_length_2);
+              float poly6_r = POLY6_FACTOR * (PBF_H_2 - r_length_2) * (PBF_H_2 - r_length_2) * (PBF_H_2 - r_length_2);                              
 
-              // // equation (13)
-              // const float q = 0.3f * h;
-              // float poly6_q = poly6_factor * (h2 - q)
-              //                 * (h2 - q) * (h2 - q);
-              // const float k = 0.1f;
-              // const uint n = 4;
+              // equation (13)
+              const float q_2 = pow(0.8f * PBF_H, 2);
+              float poly6_q = POLY6_FACTOR * (PBF_H_2 - q_2) * (PBF_H_2 - q_2) * (PBF_H_2 - q_2);
+              const float k = -0.000000f;
+              const uint n = 4;
 
-              // float s_corr = -1.0f * k * pow(poly6_r / poly6_q, n);
+              float s_corr = -1.0f * k * pow(poly6_r / poly6_q, n);
 
               // Sum for delta p of scaling factors and grad spiky
-              // in equation (12)
-              sum += (scaling[i] + scaling[next]) * gradient_spiky;
+              // in equation (12)   
+              
+              sum += (scaling[i] + scaling[next] + s_corr) * gradient_spiky;
             }
           }
 
@@ -125,28 +139,37 @@ __kernel void computeDelta(__global float4 *delta,
   // equation (12)
   float4 delta_p = sum / REST_DENSITY;
 
+  float randDist = 0.001;
   float4 future = predicted[i] + delta_p;
 
-  if ( (future.x - PBF_H) < (SYSTEM_MIN_X + wave_generator) ) {
-    future.x = SYSTEM_MIN_X + wave_generator + PBF_H;
-    //future.x += ((system_length_min.x + wave_generator) - (future.x - radius) ) * 2.0f;
-  } else if ( (future.x + PBF_H) > SYSTEM_MAX_X ) {
-    future.x = SYSTEM_MAX_X - PBF_H;
-    //future.x += (system_length_max.x - (future.x + radius)) * 2.0f;
+  // Clamp X
+  if ( (future.x - PBF_H) < (SYSTEM_MIN_X + wave_generator) ) 
+  {
+    future.x = SYSTEM_MIN_X + wave_generator + PBF_H + frand(&randSeed) * randDist;
+  } 
+  else if ( (future.x + PBF_H) > SYSTEM_MAX_X ) 
+  {
+    future.x = SYSTEM_MAX_X - PBF_H - frand(&randSeed) * randDist;
   }
-  if ( (future.y - PBF_H) < SYSTEM_MIN_Y ) {
-    future.y = SYSTEM_MIN_Y + PBF_H;
-    //future.y += (system_length_min.y - (future.y - radius)) * 2.0f;
-  } else if ( (future.y + PBF_H) > SYSTEM_MAX_Y ) {
-    future.y = SYSTEM_MAX_Y - PBF_H;
-    //future.y += (system_length_max.y - (future.y + radius)) * 2.0f;
+  
+  // Clamp Y
+  if ( (future.y - PBF_H) < SYSTEM_MIN_Y ) 
+  {
+    future.y = SYSTEM_MIN_Y + PBF_H + frand(&randSeed) * randDist;
+  } 
+  else if ( (future.y + PBF_H) > SYSTEM_MAX_Y ) 
+  {
+    future.y = SYSTEM_MAX_Y - PBF_H - frand(&randSeed) * randDist;
   }
-  if ( (future.z - PBF_H) < SYSTEM_MIN_Z ) {
-    future.z = SYSTEM_MIN_Z + PBF_H;
-    //future.z += (system_length_min.z - (future.z - radius)) * 2.0f;
-  } else if ( (future.z + PBF_H) > SYSTEM_MAX_Z ) {
-    future.z = SYSTEM_MAX_Z - PBF_H;
-    //future.z += (system_length_max.z - (future.z + radius)) * 2.0f;
+  
+  // Clamp Z
+  if ( (future.z - PBF_H) < SYSTEM_MIN_Z ) 
+  {
+    future.z = SYSTEM_MIN_Z + PBF_H + frand(&randSeed) * randDist;
+  } 
+  else if ( (future.z + PBF_H) > SYSTEM_MAX_Z ) 
+  {
+    future.z = SYSTEM_MAX_Z - PBF_H - frand(&randSeed) * randDist;
   }
 
   delta[i] = future - predicted[i];

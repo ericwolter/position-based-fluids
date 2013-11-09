@@ -55,55 +55,57 @@ public:
   void step(void);
 
   // Copy current positions and velocities
-  void dumpData( cl_float4 * (&positions),
-                 cl_float4 * (&velocities) );
+  void dumpData( cl_float4 * (&positions), cl_float4 * (&velocities) );
 
-  cl_uint getNumberParticles() const {
+  cl_uint getNumberParticles() const 
+  {
     return mNumParticles;
   }
 
-  cl_float getSizeXmin() const {
+  cl_float getSizeXmin() const 
+  {
     return mSystemSizeMin.s[0];
   }
 
-  cl_float getSizeXmax() const {
+  cl_float getSizeXmax() const 
+  {
     return mSystemSizeMax.s[0];
   }
 
-  cl_float
-  getSizeYmin(void) const {
+  cl_float getSizeYmin(void) const 
+  {
     return mSystemSizeMin.s[1];
   }
 
-  cl_float
-  getSizeYmax(void) const {
+  cl_float getSizeYmax(void) const 
+  {
     return mSystemSizeMax.s[1];
   }
 
-  cl_float
-  getSizeZmin(void) const {
+  cl_float getSizeZmin(void) const 
+  {
     return mSystemSizeMin.s[2];
   }
 
-  cl_float
-  getSizeZmax(void) const {
+  cl_float getSizeZmax(void) const 
+  {
     return mSystemSizeMax.s[2];
   }
 
-  const cl_float4
-  getSizesMin(void) const {
+  const cl_float4 getSizesMin(void) const 
+  {
     return mSystemSizeMin;
   }
 
-  const cl_float4
-  getSizesMax(void) const {
+  const cl_float4 getSizesMax(void) const 
+  {
     return mSystemSizeMax;
   }
 
   // Setter
 
-  void
-  setWaveGenerator(const double value) {
+  void setWaveGenerator(const double value) 
+  {
     mWaveGenerator = value;
   }
 
@@ -144,6 +146,8 @@ private:
   // The host memory holding the simulation data
   cl_float4 *mPositions;
   cl_float4 *mVelocities;
+  cl_float4 *mPredictions;
+  cl_float4 *mDeltas;
 #if !defined(USE_LINKEDCELL)
   cl_uint2 *mRadixCells;
 #endif // USE_LINKEDCELL

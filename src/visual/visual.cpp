@@ -35,13 +35,16 @@ CVisual::CVisual (DataLoader *dataLoader,
     mPositionAttrib(0),
     mNumParticles(0),
     mParticles(NULL),
-    mCamTarget( glm::vec3(0.0f, 0.0f, 0.0f) ),
-    mCamSphere( glm::vec3(0.0f, 20.0f, -0.5f) ),
+    //mCamTarget( glm::vec3(0.0f, 0.0f, 0.0f) ),
+    //mCamSphere( glm::vec3(0.0f, 20.0f, -1.5f) ),
+    mCamTarget( glm::vec3(0.08f, -0.28f, 0.00f) ),
+    mCamSphere( glm::vec3(-23.0f, 20.0f, -1.50f) ),
     mSharingBufferID(0) {
 
 }
 
-CVisual::~CVisual () {
+CVisual::~CVisual () 
+{
   // Destructor never reached if ESC is pressed in GLFW
   //cout << "Finish." << endl;
   glDeleteProgram(mProgramID);
@@ -53,8 +56,8 @@ CVisual::~CVisual () {
 }
 
 
-void
-CVisual::initWindow(const string windowname) {
+void CVisual::initWindow(const string windowname) 
+{
   // Initialise GLFW
   if ( !glfwInit() ) {
     throw runtime_error("Could not initialize GLFW!");
@@ -85,8 +88,8 @@ CVisual::initWindow(const string windowname) {
   glDepthFunc(GL_LEQUAL);
 }
 
-glm::vec3
-CVisual::resolveCamPosition(void) const {
+glm::vec3 CVisual::resolveCamPosition(void) const 
+{
   GLfloat phi = (M_PI / 180.0f) * (mCamSphere.x - 90.0f);
   GLfloat theta = (M_PI / 180.0f) * (mCamSphere.y + 90.0f);
 
@@ -125,9 +128,8 @@ CVisual::calcLookAtMatrix(const glm::vec3 &cameraPt,
   return rotMat * transMat;
 }
 
-GLvoid
-CVisual::initSystemVisual(const cl_float4 sizesMin,
-                          const cl_float4 sizesMax) {
+GLvoid CVisual::initSystemVisual(const cl_float4 sizesMin, const cl_float4 sizesMax) 
+{
   // Set system sizes
   mSizeXmin = sizesMin.s[0];
   mSizeXmax = sizesMax.s[0];
@@ -194,8 +196,8 @@ CVisual::initSystemVisual(const cl_float4 sizesMin,
                                  mDataLoader->getPathForShader("shaderfragment.glsl"));
 }
 
-GLvoid
-CVisual::initParticlesVisual(const size_t numParticles) {
+GLvoid CVisual::initParticlesVisual(const size_t numParticles) 
+{
   mNumParticles = numParticles;
 
   mPositionAttrib = glGetAttribLocation(mProgramID, "position");
@@ -223,7 +225,7 @@ CVisual::initParticlesVisual(const size_t numParticles) {
                                      -(mSizeYmax - mSizeYmin) / 2.0f,
                                      -(mSizeZmax - mSizeZmin) / 2.0f));
 
-  mCamSphere.z = -(mSizeZmax - mSizeZmin) * 2.0f;
+  //mCamSphere.z = -(mSizeZmax - mSizeZmin) * 2.0f;
 
   glUseProgram(mProgramID);
   glUniformMatrix4fv(
@@ -252,8 +254,8 @@ CVisual::initParticlesVisual(const size_t numParticles) {
   glUseProgram(0);
 }
 
-GLuint
-CVisual::createSharingBuffer(const GLsizeiptr size) const {
+GLuint CVisual::createSharingBuffer(const GLsizei size) const 
+{
   GLuint bufferID = 0;
   glGenBuffers(1, &bufferID);
   glBindBuffer(GL_ARRAY_BUFFER, bufferID);
@@ -267,15 +269,14 @@ CVisual::createSharingBuffer(const GLsizeiptr size) const {
   return bufferID;
 }
 
-GLvoid
-CVisual::visualizeParticles(void) {
+GLvoid CVisual::visualizeParticles(void) 
+{
   glClearColor(0.05f, 0.05f, 0.05f, 0.0f); // Dark blue background
   glClearDepth(1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   const glm::vec3 &camPos = resolveCamPosition();
-  const glm::mat4 lookAtMat = calcLookAtMatrix( camPos, mCamTarget,
-                              glm::vec3(0.0f, 1.0f, 0.0f) );
+  const glm::mat4 lookAtMat = calcLookAtMatrix( camPos, mCamTarget, glm::vec3(0.0f, 1.0f, 0.0f) );
 
   glUseProgram(mProgramID);
 
@@ -300,7 +301,7 @@ CVisual::visualizeParticles(void) {
   glVertexAttribPointer( mNormalAttrib, 4, GL_FLOAT, GL_FALSE,
                          8 * sizeof(GLfloat), (void *) ( 4 * sizeof(GLfloat) ) );
 
-  glDrawArrays(GL_QUADS, 0, 8);
+  //glDrawArrays(GL_QUADS, 0, 8);
 
   glDisableVertexAttribArray(mNormalAttrib);
   glDisableVertexAttribArray(mPositionAttrib);
@@ -331,8 +332,8 @@ CVisual::visualizeParticles(void) {
   glfwSwapBuffers(mWindow);
 }
 
-void
-CVisual::checkInput(bool &generateWaves) {
+void CVisual::checkInput(bool &generateWaves) 
+{
 
   glfwPollEvents();
 
@@ -367,11 +368,11 @@ CVisual::checkInput(bool &generateWaves) {
   }
 
   if (glfwGetKey(mWindow, 'O') == GLFW_PRESS) {
-    mCamSphere.z -= 1.0f;
+    mCamSphere.z *= 0.9f;
   }
 
   if (glfwGetKey(mWindow, 'U') == GLFW_PRESS) {
-    mCamSphere.z += 1.0f;
+    mCamSphere.z *= 1.0f / 0.9f;
   }
 
   if (glfwGetKey(mWindow, 'I') == GLFW_PRESS) {
@@ -393,14 +394,18 @@ CVisual::checkInput(bool &generateWaves) {
   if (glfwGetKey(mWindow, 'G') == GLFW_PRESS) {
     generateWaves = !generateWaves;
   }
+
+  // Write current settings to window title
+  char szTitle[100];
+  sprintf(szTitle, "eye=(%3.2f %3.2f %3.2f) target=(%3.2f %3.2f %3.2f)", mCamSphere.x, mCamSphere.y, mCamSphere.z, mCamTarget.x, mCamTarget.y, mCamTarget.z);
+  glfwSetWindowTitle(mWindow, szTitle);
 }
 
 /**
 *  \brief  Loads all shaders.
 */
-GLuint
-CVisual::loadShaders(const string &vertexFilename,
-                     const string &fragmentFilename) {
+GLuint CVisual::loadShaders(const string &vertexFilename, const string &fragmentFilename) 
+{
   cout << vertexFilename << endl;
   cout << fragmentFilename << endl;
 

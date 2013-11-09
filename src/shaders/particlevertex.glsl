@@ -22,6 +22,6 @@ void main()
     float size = 10.0;
     float derived_size = size * sqrt(1.0/(a + b * d + c * d * d));
 
-    gl_PointSize = 200.0 / gl_Position.w;
+    gl_PointSize = 18.0 / gl_Position.w;
 }
 
