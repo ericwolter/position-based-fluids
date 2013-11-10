@@ -37,6 +37,7 @@
 #pragma GCC diagnostic ignored "-Wextra"
 #pragma GCC diagnostic ignored "-Wc++11-extra-semi"
 #pragma GCC diagnostic ignored "-Wnewline-eof"
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #if defined(__APPLE__) || defined(__MACOSX)
 #include "ocl/cl.hpp"
 #else
