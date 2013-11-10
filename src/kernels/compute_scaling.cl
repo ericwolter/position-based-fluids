@@ -13,7 +13,7 @@ __kernel void computeScaling(__global float4 *predicted,
   if (i >= N) return;
 
   const int END_OF_CELL_LIST = -1;
-  const float e = 1000.0f * REST_DENSITY;
+  const float e = 10000.0f * REST_DENSITY;
 
   // calculate $$$\Delta p_i$$$
   int current_cell[3];
@@ -77,7 +77,7 @@ __kernel void computeScaling(__global float4 *predicted,
               density_sum += poly6;
 
               // equation (9), denominator, if k = j
-              gradient_sum_k += length(gradient_spiky);
+              gradient_sum_k += length(gradient_spiky) * length(gradient_spiky);
 
               // equation (8), if k = i
               gradient_sum_k_i += gradient_spiky;
@@ -128,7 +128,7 @@ __kernel void computeScaling(__global float4 *predicted,
   }
 
   // equation (9), denominator, if k = i
-  gradient_sum_k += length(gradient_sum_k_i);
+  gradient_sum_k += length(gradient_sum_k_i) * length(gradient_sum_k_i);
 
   predicted[i].w = density_sum;
 
@@ -136,6 +136,6 @@ __kernel void computeScaling(__global float4 *predicted,
   float density_constraint = (density_sum / REST_DENSITY) - 1.0f;
 
   // equation (11)
-  scaling[i] = -1.0f * density_constraint / (gradient_sum_k * gradient_sum_k
+  scaling[i] = -1.0f * density_constraint / (gradient_sum_k
                / (REST_DENSITY * REST_DENSITY) + e);
 }
