@@ -79,6 +79,7 @@ if (APPLE)
     ${COREFOUNDATION_LIBRARY}
     ${COCOA_LIB}
     ${IOKIT_LIB}
+    ${COREVIDEO_LIB}
   )
 else()
   target_link_libraries(hesp
