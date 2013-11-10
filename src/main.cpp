@@ -73,7 +73,7 @@ int main() {
 		int y = ((int)(i / pow(ParticlesPerAxis, 0)) % ParticlesPerAxis);
 		int z = ((int)(i / pow(ParticlesPerAxis, 2)) % ParticlesPerAxis);
 
-		ZeroMemory(&particles[i], sizeof(Particle));
+        memset(&particles[i],0,sizeof(Particle));
 		particles[i].m = 1;
 		particles[i].x[0] = offsetX + (x + (y % 2) * .5) * d;
 		particles[i].x[1] = offsetY + (y) * d;
