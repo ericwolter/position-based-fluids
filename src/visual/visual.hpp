@@ -64,7 +64,7 @@ public:
   visualizeParticles(void);
 
   GLuint
-  createSharingBuffer(const GLsizeiptr size) const;
+  createSharingBuffer(const GLsizei size) const;
 
   /**
    *  \brief  Checks if we want to generate waves with 'G'.
