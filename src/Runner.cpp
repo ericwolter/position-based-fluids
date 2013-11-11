@@ -1,5 +1,8 @@
 #include "Runner.hpp"
 
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 #include <sstream>
 #include <cstdio>
 #include <functional>

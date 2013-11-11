@@ -1,4 +1,12 @@
+#ifdef _WINDOWS
+#define GLEW_STATIC
+#include <GL\glew.h>
+#endif  
+
 #include "visual.hpp"
+
+#define _USE_MATH_DEFINES
+#include <math.h>
 
 #include <stdexcept>
 #include <iostream>
@@ -16,12 +24,16 @@ using std::ios;
 using std::cout;
 using std::cerr;
 using std::endl;
-using std::isnan;
 using std::cin;
 using std::istreambuf_iterator;
 using std::vector;
 using std::ifstream;
 
+#ifdef _WINDOWS
+	#define isnan(x) _isnan(x)
+#else
+	using std::isnan;
+#endif
 
 CVisual::CVisual (DataLoader *dataLoader,
                   const int width,
@@ -78,6 +90,10 @@ void CVisual::initWindow(const string windowname)
   // Make the window's context current
   glfwMakeContextCurrent(mWindow);
   glfwSetInputMode(mWindow, GLFW_STICKY_KEYS, GL_TRUE);
+
+  #ifdef _WINDOWS
+  glewInit();
+  #endif
 
   glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
   glEnable(GL_POINT_SPRITE);

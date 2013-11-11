@@ -3,12 +3,13 @@
 #include <cstdio>
 
 #if defined(__APPLE__)
-#include <OpenGL/OpenGL.h>
+  #include <OpenGL/OpenGL.h>
 #elif defined(UNIX)
-#include <GL/glx.h>
-#else
-#include <GL/glx.h>
-#endif // UNIX
+  #include <GL/glx.h>
+#else // _WINDOWS
+  #include <Windows.h>
+  #include <GL/gl.h>
+#endif 
 
 using std::vector;
 using std::cout;

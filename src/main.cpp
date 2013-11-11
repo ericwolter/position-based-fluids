@@ -1,3 +1,6 @@
+#define _USE_MATH_DEFINES
+#include <math.h>
+
 #include <cstdlib>
 #include <vector>
 #include <string>
@@ -7,12 +10,13 @@
 #include <sstream>
 
 #if defined(__APPLE__)
-#include <OpenGL/OpenGL.h>
+  #include <OpenGL/OpenGL.h>
 #elif defined(UNIX)
-#include <GL/glx.h>
-#else
-#include <GL/glx.h>
-#endif // UNIX
+  #include <GL/glx.h>
+#else // _WINDOWS
+  #include <Windows.h>
+  #include <GL/gl.h>
+#endif 
 
 #include "hesp.hpp"
 #include "ocl/clsetup.hpp"
@@ -148,6 +152,14 @@ int main() {
       CL_CONTEXT_PLATFORM, (cl_context_properties) (platform)(),
       0
     };
+#elif defined(_WINDOWS)
+	cl_context_properties properties[] = 
+	{
+		CL_GL_CONTEXT_KHR, (cl_context_properties) wglGetCurrentContext(),  
+		CL_WGL_HDC_KHR, (cl_context_properties) wglGetCurrentDC(), 
+		CL_CONTEXT_PLATFORM, (cl_context_properties) (platform)(),
+		0
+	};	
 #else
     cl_context_properties properties[] = {
       CL_GL_CONTEXT_KHR, (cl_context_properties) glXGetCurrentContext(),

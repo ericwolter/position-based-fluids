@@ -1,11 +1,16 @@
 include_directories(
 	${CMAKE_SOURCE_DIR}/lib
-  ${CMAKE_SOURCE_DIR}/lib/glm
+	${CMAKE_SOURCE_DIR}/lib/glm
 	${CMAKE_SOURCE_DIR}/lib/glfw/include
 	${CMAKE_SOURCE_DIR}/lib/soil/src/
 )
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -pedantic -Wall -Wextra -Werror -Wfatal-errors")
+if(MSVC)
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -pedantic")
+else()
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -pedantic -Wall -Wextra -Werror -Wfatal-errors")
+endif()
+
 add_definitions(-DUSE_LINKEDCELL)
 
 set(SOURCE
@@ -81,6 +86,14 @@ if (APPLE)
     ${IOKIT_LIB}
     ${COREVIDEO_LIB}
   )
+elseif(MSVC)
+  target_link_libraries(hesp
+    glfw
+    soil
+    glew32s
+    ${OPENGL_LIBRARY}
+    ${OPENCL_LIBRARY}
+  )
 else()
   target_link_libraries(hesp
     glfw
@@ -88,7 +101,7 @@ else()
     ${OPENGL_LIBRARY}
     ${OPENCL_LIBRARY}
   )
-endif (APPLE)
+endif()
 
 add_custom_target(copy ALL
     COMMENT "Copying support files")

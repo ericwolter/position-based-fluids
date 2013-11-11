@@ -170,13 +170,13 @@
 #endif
 
 #if defined(__APPLE__) || defined(__MACOSX)
-#include <OpenGL/OpenGL.h>
-#include <OpenCL/opencl.h>
-#include <libkern/OSAtomic.h>
-#else
-#include <GL/gl.h>
-#include <CL/opencl.h>
-#endif // !__APPLE__
+  #include <OpenGL/OpenGL.h>
+  #include <OpenCL/opencl.h>
+  #include <libkern/OSAtomic.h>
+#else // defined(_WINDOWS) || defined(UNIX) ?
+  #include <GL/gl.h>
+  #include <CL/opencl.h>
+#endif
 
 // To avoid accidentally taking ownership of core OpenCL types
 // such as cl_kernel constructors are made explicit
