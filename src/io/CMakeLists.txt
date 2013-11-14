@@ -1,13 +1,11 @@
 set(SOURCE
 	${SOURCE}
-	${CMAKE_CURRENT_SOURCE_DIR}/ConfigReader.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/PartReader.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/Parameters.cpp
 	PARENT_SCOPE
 )
 
 set(HEADER
   ${HEADER}
-  ${CMAKE_CURRENT_SOURCE_DIR}/ConfigReader.hpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/PartReader.hpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Parameters.hpp
   PARENT_SCOPE
 )

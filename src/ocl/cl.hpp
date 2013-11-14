@@ -174,8 +174,8 @@
   #include <OpenCL/opencl.h>
   #include <libkern/OSAtomic.h>
 #else // defined(_WINDOWS) || defined(UNIX) ?
-  #include <GL/gl.h>
-  #include <CL/opencl.h>
+  #include <GL\gl.h>
+  #include <CL\opencl.h>
 #endif
 
 // To avoid accidentally taking ownership of core OpenCL types

@@ -2,7 +2,6 @@
 #define __RUNNER_HPP
 
 #include "hesp.hpp"
-#include "Parameters.hpp"
 #include "Simulation.hpp"
 #include "visual/visual.hpp"
 
@@ -13,12 +12,13 @@ private:
   Runner &operator=(const Runner &other);
   Runner (const Runner &other);
 
+  // A method that checks if things have changed
+  bool ResourceChanged() const;
+
 public:
   Runner () {}
 
-  void run(const ConfigParameters &parameters,
-           Simulation &simulation,
-           CVisual &renderer) const;
+  void run(Simulation &simulation, CVisual &renderer) const;
 
 };
 
