@@ -23,7 +23,6 @@ Parameters::Parameters()
 
 void Parameters::LoadParameters(string InputFile)
 {
-    size_t lineNumber = 1;
     string line; // Complete line
     string parameter; // Parameter found
 

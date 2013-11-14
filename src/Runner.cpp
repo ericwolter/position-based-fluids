@@ -35,13 +35,13 @@ bool Runner::ResourceChanged() const
 
 void Runner::run(Simulation& simulation, CVisual& renderer) const
 {
-	int prevParticleCount = 0;
+	cl_uint prevParticleCount = 0;
     cl_float wave = 0.0f;
     bool shouldGenerateWaves = false;
 
     // Init render (background, camera etc...)
-	const cl_float4 sizesMin = { Params.xMin, Params.yMin, Params.zMin, 0 };
-    const cl_float4 sizesMax = { Params.xMax, Params.yMax, Params.zMax, 0 };
+	const cl_float4 sizesMin = {{ Params.xMin, Params.yMin, Params.zMin, 0 }};
+    const cl_float4 sizesMax = {{ Params.xMax, Params.yMax, Params.zMax, 0 }};
     renderer.initSystemVisual(simulation, sizesMin, sizesMax);
     renderer.initParticlesVisual();
 

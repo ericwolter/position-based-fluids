@@ -43,10 +43,10 @@ Simulation::Simulation(const cl::Context &clContext, const cl::Device &clDevice)
       mCLDevice(clDevice),
       mPositions(NULL),
       mVelocities(NULL),
-      mCells(NULL),
-      mParticlesList(NULL),
 	  mPredictions(NULL),
 	  mDeltas(NULL),
+      mCells(NULL),
+      mParticlesList(NULL),
       mWaveGenerator(0.0f)
 {
 }
@@ -79,11 +79,11 @@ void Simulation::CreateParticles()
     float offsetX = 0.1;
     float offsetY = 0.1;
     float offsetZ = 0.1;
-    for (int i = 0; i< Params.particleCount; i++)
+    for (cl_uint i = 0; i< Params.particleCount; i++)
     {
-        int x = ((int)(i / pow(ParticlesPerAxis, 1)) % ParticlesPerAxis);
-        int y = ((int)(i / pow(ParticlesPerAxis, 0)) % ParticlesPerAxis);
-        int z = ((int)(i / pow(ParticlesPerAxis, 2)) % ParticlesPerAxis);
+        cl_uint x = ((cl_uint)(i / pow(ParticlesPerAxis, 1)) % ParticlesPerAxis);
+        cl_uint y = ((cl_uint)(i / pow(ParticlesPerAxis, 0)) % ParticlesPerAxis);
+        cl_uint z = ((cl_uint)(i / pow(ParticlesPerAxis, 2)) % ParticlesPerAxis);
 
         mPositions[i].s[0] = offsetX + (x + (y % 2) * .5) * d;
         mPositions[i].s[1] = offsetY + (y) * d;
@@ -377,7 +377,7 @@ void Simulation::updateCells()
 {
     mKernels["initCellsOld"].setArg(0, mCellsBuffer);
     mKernels["initCellsOld"].setArg(1, mParticlesListBuffer);
-	mKernels["initCellsOld"].setArg(2, (cl_uint)(Params.xN * Params.yN * Params.zN));
+    mKernels["initCellsOld"].setArg(2, (cl_uint)(Params.xN * Params.yN * Params.zN));
     mKernels["initCellsOld"].setArg(3, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["initCellsOld"], 0, cl::NDRange(max(mBufferSizeParticlesList, mBufferSizeCells)), mLocalRange);

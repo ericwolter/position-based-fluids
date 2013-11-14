@@ -52,7 +52,7 @@ int main()
 		// Select OpenCL platform/device
         OCLUtils clUtils;
         //cl::Platform platform = clUtils.selectPlatform();
-        cl::Platform platform = clUtils.getPlatforms()[1];
+        cl::Platform platform = clUtils.getPlatforms()[0];
 
 #if defined(__APPLE__)
         CGLContextObj glContext = CGLGetCurrentContext();

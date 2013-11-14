@@ -7,6 +7,7 @@
 #include <Shlwapi.h>
 #pragma comment(lib, "shlwapi.lib")
 #else
+#include <stdlib.h>
 #include <mach-o/dyld.h>
 #include <libgen.h>
 #endif
