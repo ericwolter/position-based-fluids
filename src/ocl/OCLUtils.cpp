@@ -274,7 +274,8 @@ cl::Program OCLUtils::createProgram(const vector<string> &sources, const cl::Con
     {
         cerr << e.what() << " (" << e.err() << ")" << endl
              << "Buildlog: " << this->getBuildLog(program, devices) << endl;
-        exit(-1);
+
+        return 0;
     }
 
     return program;

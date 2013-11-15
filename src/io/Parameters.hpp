@@ -18,6 +18,7 @@ public:
 
 	// [Parameters]
 	cl_uint  particleCount;
+	cl_uint  resetSimOnChange;
     cl_float timeStepLength;
     cl_float timeEnd;
     cl_uint  partOutFreq;

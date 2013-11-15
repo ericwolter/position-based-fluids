@@ -46,7 +46,10 @@ CVisual::CVisual (const int width, const int height)
       //mCamTarget( glm::vec3(0.0f, 0.0f, 0.0f) ),
       //mCamSphere( glm::vec3(0.0f, 20.0f, -1.5f) ),
       mCamTarget( glm::vec3(0.08f, -0.28f, 0.00f) ),
-      mCamSphere( glm::vec3(-23.0f, 20.0f, -1.50f) )
+      mCamSphere( glm::vec3(-23.0f, 20.0f, -1.50f) ),
+	  UICmd_GenerateWaves(false),
+      UICmd_ResetSimulation(false),
+	  UICmd_PauseSimulation(false)
 {
 
 }
@@ -61,6 +64,34 @@ CVisual::~CVisual ()
     glfwTerminate();
 }
 
+void CVisual::KeyEvent(GLFWwindow* window,int key,int scancode,int action, int mods) 
+{
+	// Ignore none-press events
+	if (action != GLFW_PRESS)
+		return;
+
+	// Process key
+	switch ((char)key)
+	{
+		case 'G':
+		    UICmd_GenerateWaves = !UICmd_GenerateWaves;
+			break;
+		case 'P':
+		    UICmd_PauseSimulation = !UICmd_PauseSimulation;
+			break;
+		case 'R':
+		    UICmd_ResetSimulation = true;
+			break;
+	}
+}
+
+static void StaticKeyEvent(GLFWwindow* window,int key,int scancode,int action, int mods) 
+{
+	CVisual* pThis = (CVisual*)glfwGetWindowUserPointer(window);
+	
+	if (pThis != NULL)
+		pThis->KeyEvent(window, key, scancode, action, mods);
+}
 
 void CVisual::initWindow(const string windowname)
 {
@@ -86,6 +117,8 @@ void CVisual::initWindow(const string windowname)
     // Make the window's context current
     glfwMakeContextCurrent(mWindow);
     glfwSetInputMode(mWindow, GLFW_STICKY_KEYS, GL_TRUE);
+	glfwSetWindowUserPointer(mWindow, this);
+	glfwSetKeyCallback(mWindow, StaticKeyEvent);
 
 #ifdef _WINDOWS
     glewInit();
@@ -115,10 +148,7 @@ glm::vec3 CVisual::resolveCamPosition(void) const
     return (dirToCamera * mCamSphere.z) + mCamTarget;
 }
 
-glm::mat4
-CVisual::calcLookAtMatrix(const glm::vec3 &cameraPt,
-                          const glm::vec3 &lookPt,
-                          const glm::vec3 &upPt) const
+glm::mat4 CVisual::calcLookAtMatrix(const glm::vec3 &cameraPt, const glm::vec3 &lookPt, const glm::vec3 &upPt) const
 {
     glm::vec3 lookDir = glm::normalize(lookPt - cameraPt);
     glm::vec3 upDir = glm::normalize(upPt);
@@ -312,9 +342,8 @@ GLvoid CVisual::visualizeParticles(void)
     glfwSwapBuffers(mWindow);
 }
 
-void CVisual::checkInput(bool &generateWaves)
+void CVisual::checkInput()
 {
-
     glfwPollEvents();
 
     if (glfwGetKey(mWindow, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -382,11 +411,6 @@ void CVisual::checkInput(bool &generateWaves)
     if (glfwGetKey(mWindow, 'L') == GLFW_PRESS)
     {
         mCamSphere.x += 1.0f;
-    }
-
-    if (glfwGetKey(mWindow, 'G') == GLFW_PRESS)
-    {
-        generateWaves = !generateWaves;
     }
 
     // Write current settings to window title

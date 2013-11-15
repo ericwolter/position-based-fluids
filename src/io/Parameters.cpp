@@ -58,6 +58,7 @@ void Parameters::LoadParameters(string InputFile)
         /**/ if (parameter == "timestep_length")     ss >> timeStepLength;
         else if (parameter == "time_end")            ss >> timeEnd;
         else if (parameter == "particle_count")      ss >> particleCount;
+        else if (parameter == "reset_sim_on_change") ss >> resetSimOnChange;
         else if (parameter == "part_out_freq")       ss >> partOutFreq;
         else if (parameter == "part_out_name_base")  ss >> partOutNameBase;
         else if (parameter == "vtk_out_freq")        ss >> vtkOutFreq;

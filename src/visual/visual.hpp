@@ -32,6 +32,9 @@ using std::string;
  */
 class CVisual
 {
+public: 
+	void KeyEvent(GLFWwindow* window,int key,int scancode,int action, int mods);
+
 public:
     // Default constructor
     CVisual (const int width = 800, const int height = 600);
@@ -62,11 +65,16 @@ public:
     /**
      *  \brief  Checks if we want to generate waves with 'G'.
      */
-    void checkInput(bool &generateWaves);
+    void checkInput();
 
     glm::vec3 resolveCamPosition(void) const;
 
     glm::mat4 calcLookAtMatrix(const glm::vec3 &cameraPt, const glm::vec3 &lookPt, const glm::vec3 &upPt) const;
+
+public:
+	bool UICmd_GenerateWaves;
+	bool UICmd_ResetSimulation;
+	bool UICmd_PauseSimulation;
 
 private:
     // Window stuff

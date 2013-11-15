@@ -7,6 +7,7 @@
 #include <math.h>
 #include <cstdio>
 #include <sstream>
+#include <list>
 
 #if defined(__APPLE__)
 #include <OpenGL/OpenGL.h>
@@ -46,8 +47,7 @@ Simulation::Simulation(const cl::Context &clContext, const cl::Device &clDevice)
       mCells(NULL),
       mParticlesList(NULL),
 	  mPredictions(NULL),
-	  mDeltas(NULL),
-      mWaveGenerator(0.0f)
+	  mDeltas(NULL)
 {
 }
 
@@ -92,7 +92,36 @@ void Simulation::CreateParticles()
     }
 }
 
-void Simulation::InitKernels()
+const std::string* Simulation::KernelFileList()
+{
+	static const std::string kernels[] = 
+	{	
+		"predict_positions.cl",
+		"init_cells_old.cl",
+		"update_cells.cl",
+		"compute_scaling.cl",
+		"compute_delta.cl",
+		"update_predicted.cl",
+		"update_velocities.cl",
+		"apply_vorticity_and_viscosity.cl",
+		"update_positions.cl",
+		"calc_hash.cl",
+
+#if !defined(USE_LINKEDCELL)
+		"radix_histogram.cl",
+		"radix_scan.cl",
+		"radix_paste.cl",
+		"radix_reorder.cl",
+		"init_cells.cl",
+		"find_cells.cl",
+#endif
+		""
+	};
+
+	return kernels;
+}
+
+bool Simulation::InitKernels()
 {
 	// Setup OpenCL Ranges
     const cl_uint globalSize = ceil(Params.particleCount / 32.0f) * 32;
@@ -103,42 +132,16 @@ void Simulation::InitKernels()
     OCLUtils clSetup;
     vector<string> kernelSources;
     string header = clSetup.readSource(getPathForKernel("hesp.hpp"));
-    string source;
 
-    source = clSetup.readSource(getPathForKernel("predict_positions.cl"));
-    kernelSources.push_back(header + source);
-    source = clSetup.readSource(getPathForKernel("init_cells_old.cl"));
-    kernelSources.push_back(header + source);
-    source = clSetup.readSource(getPathForKernel("update_cells.cl"));
-    kernelSources.push_back(header + source);
-    source = clSetup.readSource(getPathForKernel("compute_scaling.cl"));
-    kernelSources.push_back(header + source);
-    source = clSetup.readSource(getPathForKernel("compute_delta.cl"));
-    kernelSources.push_back(header + source);
-    source = clSetup.readSource(getPathForKernel("update_predicted.cl"));
-    kernelSources.push_back(header + source);
-    source = clSetup.readSource(getPathForKernel("update_velocities.cl"));
-    kernelSources.push_back(header + source);
-    source = clSetup.readSource(getPathForKernel("apply_vorticity_and_viscosity.cl"));
-    kernelSources.push_back(header + source);
-    source = clSetup.readSource(getPathForKernel("update_positions.cl"));
-    kernelSources.push_back(header + source);
-    source = clSetup.readSource(getPathForKernel("calc_hash.cl"));
-    kernelSources.push_back(header + source);
-#if !defined(USE_LINKEDCELL)
-    source = clSetup.readSource(getPathForKernel("radix_histogram.cl"));
-    kernelSources.push_back(header + source);
-    source = clSetup.readSource(getPathForKernel("radix_scan.cl"));
-    kernelSources.push_back(header + source);
-    source = clSetup.readSource(getPathForKernel("radix_paste.cl"));
-    kernelSources.push_back(header + source);
-    source = clSetup.readSource(getPathForKernel("radix_reorder.cl"));
-    kernelSources.push_back(header + source);
-    source = clSetup.readSource(getPathForKernel("init_cells.cl"));
-    kernelSources.push_back(header + source);
-    source = clSetup.readSource(getPathForKernel("find_cells.cl"));
-    kernelSources.push_back(header + source);
-#endif
+	// Load kernel sources
+	const std::string* pKernels = KernelFileList();
+	for (int iSrc = 0; pKernels[iSrc]  != ""; iSrc++)
+	{
+		string source = clSetup.readSource(getPathForKernel(pKernels[iSrc]));
+		kernelSources.push_back(header + source);
+	}
+
+	// Setup kernel compiler flags
     std::ostringstream clflags;
     clflags << "-cl-mad-enable -cl-no-signed-zeros -cl-fast-relaxed-math ";
 
@@ -170,10 +173,14 @@ void Simulation::InitKernels()
     clflags << "-DPOLY6_FACTOR=" << 315.0f / (64.0f * M_PI * pow(mSmoothLen, 9)) << "f ";
     clflags << "-DGRAD_SPIKY_FACTOR=" << 45.0f / (M_PI * pow(mSmoothLen, 6)) << "f ";
 
+	// Compile kernels
     cl::Program program = clSetup.createProgram(kernelSources, mCLContext, mCLDevice, clflags.str());
+	if (program() == 0)
+		return false;
 
-	// Build things...
-    mKernels = clSetup.createKernelsMap(program);
+	// Build kernels table
+	mKernels = clSetup.createKernelsMap(program);
+	return true;
 }
 
 void Simulation::InitBuffers()
@@ -337,7 +344,7 @@ void Simulation::updatePredicted()
     mQueue.enqueueNDRangeKernel(mKernels["updatePredicted"], 0, mGlobalRange, mLocalRange);
 }
 
-void Simulation::computeDelta()
+void Simulation::computeDelta(cl_float waveGenerator)
 {
     mKernels["computeDelta"].setArg(0, mDeltaBuffer);
     mKernels["computeDelta"].setArg(1, mPredictedBuffer);
@@ -349,7 +356,7 @@ void Simulation::computeDelta()
     mKernels["computeDelta"].setArg(3, mRadixCellsBuffer);
     mKernels["computeDelta"].setArg(4, mFoundCellsBuffer);
 #endif
-    mKernels["computeDelta"].setArg(5, mWaveGenerator);
+    mKernels["computeDelta"].setArg(5, waveGenerator);
     mKernels["computeDelta"].setArg(6, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0,
@@ -495,7 +502,7 @@ void Simulation::radix(void)
 }
 #endif
 
-void Simulation::Step()
+void Simulation::Step(bool bPauseSim, cl_float waveGenerator)
 {
 	// Why is this here?
     glFinish();
@@ -525,7 +532,7 @@ void Simulation::Step()
         	_asm nop;*/
 
 		// Compute position delta
-        this->computeDelta();
+        this->computeDelta(waveGenerator);
         /*mQueue.enqueueReadBuffer(mDeltaBuffer, CL_TRUE, 0, mBufferSizeParticles, mDeltas);
         if (mQueue.finish() != CL_SUCCESS)
         	_asm nop;*/
@@ -541,7 +548,8 @@ void Simulation::Step()
 	this->applyVorticityAndViscosity();
 
 	// Update particle postions
-	this->updatePositions();
+	if (!bPauseSim)
+		this->updatePositions();
 
 	// Release OpenGL shared object, allowing openGL do to it's thing...
     mQueue.enqueueReleaseGLObjects(&sharedBuffers);

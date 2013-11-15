@@ -5,20 +5,28 @@
 #include "Simulation.hpp"
 #include "visual/visual.hpp"
 
+#include <sys/stat.h>
+#include <list>
+#include <string>
+using namespace std;
 
-class Runner {
+class Runner
+{
 private:
-  // Avoid copy
-  Runner &operator=(const Runner &other);
-  Runner (const Runner &other);
+    // Avoid copy
+    Runner &operator=(const Runner &other);
+    Runner (const Runner &other);
 
-  // A method that checks if things have changed
-  bool ResourceChanged() const;
+    // A method that checks if things have changed
+    bool DetectResourceChanges();
+
+	// A list of files to track for changes
+	list<pair<string, time_t>> mFilesTrack;
 
 public:
-  Runner () {}
+	Runner() {};
 
-  void run(Simulation &simulation, CVisual &renderer) const;
+    void run(Simulation &simulation, CVisual &renderer); 
 
 };
 

@@ -61,20 +61,22 @@ public:
 	/**
     *  \brief Load and build kernels
     */
-    void InitKernels();
+    bool InitKernels();
 
 	/**
     *  \brief Perform single simulation step
     */
-    void Step();
+    void Step(bool bPauseSim, cl_float waveGenerator);
 
-    // Copy current positions and velocities
+	/**
+    *  \brief Copy current positions and velocities
+    */
     void dumpData( cl_float4 * (&positions), cl_float4 * (&velocities) );
-
-    void setWaveGenerator(const double value)
-    {
-        mWaveGenerator = value;
-    }
+    
+	/**
+    *  \brief Get a list of kernel files
+    */
+	const std::string* KernelFileList();
 
 public:
 
@@ -133,20 +135,17 @@ public:
     cl_int *mCells;
     cl_int *mParticlesList;
 
-    // For generating waves
-    cl_float mWaveGenerator;
-
     GLuint mSharingBufferID;
 
     // Private member functions
-    void updateCells(void);
-    void updatePositions(void);
-    void updateVelocities(void);
-    void applyVorticityAndViscosity(void);
-    void predictPositions(void);
-    void updatePredicted(void);
-    void computeScaling(void);
-    void computeDelta(void);
+    void updateCells();
+    void updatePositions();
+    void updateVelocities();
+    void applyVorticityAndViscosity();
+    void predictPositions();
+    void updatePredicted();
+    void computeScaling();
+    void computeDelta(cl_float waveGenerator);
 #if !defined(USE_LINKEDCELL)
     void radix(void);
 #endif // USE_LINKEDCELL

@@ -3,41 +3,95 @@
 
 #define _USE_MATH_DEFINES
 #include <math.h>
-
-#include <sstream>
-#include <cstdio>
-#include <functional>
-#include <numeric>
-
-#if defined(MAKE_VIDEO)
-#include <unistd.h>
-#endif // MAKE_VIDEO
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
+#include <io.h>
 
 #include <GLFW/glfw3.h>
 
-using std::string;
-using std::ostringstream;
-using std::cout;
-using std::endl;
+#include <fstream>
+using std::ifstream;
 
-
+#if defined(MAKE_VIDEO)
+#include <unistd.h>
 static const int WINDOW_WIDTH = 1280;
 static const int WINDOW_HEIGHT = 720;
+#endif // MAKE_VIDEO
 
-bool bFirstTime = true;
-
-bool Runner::ResourceChanged() const
+bool Runner::DetectResourceChanges() 
 {
-	bool Prev = bFirstTime;
-	bFirstTime = false;
-	return Prev;
+	// Assume nothing change
+	bool bChanged = false;
+
+	// Scan all file for change
+	list<pair<string, time_t>>::iterator iter;
+	for(iter = mFilesTrack.begin(); iter != mFilesTrack.end(); iter++)
+	{
+		// Get file stat
+		struct stat fileStat;
+		stat(iter->first.c_str(), &fileStat);
+
+		// Compare for change with stored stat
+		if (iter->second != fileStat.st_mtime)
+		{
+			bChanged = true;
+			break;
+		}
+	}
+
+	// Exit if not change was detected
+	if (!bChanged)
+		return false;
+
+	// Test exclusive lock code
+	// ifstream ifs = ifstream(mFilesTrack.begin()->first.c_str());
+
+	// change was detected: make sure that all files are openable (no one is holding the files open)
+	for(iter = mFilesTrack.begin(); iter != mFilesTrack.end(); iter++)
+	{
+		// Check if file can be open exclusivly
+		bool ExclusiveOpen;
+		#ifdef _WINDOWS
+			int fd;
+			int openResult = _sopen_s(&fd, iter->first.c_str(), O_RDWR, _SH_DENYRW, 0);
+			if (openResult == 0) _close(fd);
+			ExclusiveOpen = openResult == 0;
+		#else
+			int openResult = open (iter->first.c_str(), O_RDWR, 0666);
+			int lockResult = openResult < 0 ? -1 : flock (openResult, LOCK_EX | LOCK_NB);
+			ExclusiveOpen = lockResult > 0;
+			if (lockResult > 0) flock (openResult, LOCK_UN);
+			if (openResult > 0) close(openResult);
+		#endif
+
+		// If failed to open file exclusivly, exit (we will try again later)
+		if (!ExclusiveOpen)
+			return false;
+	}
+
+	// There was a change AND all files are openable (in exclusive mode, ie: no one else accessing them) we can report the change back
+	for(iter = mFilesTrack.begin(); iter != mFilesTrack.end(); iter++)
+	{
+		// Get file stat
+		struct stat fileStat;
+		stat(iter->first.c_str(), &fileStat);
+		iter->second = fileStat.st_mtime;
+	}
+
+	return true;
 }
 
-void Runner::run(Simulation& simulation, CVisual& renderer) const
+void Runner::run(Simulation& simulation, CVisual& renderer)
 {
-	int prevParticleCount = 0;
-    cl_float wave = 0.0f;
-    bool shouldGenerateWaves = false;
+	// Create resource tracking file list (Kernels)
+	time_t emptyTime = 0;
+	const string* pKernels = simulation.KernelFileList();
+	for (int iSrc = 0; pKernels[iSrc] != ""; iSrc++)
+		mFilesTrack.push_back(make_pair(getPathForKernel(pKernels[iSrc]), emptyTime));
+
+	// Append parameter file to resource tracking file list
+	mFilesTrack.push_back(make_pair(getPathForScenario("dam_coarse.par"), emptyTime));
 
     // Init render (background, camera etc...)
 	const cl_float4 sizesMin = { Params.xMin, Params.yMin, Params.zMin, 0 };
@@ -45,36 +99,40 @@ void Runner::run(Simulation& simulation, CVisual& renderer) const
     renderer.initSystemVisual(simulation, sizesMin, sizesMax);
     renderer.initParticlesVisual();
 
-#if defined(MAKE_VIDEO)
-    const string cmd = "ffmpeg -r 30 -f rawvideo -pix_fmt rgb24 "
-                       "-s 1280x720 -an -i - -threads 2 -preset slow "
-                       "-crf 18 -pix_fmt yuv420p -vf vflip -y output.mp4";
+	#if defined(MAKE_VIDEO)
+		const string cmd = "ffmpeg -r 30 -f rawvideo -pix_fmt rgb24 "
+						   "-s 1280x720 -an -i - -threads 2 -preset slow "
+						   "-crf 18 -pix_fmt yuv420p -vf vflip -y output.mp4";
 
-    // Frame data to write into
-    const size_t nbytes = 3 * WINDOW_WIDTH * WINDOW_HEIGHT;
-    char *framedata = new char[nbytes];
+		// Frame data to write into
+		const size_t nbytes = 3 * WINDOW_WIDTH * WINDOW_HEIGHT;
+		char *framedata = new char[nbytes];
 
-    FILE *ffmpeg;
+		FILE *ffmpeg;
 
-    if ( !(ffmpeg = popen(cmd.c_str(), "w") ) )
-    {
-        perror("Error using ffmpeg!");
-        exit(-1);
-    }
-#endif // MAKE_VIDEO
+		if ( !(ffmpeg = popen(cmd.c_str(), "w") ) )
+		{
+			perror("Error using ffmpeg!");
+			exit(-1);
+		}
+	#endif // MAKE_VIDEO
 
     // Main loop
-    cl_float time = 0.0f;
+	bool KernelBuildOk = false;
+	int prevParticleCount = 0;
+    cl_float simTime = 0.0f;
+    cl_float waveTime = 0.0f;
+	cl_float wavePos  = 0.0f;
     do
     {
 		// Check file changes
-		if (ResourceChanged())
+		if (DetectResourceChanges() || renderer.UICmd_ResetSimulation)
 		{
 			// Reading the configuration file
 			Params.LoadParameters(getPathForScenario("dam_coarse.par"));
 
 			// Check if particle count changed
-			if (prevParticleCount != Params.particleCount)
+			if ((prevParticleCount != Params.particleCount) || renderer.UICmd_ResetSimulation || Params.resetSimOnChange)
 			{
 				// Store new particle count
 				prevParticleCount = Params.particleCount;
@@ -92,52 +150,51 @@ void Runner::run(Simulation& simulation, CVisual& renderer) const
 			#endif // USE_LINKEDCELL
 
 			// Init kernels
-			simulation.InitKernels();
+			KernelBuildOk = simulation.InitKernels();
+
+			// Turn off sim reset request
+			renderer.UICmd_ResetSimulation = false;
 		}
 
-        simulation.Step();
+		// Make sure that kernels are valid
+		if (!KernelBuildOk)
+			continue;
 
-        time += Params.timeStepLength;
-
-        if (shouldGenerateWaves)
+		// Generate waves
+		if (!renderer.UICmd_GenerateWaves)
         {
-            static const cl_float wave_push_length = (sizesMax.s[0] - sizesMin.s[0]) / 4.0f;
-            static const cl_float wave_frequency = 0.70f;
-            static const cl_float wave_start = 0;
+			// Wave consts
+            const cl_float wave_push_length = (sizesMax.s[0] - sizesMin.s[0]) / 4.0f;
+            const cl_float wave_frequency = 0.70f;
 
-            cl_float waveValue = sin(2.0f * M_PI * wave_frequency
-                                     * wave + wave_start)
-                                 * wave_push_length / 2.0f
-                                 + wave_push_length / 2.0f;
+			// Update the wave position
+			float t = wave_frequency * waveTime;
+            wavePos = (1 - cos(2.0f * M_PI * pow(fmod(t, 1.0f), 3.0f))) * wave_push_length / 2.0f;
 
-            float t = wave_frequency * wave + wave_start;
-            waveValue = (1 - cos(2.0f * M_PI * pow(fmod(t, 1.0f), 3.0f))) * wave_push_length / 2.0f;
-
-            simulation.setWaveGenerator(waveValue);
-            wave += Params.timeStepLength;
+			// Update wave running time
+			if (!renderer.UICmd_PauseSimulation)
+				waveTime += Params.timeStepLength;
         }
+
+		// Execute simulation
+		simulation.Step(renderer.UICmd_PauseSimulation, wavePos);
+
+		// Incremenent time
+		if (!renderer.UICmd_PauseSimulation)
+			simTime += Params.timeStepLength;
 
         // Visualize particles
         renderer.visualizeParticles();
-        renderer.checkInput(shouldGenerateWaves);
+        renderer.checkInput();
 
-        if ( !shouldGenerateWaves )
-            wave = 0.0f;
-
-#if defined(MAKE_VIDEO)
-        glReadPixels(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, framedata);
-        fwrite(framedata, 1, nbytes, ffmpeg);
-#endif
-
-#if defined(USE_DEBUG)
-        cout << "Time: " << time << endl;
-#endif // USE_DEBUG
-
+		#if defined(MAKE_VIDEO)
+			glReadPixels(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, framedata);
+			fwrite(framedata, 1, nbytes, ffmpeg);
+		#endif
     }
-    while (time <= Params.timeEnd);
+    while (simTime <= Params.timeEnd);
 
-#if defined(MAKE_VIDEO)
-    pclose(ffmpeg);
-#endif
-
+	#if defined(MAKE_VIDEO)
+		pclose(ffmpeg);
+	#endif
 }
