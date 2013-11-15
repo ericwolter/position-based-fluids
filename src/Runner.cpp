@@ -85,17 +85,17 @@ bool Runner::DetectResourceChanges()
 void Runner::run(Simulation& simulation, CVisual& renderer)
 {
 	// Create resource tracking file list (Kernels)
-	time_t emptyTime = 0;
+	time_t defaultTime = 0;
 	const string* pKernels = simulation.KernelFileList();
 	for (int iSrc = 0; pKernels[iSrc] != ""; iSrc++)
-		mFilesTrack.push_back(make_pair(getPathForKernel(pKernels[iSrc]), emptyTime));
+		mFilesTrack.push_back(make_pair(getPathForKernel(pKernels[iSrc]), defaultTime));
 
 	// Append parameter file to resource tracking file list
-	mFilesTrack.push_back(make_pair(getPathForScenario("dam_coarse.par"), emptyTime));
+	mFilesTrack.push_back(make_pair(getPathForScenario("dam_coarse.par"), defaultTime));
 
     // Init render (background, camera etc...)
-	const cl_float4 sizesMin = { Params.xMin, Params.yMin, Params.zMin, 0 };
-    const cl_float4 sizesMax = { Params.xMax, Params.yMax, Params.zMax, 0 };
+	const cl_float4 sizesMin = {{ Params.xMin, Params.yMin, Params.zMin, 0 }};
+    const cl_float4 sizesMax = {{ Params.xMax, Params.yMax, Params.zMax, 0 }};
     renderer.initSystemVisual(simulation, sizesMin, sizesMax);
     renderer.initParticlesVisual();
 
@@ -119,7 +119,7 @@ void Runner::run(Simulation& simulation, CVisual& renderer)
 
     // Main loop
 	bool KernelBuildOk = false;
-	int prevParticleCount = 0;
+	cl_uint prevParticleCount = 0;
     cl_float simTime = 0.0f;
     cl_float waveTime = 0.0f;
 	cl_float wavePos  = 0.0f;

@@ -40,6 +40,64 @@ using std::exception;
 using std::runtime_error;
 
 
+void SelectOpenCLDevice(cl::Platform& platform, cl::Device& device)
+{						
+		// Scan platforms/devices for most sutable option
+		cl_uint      BestOption        = -1;
+		cl_uint      BestOption_Clocks = 0;
+		vector<pair<cl::Platform, cl::Device>> deviceOptions;
+		vector<cl::Platform> platforms;
+		cl::Platform::get(&platforms);
+	    for (vector<cl::Platform>::const_iterator cit = platforms.begin(); cit != platforms.end(); cit++)
+		{
+			// Print platform name
+			cout << "  Platform [" << cit->getInfo<CL_PLATFORM_NAME>() << "]:" << endl;
+
+			// Get platform devices
+			vector<cl::Device> devices;
+			cit->getDevices(CL_DEVICE_TYPE_ALL, &devices);
+			for (vector<cl::Device>::const_iterator dit = devices.begin(); dit != devices.end(); dit++)
+			{
+				// Add to options
+				deviceOptions.push_back(make_pair(*cit, *dit));
+
+				// Check if device support the required expenstions
+				string extenstions = " " + dit->getInfo<CL_DEVICE_EXTENSIONS>() + " ";
+				bool support_gl_sharing = extenstions.find(" cl_khr_gl_sharing ") != string::npos;
+
+				// Check clock
+				cl_uint clockFreq    = dit->getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>();
+				cl_uint computeUnits = dit->getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
+				cl_uint TotalClock   = clockFreq * computeUnits;
+
+				// Check agaist "best" option
+				if (support_gl_sharing && (BestOption_Clocks < TotalClock))
+				{
+					BestOption = deviceOptions.size() - 1;
+					BestOption_Clocks = TotalClock;
+				}
+
+				// Print details
+				cout << "    #" << deviceOptions.size() << " => " << dit->getInfo<CL_DEVICE_NAME>() << ":" << endl;
+				cout << "          Support OpenGL sharing: " << support_gl_sharing << endl;
+				cout << "          TotalClocks=" << TotalClock << " (Clock=" << clockFreq << " Units=" << computeUnits << ")" << endl;
+			}
+
+			cout << endl;
+		}
+
+		// CUSTOM CHANGE "BestOption" HERE... (but don't commit it)
+		// BestOption = ...;
+
+		// Check if found atleast one device
+		if (BestOption == -1)
+			 throw runtime_error("No devices were found.");
+
+		// Assign selection
+		platform = deviceOptions[BestOption].first;
+		device   = deviceOptions[BestOption].second;
+		cout << "Selected device is #" << BestOption << " => " << device.getInfo<CL_DEVICE_NAME>() << endl;
+}
 
 int main()
 {
@@ -49,10 +107,11 @@ int main()
         CVisual renderer(WINDOW_WIDTH, WINDOW_HEIGHT);
         renderer.initWindow("PBF Project");
 
-		// Select OpenCL platform/device
-        OCLUtils clUtils;
-        //cl::Platform platform = clUtils.selectPlatform();
-        cl::Platform platform = clUtils.getPlatforms()[1];
+		// Select OpenCL device
+		cl::Platform ocl_platform;
+		cl::Device   ocl_device;
+		SelectOpenCLDevice(ocl_platform, ocl_device);
+
 
 #if defined(__APPLE__)
         CGLContextObj glContext = CGLGetCurrentContext();
@@ -69,7 +128,7 @@ int main()
         {
             CL_GL_CONTEXT_KHR, (cl_context_properties) glXGetCurrentContext(),
             CL_GLX_DISPLAY_KHR, (cl_context_properties) glXGetCurrentDisplay(),
-            CL_CONTEXT_PLATFORM, (cl_context_properties) (platform)(),
+            CL_CONTEXT_PLATFORM, (cl_context_properties) (ocl_platform)(),
             0
         };
 #elif defined(_WINDOWS)
@@ -77,7 +136,7 @@ int main()
         {
             CL_GL_CONTEXT_KHR, (cl_context_properties) wglGetCurrentContext(),
             CL_WGL_HDC_KHR, (cl_context_properties) wglGetCurrentDC(),
-            CL_CONTEXT_PLATFORM, (cl_context_properties) (platform)(),
+            CL_CONTEXT_PLATFORM, (cl_context_properties) (ocl_platform)(),
             0
         };
 #else
@@ -85,19 +144,17 @@ int main()
         {
             CL_GL_CONTEXT_KHR, (cl_context_properties) glXGetCurrentContext(),
             CL_GLX_DISPLAY_KHR, (cl_context_properties) glXGetCurrentDisplay(),
-            CL_CONTEXT_PLATFORM, (cl_context_properties) (platform)(),
+            CL_CONTEXT_PLATFORM, (cl_context_properties) (ocl_platform)(),
             0
         };
 #endif // __APPLE__
 
         // Get a vector of devices on this platform
-        vector<cl::Device> devices;
-        platform.getDevices(CL_DEVICE_TYPE_GPU, &devices);
-        cl::Device device = devices.at(0);
+		OCLUtils clUtils;
         cl::Context context = clUtils.createContext(properties);
 
         // Create simulation object
-        Simulation simulation(context, device);
+		Simulation simulation(context, ocl_device);
 
         // Create runner object
         Runner runner;

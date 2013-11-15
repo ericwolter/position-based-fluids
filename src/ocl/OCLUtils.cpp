@@ -71,12 +71,13 @@ vector<cl::Platform> OCLUtils::getPlatforms(void) const
     // Print info about found platforms
     cout << "Available platforms: " << endl;
 
-    for (vector<cl::Platform>::const_iterator cit = platforms.begin(); cit != platforms.end(); ++cit)
+    for (vector<cl::Platform>::const_iterator cit = platforms.begin(); cit != platforms.end(); cit++)
     {
+		// Print platform details
         cout << "Platform number #" << platformNumber << ":" << endl;
         this->printPlatformInfo(*cit);
 
-        ++platformNumber;
+        platformNumber++;
     }
 
     if (platforms.size() == 0)
@@ -143,13 +144,12 @@ vector<cl::Device> OCLUtils::getDevices(const cl::Context &context) const
     // Print info about found devices
     cout << "Found devices: " << endl;
 
-    for (vector<cl::Device>::const_iterator cit = devices.begin();
-            cit != devices.end(); ++cit)
+    for (vector<cl::Device>::const_iterator cit = devices.begin(); cit != devices.end(); cit++)
     {
         cout << "Device number #" << numberDevices << " :" << endl;
         this->printDeviceInfo(*cit);
 
-        ++numberDevices;
+        numberDevices++;
     }
 
     return devices;
