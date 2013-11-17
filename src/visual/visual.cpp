@@ -171,45 +171,31 @@ glm::mat4 CVisual::calcLookAtMatrix(const glm::vec3 &cameraPt, const glm::vec3 &
     return rotMat * transMat;
 }
 
-GLvoid CVisual::initSystemVisual(Simulation& sim, const cl_float4 sizesMin, const cl_float4 sizesMax)
+GLvoid CVisual::initSystemVisual(Simulation& sim)
 {
 	// Store simulation object
 	mSimulation = &sim;
 
-    // Set system sizes
-    mSizeXmin = sizesMin.s[0];
-    mSizeXmax = sizesMax.s[0];
-    mSizeYmin = sizesMin.s[1];
-    mSizeYmax = sizesMax.s[1];
-    mSizeZmin = sizesMin.s[2];
-    mSizeZmax = sizesMax.s[2];
+	// Compute background size
+	float sizeX = (Params.xMax - Params.xMin) * 10.0f;
+    float sizeY = (Params.yMax - Params.yMin) * 10.0f;
+    float sizeZ = (Params.zMax - Params.zMin) * 10.0f;
 
-    float sizeX = (mSizeXmax - mSizeXmin) * 10.0f;
-    float sizeY = (mSizeYmax - mSizeYmin) * 10.0f;
-    float sizeZ = (mSizeZmax - mSizeZmin) * 10.0f;
-
+	// Build background VBO
     const GLfloat systemVertices[] =
-    {
-        -sizeX, mSizeYmin, mSizeZmin, 1.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        sizeX, mSizeYmin, mSizeZmin, 1.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        sizeX, sizeY, mSizeZmin, 1.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
-        -sizeX, sizeY, mSizeZmin, 1.0f,
-        0.0f, 0.0f, 1.0f, 0.0f,
+    {   //   X,           Y,           Z,           Nx,   Ny,   Nz,
+		-sizeX, Params.yMin, Params.zMin, 1.0f,   0.0f, 0.0f, 1.0f, 0.0f,
+        +sizeX, Params.yMin, Params.zMin, 1.0f,   0.0f, 0.0f, 1.0f, 0.0f,
+        +sizeX,       sizeY, Params.zMin, 1.0f,   0.0f, 0.0f, 1.0f, 0.0f,
+        -sizeX,       sizeY, Params.zMin, 1.0f,   0.0f, 0.0f, 1.0f, 0.0f,
 
-        -sizeX, mSizeYmin, mSizeZmin, 1.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        sizeX, mSizeYmin, mSizeZmin, 1.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        sizeX, mSizeYmin, sizeZ, 1.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
-        -sizeX, mSizeYmin, sizeZ, 1.0f,
-        0.0f, 1.0f, 0.0f, 0.0f,
+        -sizeX, Params.yMin, Params.zMin, 1.0f,   0.0f, 1.0f, 0.0f, 0.0f,
+        +sizeX, Params.yMin, Params.zMin, 1.0f,   0.0f, 1.0f, 0.0f, 0.0f,
+        +sizeX, Params.yMin,       sizeZ, 1.0f,   0.0f, 1.0f, 0.0f, 0.0f,
+        -sizeX, Params.yMin,       sizeZ, 1.0f,   0.0f, 1.0f, 0.0f, 0.0f,
     };
 
-	// Create Background VBO
+	// Submit Background VBO
     glGenBuffers(1, &mSystemBufferID);
     glBindBuffer(GL_ARRAY_BUFFER, mSystemBufferID);
     glBufferData(GL_ARRAY_BUFFER, sizeof(systemVertices), systemVertices, GL_STATIC_DRAW);
@@ -230,6 +216,7 @@ GLvoid CVisual::initSystemVisual(Simulation& sim, const cl_float4 sizesMin, cons
     SOIL_free_image_data(image);
     glBindTexture(GL_TEXTURE_2D, 0);
 
+	// Load background drawing shader
     mProgramID = this->loadShaders(getPathForShader("shadervertex.glsl"),
                                    getPathForShader("shaderfragment.glsl"));
 }
@@ -253,12 +240,11 @@ GLvoid CVisual::initParticlesVisual()
     mParticleModelToWorldMatrixUnif  = glGetUniformLocation(mParticleProgramID, "modelToWorldMatrix");
 
     glm::mat4 cameraToClipMatrix = glm::perspective(45.0f, mWidth / (GLfloat) mHeight, 0.1f, 1000.0f);
-    glm::mat4 modelToWorldMatrix = glm::translate(
-                                       glm::mat4(1.0f),
+    glm::mat4 modelToWorldMatrix = glm::translate(glm::mat4(1.0f),
                                        glm::vec3(
-                                           -(mSizeXmax - mSizeXmin) / 2.0f,
-                                           -(mSizeYmax - mSizeYmin) / 2.0f,
-                                           -(mSizeZmax - mSizeZmin) / 2.0f));
+                                           -(Params.xMax - Params.xMin) / 2.0f,
+                                           -(Params.yMax - Params.yMin) / 2.0f,
+                                           -(Params.zMax - Params.zMin) / 2.0f));
 
     //mCamSphere.z = -(mSizeZmax - mSizeZmin) * 2.0f;
 
@@ -424,8 +410,8 @@ void CVisual::checkInput()
 */
 GLuint CVisual::loadShaders(const string &vertexFilename, const string &fragmentFilename)
 {
-    cout << vertexFilename << endl;
-    cout << fragmentFilename << endl;
+    //cout << vertexFilename << endl;
+    //cout << fragmentFilename << endl;
 
     GLuint programID = 0;
 

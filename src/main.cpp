@@ -51,7 +51,7 @@ void SelectOpenCLDevice(cl::Platform& platform, cl::Device& device)
 	    for (vector<cl::Platform>::const_iterator cit = platforms.begin(); cit != platforms.end(); cit++)
 		{
 			// Print platform name
-			cout << "  Platform [" << cit->getInfo<CL_PLATFORM_NAME>() << "]:" << endl;
+			cout << "  Platform [" << cit->getInfo<CL_PLATFORM_NAME>() << "] (" << cit->getInfo<CL_PLATFORM_VERSION>() << ")" << endl; 
 
 			// Get platform devices
 			vector<cl::Device> devices;
@@ -81,6 +81,7 @@ void SelectOpenCLDevice(cl::Platform& platform, cl::Device& device)
 				cout << "    #" << deviceOptions.size() << " => " << dit->getInfo<CL_DEVICE_NAME>() << ":" << endl;
 				cout << "          Support OpenGL sharing: " << support_gl_sharing << endl;
 				cout << "          TotalClocks=" << TotalClock << " (Clock=" << clockFreq << " Units=" << computeUnits << ")" << endl;
+				//cout << "          EXT: " << dit->getInfo<CL_DEVICE_EXTENSIONS>() << endl;
 			}
 
 			cout << endl;
@@ -88,6 +89,7 @@ void SelectOpenCLDevice(cl::Platform& platform, cl::Device& device)
 
 		// CUSTOM CHANGE "BestOption" HERE... (but don't commit it)
 		// BestOption = ...;
+		// BestOption = 2;
 
 		// Check if found atleast one device
 		if (BestOption == -1)
@@ -149,9 +151,8 @@ int main()
         };
 #endif // __APPLE__
 
-        // Get a vector of devices on this platform
-		OCLUtils clUtils;
-        cl::Context context = clUtils.createContext(properties);
+        // Get context for device
+		cl::Context context = cl::Context(ocl_device, properties);
 
         // Create simulation object
 		Simulation simulation(context, ocl_device);
@@ -162,7 +163,7 @@ int main()
 
     }
     catch (const cl::Error &ecl)
-    {
+    { 
         cerr << "OpenCL Error caught: " << ecl.what() << "(" << ecl.err() << ")" << endl;
         exit(-1);
     }

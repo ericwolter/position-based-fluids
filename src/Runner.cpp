@@ -94,9 +94,7 @@ void Runner::run(Simulation& simulation, CVisual& renderer)
 	mFilesTrack.push_back(make_pair(getPathForScenario("dam_coarse.par"), defaultTime));
 
     // Init render (background, camera etc...)
-	const cl_float4 sizesMin = {{ Params.xMin, Params.yMin, Params.zMin, 0 }};
-    const cl_float4 sizesMax = {{ Params.xMax, Params.yMax, Params.zMax, 0 }};
-    renderer.initSystemVisual(simulation, sizesMin, sizesMax);
+    renderer.initSystemVisual(simulation);
     renderer.initParticlesVisual();
 
 	#if defined(MAKE_VIDEO)
@@ -161,10 +159,10 @@ void Runner::run(Simulation& simulation, CVisual& renderer)
 			continue;
 
 		// Generate waves
-		if (!renderer.UICmd_GenerateWaves)
+		if (renderer.UICmd_GenerateWaves)
         {
 			// Wave consts
-            const cl_float wave_push_length = (sizesMax.s[0] - sizesMin.s[0]) / 4.0f;
+			const cl_float wave_push_length = (Params.xMax - Params.xMin) / 4.0f;
             const cl_float wave_frequency = 0.70f;
 
 			// Update the wave position
@@ -176,14 +174,18 @@ void Runner::run(Simulation& simulation, CVisual& renderer)
 				waveTime += Params.timeStepLength;
         }
 
-		// Execute simulation
-		simulation.Step(renderer.UICmd_PauseSimulation, wavePos);
+		// Sub frames
+		for (int i = 0; i < 2; i++)
+		{
+			// Execute simulation
+			simulation.Step(renderer.UICmd_PauseSimulation, wavePos);
 
-		// Incremenent time
-		if (!renderer.UICmd_PauseSimulation)
-			simTime += Params.timeStepLength;
+			// Incremenent time
+			if (!renderer.UICmd_PauseSimulation)
+				simTime += Params.timeStepLength;
+		}
 
-        // Visualize particles
+		// Visualize particles
         renderer.visualizeParticles();
         renderer.checkInput();
 

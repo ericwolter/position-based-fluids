@@ -56,7 +56,7 @@ public:
     /**
      *  \brief  Initializes system sizes, textures and buffer objects.
      */
-    GLvoid initSystemVisual(Simulation& sim, const cl_float4 sizesMin, const cl_float4 sizesMax);
+    GLvoid initSystemVisual(Simulation& sim);
 
     GLvoid visualizeParticles(void);
 
@@ -87,12 +87,6 @@ private:
     GLFWwindow *mWindow;
 
     // System sizes
-    GLfloat mSizeXmin;
-    GLfloat mSizeXmax;
-    GLfloat mSizeYmin;
-    GLfloat mSizeYmax;
-    GLfloat mSizeZmin;
-    GLfloat mSizeZmax;
     GLuint mSystemBufferID;
 
     GLuint mPositionAttrib;
