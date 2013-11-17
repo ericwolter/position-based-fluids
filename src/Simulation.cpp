@@ -75,7 +75,7 @@ void Simulation::CreateParticles()
 	int ParticlesPerAxis = (int)ceil(pow(Params.particleCount, 1/3.0));
 
 	// Build particles blcok
-    float d = mSmoothLen * 0.990;
+    float d = mSmoothLen * Params.grid_spacing;
     float offsetX = 0.1;
     float offsetY = 0.1;
     float offsetZ = 0.1;

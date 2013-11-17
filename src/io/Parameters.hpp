@@ -36,6 +36,7 @@ public:
     cl_float yN;
     cl_float zN;
     cl_float restDensity;
+	cl_float grid_spacing;
 };
 
 // A global parameter object

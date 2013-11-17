@@ -93,7 +93,7 @@ void SelectOpenCLDevice(cl::Platform& platform, cl::Device& device)
 
 		// CUSTOM CHANGE "BestOption" HERE... (but don't commit it)
 		// BestOption = ...;
-		// BestOption = 2;
+		//BestOption = 0;
 
 		// Check if found atleast one device
 		if (BestOption == -1)

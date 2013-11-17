@@ -7,6 +7,10 @@
 #include <sys/types.h>
 #include <fcntl.h>
 
+#ifdef _WINDOWS
+#include <io.h>
+#endif
+
 #include <GLFW/glfw3.h>
 
 #include <fstream>

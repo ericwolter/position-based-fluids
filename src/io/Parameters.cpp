@@ -73,6 +73,7 @@ void Parameters::LoadParameters(string InputFile)
         else if (parameter == "y_n")                 ss >> yN;
         else if (parameter == "z_n")                 ss >> zN;
         else if (parameter == "restdensity")         ss >> restDensity;
+		else if (parameter == "grid_spacing")        ss >> grid_spacing;
 		else
             cerr << "Unknown parameter " << parameter << endl << "Leaving it out." << endl;
     }
