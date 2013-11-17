@@ -6,7 +6,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
-#include <io.h>
 
 #include <GLFW/glfw3.h>
 
@@ -25,7 +24,7 @@ bool Runner::DetectResourceChanges()
 	bool bChanged = false;
 
 	// Scan all file for change
-	list<pair<string, time_t>>::iterator iter;
+	list<pair<string, time_t> >::iterator iter;
 	for(iter = mFilesTrack.begin(); iter != mFilesTrack.end(); iter++)
 	{
 		// Get file stat
