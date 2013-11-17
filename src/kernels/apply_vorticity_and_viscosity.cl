@@ -100,7 +100,7 @@ __kernel void applyVorticityAndViscosity(const __global float4 *predicted,
     }
   }
 
-  const float c = 0.01f;
+  const float c = 0.00f;
   deltaVelocities[i] = c * viscosity_sum;
 
   // #if defined(USE_DEBUG)

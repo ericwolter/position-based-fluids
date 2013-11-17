@@ -42,6 +42,8 @@ __kernel void computeDelta(__global float4 *delta,
 
   // Sum of lambdas
   float4 sum = (float4) 0.0f;
+  float minR = 100.0f;
+  int Ncount = 0;
 
   for (int x = -1; x <= 1; ++x) {
     for (int y = -1; y <= 1; ++y) {
@@ -70,8 +72,11 @@ __kernel void computeDelta(__global float4 *delta,
           if (i != next) {
             float4 r = predicted[i] - predicted[next];
             float r_length_2 = r.x * r.x + r.y * r.y + r.z * r.z;
-
-            if (r_length_2 > 0.0f && r_length_2 < PBF_H_2) {
+            minR = min(minR, sqrt(r_length_2));
+            
+            if (r_length_2 > 0.0f && r_length_2 < PBF_H_2) 
+            {
+              Ncount++;
               float r_length = sqrt(r_length_2);
               float4 gradient_spiky = -1.0f * r / (r_length)
                                       * GRAD_SPIKY_FACTOR
@@ -81,9 +86,9 @@ __kernel void computeDelta(__global float4 *delta,
               float poly6_r = POLY6_FACTOR * (PBF_H_2 - r_length_2) * (PBF_H_2 - r_length_2) * (PBF_H_2 - r_length_2);                              
 
               // equation (13)
-              const float q_2 = pow(0.8f * PBF_H, 2);
+              const float q_2 = pow(0.40f * PBF_H, 2);
               float poly6_q = POLY6_FACTOR * (PBF_H_2 - q_2) * (PBF_H_2 - q_2) * (PBF_H_2 - q_2);
-              const float k = -0.000000f;
+              const float k = 0.00005f;
               const uint n = 4;
 
               float s_corr = -1.0f * k * pow(poly6_r / poly6_q, n);
@@ -107,6 +112,7 @@ __kernel void computeDelta(__global float4 *delta,
           if (i != next) {
             float4 r = predicted[i] - predicted[next];
             float r_length_2 = r.x * r.x + r.y * r.y + r.z * r.z;
+            
 
             if (r_length_2 > 0.0f && r_length_2 < h2) {
               float r_length = sqrt(r_length_2);
@@ -127,7 +133,7 @@ __kernel void computeDelta(__global float4 *delta,
 
               float s_corr = -k * pow(poly6_r / poly6_q, n);
 
-              sum += (scaling[i] + scaling[next]) * gradient_spiky;
+              sum += (scaling[i] + scaling[next] + s_corr) * gradient_spiky;
             }
           }
         }
@@ -175,8 +181,8 @@ __kernel void computeDelta(__global float4 *delta,
   delta[i] = future - predicted[i];
 
   // #if defined(USE_DEBUG)
-  //     printf("compute_delta: result: i: %d\ndelta: [%f,%f,%f]\n",
-  //            i,
-  //            delta[i].x, delta[i].y, delta[i].z);
+       //printf("compute_delta: result: i: %d (N=%d)\ndelta: [%f,%f,%f,%f]\n",
+        //      i, Ncount,
+        //      delta[i].x, delta[i].y, delta[i].z, minR);
   // #endif
 }
