@@ -57,10 +57,10 @@ bool Runner::DetectResourceChanges()
 			if (openResult == 0) _close(fd);
 			ExclusiveOpen = openResult == 0;
 		#else
-			int openResult = open (iter->first.c_str(), O_RDWR, 0666);
+			int openResult = open (iter->first.c_str(), O_RDWR);
 			int lockResult = openResult < 0 ? -1 : flock (openResult, LOCK_EX | LOCK_NB);
-			ExclusiveOpen = lockResult > 0;
-			if (lockResult > 0) flock (openResult, LOCK_UN);
+			ExclusiveOpen = lockResult == 0;
+			if (lockResult == 0) flock (openResult, LOCK_UN);
 			if (openResult > 0) close(openResult);
 		#endif
 
@@ -122,6 +122,7 @@ void Runner::run(Simulation& simulation, CVisual& renderer)
     cl_float simTime = 0.0f;
     cl_float waveTime = 0.0f;
 	cl_float wavePos  = 0.0f;
+
     do
     {
 		// Check file changes
