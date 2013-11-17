@@ -43,9 +43,9 @@ using std::runtime_error;
 void SelectOpenCLDevice(cl::Platform& platform, cl::Device& device)
 {						
 		// Scan platforms/devices for most sutable option
-		cl_uint      BestOption        = -1;
-		cl_uint      BestOption_Clocks = 0;
-		vector<pair<cl::Platform, cl::Device>> deviceOptions;
+		cl_int      BestOption        = -1;
+		cl_int      BestOption_Clocks = 0;
+		vector<pair<cl::Platform, cl::Device> > deviceOptions;
 		vector<cl::Platform> platforms;
 		cl::Platform::get(&platforms);
 	    for (vector<cl::Platform>::const_iterator cit = platforms.begin(); cit != platforms.end(); cit++)
@@ -63,12 +63,16 @@ void SelectOpenCLDevice(cl::Platform& platform, cl::Device& device)
 
 				// Check if device support the required expenstions
 				string extenstions = " " + dit->getInfo<CL_DEVICE_EXTENSIONS>() + " ";
+                #if defined(__APPLE__)
+                bool support_gl_sharing = extenstions.find(" cl_APPLE_gl_sharing ") != string::npos;
+                #else
 				bool support_gl_sharing = extenstions.find(" cl_khr_gl_sharing ") != string::npos;
+                #endif
 
 				// Check clock
-				cl_uint clockFreq    = dit->getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>();
-				cl_uint computeUnits = dit->getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
-				cl_uint TotalClock   = clockFreq * computeUnits;
+				cl_int clockFreq    = dit->getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>();
+				cl_int computeUnits = dit->getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
+				cl_int TotalClock   = clockFreq * computeUnits;
 
 				// Check agaist "best" option
 				if (support_gl_sharing && (BestOption_Clocks < TotalClock))

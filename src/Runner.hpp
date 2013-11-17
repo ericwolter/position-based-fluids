@@ -21,7 +21,7 @@ private:
     bool DetectResourceChanges();
 
 	// A list of files to track for changes
-	list<pair<string, time_t>> mFilesTrack;
+	list<pair<string, time_t> > mFilesTrack;
 
 public:
 	Runner() {};

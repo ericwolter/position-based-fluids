@@ -37,7 +37,10 @@ using std::isnan;
 #endif
 
 CVisual::CVisual (const int width, const int height)
-    : mWidth(width),
+    : UICmd_GenerateWaves(false),
+      UICmd_ResetSimulation(false),
+      UICmd_PauseSimulation(false),
+      mWidth(width),
       mHeight(height),
       mProgramID(0),
       mWindow(NULL),
@@ -46,10 +49,7 @@ CVisual::CVisual (const int width, const int height)
       //mCamTarget( glm::vec3(0.0f, 0.0f, 0.0f) ),
       //mCamSphere( glm::vec3(0.0f, 20.0f, -1.5f) ),
       mCamTarget( glm::vec3(0.08f, -0.28f, 0.00f) ),
-      mCamSphere( glm::vec3(-23.0f, 20.0f, -1.50f) ),
-	  UICmd_GenerateWaves(false),
-      UICmd_ResetSimulation(false),
-	  UICmd_PauseSimulation(false)
+      mCamSphere( glm::vec3(-23.0f, 20.0f, -1.50f) )
 {
 
 }
@@ -66,6 +66,11 @@ CVisual::~CVisual ()
 
 void CVisual::KeyEvent(GLFWwindow* window,int key,int scancode,int action, int mods) 
 {
+    // ignore unused parameters, maybe just remove them?
+    (void)window;
+    (void)scancode;
+    (void)mods;
+
 	// Ignore none-press events
 	if (action != GLFW_PRESS)
 		return;
