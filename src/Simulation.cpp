@@ -28,17 +28,6 @@ using std::max;
 using std::ceil;
 
 
-#if !defined(USE_LINKEDCELL)
-// RADIX SORT CONSTANTS
-static const unsigned int _ITEMS = 16;
-static const unsigned int _GROUPS = 16;
-static const unsigned int _BITS = 6;
-static const unsigned int _RADIX = 1 << _BITS;
-static unsigned int _NKEYS = 0;
-static const unsigned int _HISTOSPLIT = 512;
-#endif
-
-
 Simulation::Simulation(const cl::Context &clContext, const cl::Device &clDevice)
     : mCLContext(clContext),
       mCLDevice(clDevice),
@@ -60,9 +49,6 @@ Simulation::~Simulation()
     delete[] mCells;
     delete[] mPositions;
     delete[] mVelocities;
-#if !defined(USE_LINKEDCELL)
-    delete[] mRadixCells;
-#endif // USE_LINKEDCELL
 }
 
 
@@ -77,7 +63,7 @@ void Simulation::CreateParticles()
 	// Build particles blcok
     float d = mSmoothLen * Params.grid_spacing;
     float offsetX = 0.1;
-    float offsetY = 0.1;
+    float offsetY = 0.3;
     float offsetZ = 0.1;
     for (cl_uint i = 0; i< Params.particleCount; i++)
     {
@@ -85,9 +71,9 @@ void Simulation::CreateParticles()
         cl_uint y = ((cl_uint)(i / pow(ParticlesPerAxis, 0)) % ParticlesPerAxis);
         cl_uint z = ((cl_uint)(i / pow(ParticlesPerAxis, 2)) % ParticlesPerAxis);
 
-        mPositions[i].s[0] = offsetX + (x + (y % 2) * .5) * d;
+        mPositions[i].s[0] = offsetX + (x /*+ (y % 2) * .5*/) * d;
         mPositions[i].s[1] = offsetY + (y) * d;
-        mPositions[i].s[2] = offsetZ + (z + (y % 2) * .5) * d;
+        mPositions[i].s[2] = offsetZ + (z /*+ (y % 2) * .5*/) * d;
         mPositions[i].s[3] = 0;
     }
 }
@@ -106,15 +92,6 @@ const std::string* Simulation::KernelFileList()
 		"apply_vorticity_and_viscosity.cl",
 		"update_positions.cl",
 		"calc_hash.cl",
-
-#if !defined(USE_LINKEDCELL)
-		"radix_histogram.cl",
-		"radix_scan.cl",
-		"radix_paste.cl",
-		"radix_reorder.cl",
-		"init_cells.cl",
-		"find_cells.cl",
-#endif
 		""
 	};
 
@@ -149,10 +126,6 @@ bool Simulation::InitKernels()
     clflags << "-DUSE_DEBUG ";
 #endif // USE_DEBUG
 
-#ifdef USE_LINKEDCELL
-    clflags << "-DUSE_LINKEDCELL ";
-#endif // USE_LINKEDCELL
-
     clflags << std::showpoint;
     clflags << "-DSYSTEM_MIN_X=" << Params.xMin << "f ";
     clflags << "-DSYSTEM_MAX_X=" << Params.xMax << "f ";
@@ -163,6 +136,7 @@ bool Simulation::InitKernels()
     clflags << "-DNUMBER_OF_CELLS_X=" << Params.xN << "f ";
     clflags << "-DNUMBER_OF_CELLS_Y=" << Params.yN << "f ";
     clflags << "-DNUMBER_OF_CELLS_Z=" << Params.zN << "f ";
+	clflags << "-DGRID_SIZE="         << (int)(Params.xN * Params.yN * Params.zN) << " ";
     clflags << "-DCELL_LENGTH_X=" << (Params.xMax - Params.xMin) / Params.xN << "f ";
     clflags << "-DCELL_LENGTH_Y=" << (Params.yMax - Params.yMin) / Params.yN << "f ";
     clflags << "-DCELL_LENGTH_Z=" << (Params.zMax - Params.zMin) / Params.zN << "f ";
@@ -172,6 +146,7 @@ bool Simulation::InitKernels()
     clflags << "-DPBF_H_2=" << pow(mSmoothLen, 2) << "f ";
     clflags << "-DPOLY6_FACTOR=" << 315.0f / (64.0f * M_PI * pow(mSmoothLen, 9)) << "f ";
     clflags << "-DGRAD_SPIKY_FACTOR=" << 45.0f / (M_PI * pow(mSmoothLen, 6)) << "f ";
+    clflags << "-DEPSILON=" << Params.epsilon << "f ";
 
 	// Compile kernels
     cl::Program program = clSetup.createProgram(kernelSources, mCLContext, mCLDevice, clflags.str());
@@ -195,9 +170,6 @@ void Simulation::InitBuffers()
     delete[] mVelocities;  mVelocities  = new cl_float4[Params.particleCount];
     delete[] mPredictions; mPredictions = new cl_float4[Params.particleCount]; // (used for debugging)
     delete[] mDeltas;      mDeltas      = new cl_float4[Params.particleCount]; // (used for debugging)
-#if !defined(USE_LINKEDCELL)
-    delete[] mRadixCells;  mRadixCells = new cl_uint2[_NKEYS];
-#endif // USE_LINKEDCELL
 
 	// Position particles
     CreateParticles();
@@ -219,6 +191,10 @@ void Simulation::InitBuffers()
     mDeltaVelocityBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mScalingFactorsBuffer  = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeScalingFactors);
 
+
+	if (mQueue() != 0)
+		mQueue.flush();
+
     // Copy mPositions (Host) => mPositionsBuffer (GPU) (we have to lock the shared buffer)
 	vector<cl::Memory> sharedBuffers;
     sharedBuffers.push_back(mPositionsBuffer);
@@ -231,26 +207,6 @@ void Simulation::InitBuffers()
 	// Copy mVelocities (Host) => mVelocitiesBuffer (GPU)
 	mQueue.enqueueWriteBuffer(mVelocitiesBuffer, CL_TRUE, 0, mBufferSizeParticles, mVelocities);
     mQueue.finish();
-
-#if !defined(USE_LINKEDCELL)
-    // get closest multiple to of items/groups
-    if (mNumParticles % (_ITEMS * _GROUPS) == 0)
-    {
-        _NKEYS = mNumParticles;
-    }
-    else
-    {
-        _NKEYS = mNumParticles + (_ITEMS * _GROUPS)
-                 - mNumParticles % (_ITEMS * _GROUPS);
-    }
-
-    mRadixCellsBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint2) * _NKEYS);
-    mRadixCellsOutBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint2) * _NKEYS);
-    mFoundCellsBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_int2) * mNumberCells.s[0] * mNumberCells.s[1] * mNumberCells.s[2]);
-
-    mRadixHistogramBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _RADIX * _ITEMS * _GROUPS);
-    mRadixGlobSumBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _HISTOSPLIT);
-#endif // USE_LINKEDCELL
 }
 
 void Simulation::InitCells()
@@ -313,13 +269,8 @@ void Simulation::applyVorticityAndViscosity()
     mKernels["applyVorticityAndViscosity"].setArg(0, mPredictedBuffer);
     mKernels["applyVorticityAndViscosity"].setArg(1, mVelocitiesBuffer);
     mKernels["applyVorticityAndViscosity"].setArg(2, mDeltaVelocityBuffer);
-#if defined(USE_LINKEDCELL)
     mKernels["applyVorticityAndViscosity"].setArg(3, mCellsBuffer);
     mKernels["applyVorticityAndViscosity"].setArg(4, mParticlesListBuffer);
-#else
-    mKernels["applyVorticityAndViscosity"].setArg(3, mRadixCellsBuffer);
-    mKernels["applyVorticityAndViscosity"].setArg(4, mFoundCellsBuffer);
-#endif // USE_LINKEDCELL
     mKernels["applyVorticityAndViscosity"].setArg(5, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["applyVorticityAndViscosity"], 0, mGlobalRange, mLocalRange);
@@ -349,13 +300,8 @@ void Simulation::computeDelta(cl_float waveGenerator)
     mKernels["computeDelta"].setArg(0, mDeltaBuffer);
     mKernels["computeDelta"].setArg(1, mPredictedBuffer);
     mKernels["computeDelta"].setArg(2, mScalingFactorsBuffer);
-#if defined(USE_LINKEDCELL)
     mKernels["computeDelta"].setArg(3, mCellsBuffer);
     mKernels["computeDelta"].setArg(4, mParticlesListBuffer);
-#else
-    mKernels["computeDelta"].setArg(3, mRadixCellsBuffer);
-    mKernels["computeDelta"].setArg(4, mFoundCellsBuffer);
-#endif
     mKernels["computeDelta"].setArg(5, waveGenerator);
     mKernels["computeDelta"].setArg(6, Params.particleCount);
 
@@ -367,13 +313,8 @@ void Simulation::computeScaling()
 {
     mKernels["computeScaling"].setArg(0, mPredictedBuffer);
     mKernels["computeScaling"].setArg(1, mScalingFactorsBuffer);
-#if defined(USE_LINKEDCELL)
     mKernels["computeScaling"].setArg(2, mCellsBuffer);
     mKernels["computeScaling"].setArg(3, mParticlesListBuffer);
-#else
-    mKernels["computeScaling"].setArg(2, mRadixCellsBuffer);
-    mKernels["computeScaling"].setArg(3, mFoundCellsBuffer);
-#endif
 	mKernels["computeScaling"].setArg(4, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["computeScaling"], 0,
@@ -397,111 +338,6 @@ void Simulation::updateCells()
     mQueue.enqueueNDRangeKernel(mKernels["updateCells"], 0, mGlobalRange, mLocalRange);
 }
 
-#if !defined(USE_LINKEDCELL)
-void Simulation::radix(void)
-{
-    const static unsigned int _CELLSTOTAL = mNumberCells.s[0]
-                                            * mNumberCells.s[1]
-                                            * mNumberCells.s[2];
-    // round up to the next power of 2
-    const static unsigned int _TOTALBITS = ceilf(ceilf( log2f(_CELLSTOTAL) )
-                                           / (float) _BITS) * _BITS;
-    const static unsigned int _MAXINT = 1 << (_TOTALBITS - 1);
-    const static unsigned int _PASS = _TOTALBITS / _BITS;
-    static const int _MAXMEMCACHE = std::max(_HISTOSPLIT, _ITEMS * _GROUPS
-                                    * _RADIX / _HISTOSPLIT);
-
-    cl::Kernel calcHashKernel = mKernels["calcHash"];
-
-    mKernels["calcHash"].setArg(0, mPredictedBuffer);
-    mKernels["calcHash"].setArg(1, mRadixCellsBuffer);
-    mKernels["calcHash"].setArg(2, _MAXINT);
-    mKernels["calcHash"].setArg(3, mNumParticles);
-    mKernels["calcHash"].setArg(4, _NKEYS);
-
-    mQueue.enqueueNDRangeKernel(mKernels["calcHash"], cl::NullRange,
-                                cl::NDRange(_NKEYS), cl::NullRange);
-
-    cl::Kernel reorderKernel = mKernels["reorder"];
-
-    for (unsigned int pass = 0; pass < _PASS; pass++ )
-    {
-        //histogram
-        mKernels["histogram"].setArg(0, mRadixCellsBuffer);
-        mKernels["histogram"].setArg(1, mRadixHistogramBuffer);
-        mKernels["histogram"].setArg(2, pass);
-        mKernels["histogram"].setArg(3, sizeof(cl_uint) * _RADIX * _ITEMS, NULL);
-        mKernels["histogram"].setArg(4, _NKEYS);
-        mKernels["histogram"].setArg(5, _RADIX);
-        mKernels["histogram"].setArg(6, _BITS);
-
-        mQueue.enqueueNDRangeKernel(mKernels["histogram"], cl::NullRange,
-                                    cl::NDRange(_ITEMS * _GROUPS),
-                                    cl::NDRange(_ITEMS));
-
-        //scan
-        mKernels["scan"].setArg(0, mRadixHistogramBuffer);
-        mKernels["scan"].setArg(1, sizeof(cl_uint) * _MAXMEMCACHE, NULL);
-        mKernels["scan"].setArg(2, mRadixGlobSumBuffer);
-
-        mQueue.enqueueNDRangeKernel(mKernels["scan"], cl::NullRange,
-                                    cl::NDRange(_RADIX * _GROUPS * _ITEMS / 2),
-                                    cl::NDRange((_RADIX * _GROUPS * _ITEMS / 2)
-                                                / _HISTOSPLIT));
-
-        mKernels["scan"].setArg(0, mRadixGlobSumBuffer);
-        mKernels["scan"].setArg(2, mRadixHistogramBuffer);
-
-        mQueue.enqueueNDRangeKernel(mKernels["scan"], cl::NullRange,
-                                    cl::NDRange(_HISTOSPLIT / 2),
-                                    cl::NDRange(_HISTOSPLIT / 2));
-
-        mKernels["paste"].setArg(0, mRadixHistogramBuffer);
-        mKernels["paste"].setArg(1, mRadixGlobSumBuffer);
-
-        mQueue.enqueueNDRangeKernel(mKernels["paste"], cl::NullRange,
-                                    cl::NDRange(_RADIX * _GROUPS * _ITEMS / 2),
-                                    cl::NDRange((_RADIX * _GROUPS * _ITEMS / 2)
-                                                / _HISTOSPLIT));
-
-        //reorder
-        mKernels["reorder"].setArg(0, mRadixCellsBuffer);
-        mKernels["reorder"].setArg(1, mRadixCellsOutBuffer);
-        mKernels["reorder"].setArg(2, mRadixHistogramBuffer);
-        mKernels["reorder"].setArg(3, pass);
-        mKernels["reorder"].setArg(4, sizeof(cl_uint) * _RADIX * _ITEMS, NULL);
-        mKernels["reorder"].setArg(5, _NKEYS);
-        mKernels["reorder"].setArg(6, _RADIX);
-        mKernels["reorder"].setArg(7, _BITS);
-
-        mQueue.enqueueNDRangeKernel(mKernels["reorder"], cl::NullRange,
-                                    cl::NDRange(_ITEMS * _GROUPS),
-                                    cl::NDRange(_ITEMS));
-
-        cl::Buffer tmp = mRadixCellsBuffer;
-
-        mRadixCellsBuffer = mRadixCellsOutBuffer;
-        mRadixCellsOutBuffer = tmp;
-    }
-
-    mKernels["initCells"].setArg(0, mFoundCellsBuffer);
-    mKernels["initCells"].setArg(1, mNumberCells.s[0]
-                                 * mNumberCells.s[1] * mNumberCells.s[2]);
-
-    mQueue.enqueueNDRangeKernel(mKernels["initCells"], cl::NullRange,
-                                cl::NDRange(mNumberCells.s[0]
-                                            * mNumberCells.s[1] * mNumberCells.s[2]),
-                                cl::NullRange);
-
-    mKernels["findCells"].setArg(0, mRadixCellsBuffer);
-    mKernels["findCells"].setArg(1, mFoundCellsBuffer);
-    mKernels["findCells"].setArg(2, mNumParticles);
-
-    mQueue.enqueueNDRangeKernel(mKernels["findCells"], cl::NullRange,
-                                cl::NDRange(mNumParticles), cl::NullRange);
-}
-#endif
-
 void Simulation::Step(bool bPauseSim, cl_float waveGenerator)
 {
 	// Why is this here?
@@ -511,19 +347,13 @@ void Simulation::Step(bool bPauseSim, cl_float waveGenerator)
 	vector<cl::Memory> sharedBuffers;
     sharedBuffers.push_back(mPositionsBuffer);
     mQueue.enqueueAcquireGLObjects(&sharedBuffers);
-    
 	// Predicit positions 
     this->predictPositions();
 
 	// Update cells
-	#if defined(USE_LINKEDCELL)
-		this->updateCells();
-	#else
-	    this->radix();
-	#endif
-
-    const unsigned int solver_iterations = 4;
-    for (unsigned int i = 0; i < solver_iterations; ++i)
+	this->updateCells();
+	
+	for (unsigned int i = 0; i < Params.simIterations; ++i)
     {
 		// Compute scaling value
         this->computeScaling();

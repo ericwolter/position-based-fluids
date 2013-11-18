@@ -18,13 +18,8 @@ float frand(uint2 *state)
 __kernel void computeDelta(__global float4 *delta,
                            const __global float4 *predicted,
                            const __global float *scaling,
-#if defined(USE_LINKEDCELL)
                            const __global int *cells,
                            const __global int *particles_list,
-#else
-                           const __global int2 *radixCells,
-                           const __global int2 *foundCells,
-#endif // USE_LINKEDCELL
                            const float wave_generator,
                            const int N) {
   const int i = get_global_id(0);
@@ -34,11 +29,7 @@ __kernel void computeDelta(__global float4 *delta,
 
   uint2 randSeed = (uint2)(1+get_global_id(0), 1);
   
-  int current_cell[3];
-
-  current_cell[0] = (int) ( (predicted[i].x - SYSTEM_MIN_X) / CELL_LENGTH_X );
-  current_cell[1] = (int) ( (predicted[i].y - SYSTEM_MIN_Y) / CELL_LENGTH_Y );
-  current_cell[2] = (int) ( (predicted[i].z - SYSTEM_MIN_Z) / CELL_LENGTH_Z );
+  int3 current_cell = 100 + convert_int3(predicted[i].xyz * (float3)(NUMBER_OF_CELLS_X, NUMBER_OF_CELLS_Y, NUMBER_OF_CELLS_Z));
 
   // Sum of lambdas
   float4 sum = (float4) 0.0f;
@@ -48,23 +39,9 @@ __kernel void computeDelta(__global float4 *delta,
   for (int x = -1; x <= 1; ++x) {
     for (int y = -1; y <= 1; ++y) {
       for (int z = -1; z <= 1; ++z) {
-        int neighbour_cell[3];
-
-        neighbour_cell[0] = current_cell[0] + x;
-        neighbour_cell[1] = current_cell[1] + y;
-        neighbour_cell[2] = current_cell[2] + z;
-
-        if (neighbour_cell[0] < 0 || neighbour_cell[0] >= NUMBER_OF_CELLS_X ||
-            neighbour_cell[1] < 0 || neighbour_cell[1] >= NUMBER_OF_CELLS_Y ||
-            neighbour_cell[2] < 0 || neighbour_cell[2] >= NUMBER_OF_CELLS_Z) {
-          continue;
-        }
-
-        uint cell_index = neighbour_cell[0] +
-                          neighbour_cell[1] * NUMBER_OF_CELLS_X +
-                          neighbour_cell[2] * NUMBER_OF_CELLS_X * NUMBER_OF_CELLS_Y;
-
-#if defined(USE_LINKEDCELL)
+      
+        uint cell_index = calcGridHash(current_cell + (int3)(x,y,z));
+        
         // Next particle in list
         int next = cells[cell_index];
 
@@ -86,9 +63,9 @@ __kernel void computeDelta(__global float4 *delta,
               float poly6_r = POLY6_FACTOR * (PBF_H_2 - r_length_2) * (PBF_H_2 - r_length_2) * (PBF_H_2 - r_length_2);                              
 
               // equation (13)
-              const float q_2 = pow(0.40f * PBF_H, 2);
+              const float q_2 = pow(0.7f * PBF_H, 2);
               float poly6_q = POLY6_FACTOR * (PBF_H_2 - q_2) * (PBF_H_2 - q_2) * (PBF_H_2 - q_2);
-              const float k = 0.00005f;
+              const float k = 0.0000005f*0;
               const uint n = 4;
 
               float s_corr = -1.0f * k * pow(poly6_r / poly6_q, n);
@@ -102,42 +79,6 @@ __kernel void computeDelta(__global float4 *delta,
 
           next = particles_list[next];
         }
-#else
-        int2 cellRange = foundCells[cell_index];
-        if (cellRange.x == END_OF_CELL_LIST) continue;
-
-        for (uint n = cellRange.x; n <= cellRange.y; ++n) {
-          const int next = radixCells[n].y;
-
-          if (i != next) {
-            float4 r = predicted[i] - predicted[next];
-            float r_length_2 = r.x * r.x + r.y * r.y + r.z * r.z;
-            
-
-            if (r_length_2 > 0.0f && r_length_2 < h2) {
-              float r_length = sqrt(r_length_2);
-              float4 gradient_spiky = -1.0f * r / (r_length)
-                                      * gradSpiky_factor
-                                      * (h - r_length)
-                                      * (h - r_length);
-
-              float poly6_r = poly6_factor * (h2 - r_length_2)
-                              * (h2 - r_length_2) * (h2 - r_length_2);
-
-              // equation (13) correction term
-              const float q = 0.3f * h;
-              float poly6_q = poly6_factor * (h2 - q)
-                              * (h2 - q) * (h2 - q);
-              const float k = 0.1f;
-              const int n = 4;
-
-              float s_corr = -k * pow(poly6_r / poly6_q, n);
-
-              sum += (scaling[i] + scaling[next] + s_corr) * gradient_spiky;
-            }
-          }
-        }
-#endif
       }
     }
   }

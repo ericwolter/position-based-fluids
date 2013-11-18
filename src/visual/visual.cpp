@@ -48,8 +48,8 @@ CVisual::CVisual (const int width, const int height)
       mPositionAttrib(0),
       //mCamTarget( glm::vec3(0.0f, 0.0f, 0.0f) ),
       //mCamSphere( glm::vec3(0.0f, 20.0f, -1.5f) ),
-      mCamTarget( glm::vec3(0.08f, -0.28f, 0.00f) ),
-      mCamSphere( glm::vec3(-23.0f, 20.0f, -1.50f) )
+      mCamTarget( glm::vec3(0.5f,     0.0f,  0.50f) ),
+      mCamSphere( glm::vec3(-500.0f, 17.0f, -1.35f) )
 {
 
 }

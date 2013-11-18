@@ -1,6 +1,8 @@
 particle_count        10000
-time_end              100.0
-timestep_length       0.0040
+time_end              10000.0
+timestep_length       0.015
+sub_steps             2
+sim_iterations        4
 reset_sim_on_change   1
 x_min                 0.0
 x_max                 1.0
@@ -12,5 +14,5 @@ x_n                   30
 y_n                   30
 z_n                   30
 restdensity           20000
-grid_spacing          0.73
-
+grid_spacing          0.75
+epsilon               2.0

@@ -179,7 +179,7 @@ void Runner::run(Simulation& simulation, CVisual& renderer)
         }
 
 		// Sub frames
-		for (int i = 0; i < 2; i++)
+		for (int i = 0; i < Params.subSteps; i++)
 		{
 			// Execute simulation
 			simulation.Step(renderer.UICmd_PauseSimulation, wavePos);

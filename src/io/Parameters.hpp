@@ -19,6 +19,8 @@ public:
 	// [Parameters]
 	cl_uint  particleCount;
 	cl_uint  resetSimOnChange;
+    cl_uint  subSteps;
+    cl_uint  simIterations;
     cl_float timeStepLength;
     cl_float timeEnd;
     cl_uint  partOutFreq;
@@ -36,6 +38,7 @@ public:
     cl_float yN;
     cl_float zN;
     cl_float restDensity;
+	cl_float epsilon;
 	cl_float grid_spacing;
 };
 

@@ -55,6 +55,8 @@ void Parameters::LoadParameters(string InputFile)
 
 		// Store value into relevent parameter
         /**/ if (parameter == "timestep_length")     ss >> timeStepLength;
+        else if (parameter == "sub_steps")           ss >> subSteps;
+        else if (parameter == "sim_iterations")      ss >> simIterations;
         else if (parameter == "time_end")            ss >> timeEnd;
         else if (parameter == "particle_count")      ss >> particleCount;
         else if (parameter == "reset_sim_on_change") ss >> resetSimOnChange;
@@ -73,6 +75,7 @@ void Parameters::LoadParameters(string InputFile)
         else if (parameter == "y_n")                 ss >> yN;
         else if (parameter == "z_n")                 ss >> zN;
         else if (parameter == "restdensity")         ss >> restDensity;
+		else if (parameter == "epsilon")             ss >> epsilon;
 		else if (parameter == "grid_spacing")        ss >> grid_spacing;
 		else
             cerr << "Unknown parameter " << parameter << endl << "Leaving it out." << endl;
