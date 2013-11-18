@@ -9,19 +9,20 @@ uint calcGridHash(int3 gridPos)
 __kernel void updateCells(const __global float4 *predicted,
                           __global int *cells,
                           __global int *particles_list,
-                          const uint N) {
-  // Get particle and assign them to a cell
-  const uint i = get_global_id(0);
-  if (i >= N) return;
+                          const uint N)
+{
+    // Get particle and assign them to a cell
+    const uint i = get_global_id(0);
+    if (i >= N) return;
 
-  int3 current_cell = 100 + convert_int3(predicted[i].xyz * (float3)(NUMBER_OF_CELLS_X, NUMBER_OF_CELLS_Y, NUMBER_OF_CELLS_Z));
+    int3 current_cell = 100 + convert_int3(predicted[i].xyz * (float3)(NUMBER_OF_CELLS_X, NUMBER_OF_CELLS_Y, NUMBER_OF_CELLS_Z));
 
-  uint cell_index = calcGridHash(current_cell);  
+    uint cell_index = calcGridHash(current_cell);
 
-  // Exchange cells[cell_index] and particle_list at i
-  particles_list[i] = atomic_xchg(&cells[cell_index], i);
+    // Exchange cells[cell_index] and particle_list at i
+    particles_list[i] = atomic_xchg(&cells[cell_index], i);
 
-  // #if defined(USE_DEBUG)
-  // printf("UPDATE_CELL: %d cell_index:%d\n", i, cell_index);
-  // #endif
+    // #if defined(USE_DEBUG)
+    // printf("UPDATE_CELL: %d cell_index:%d\n", i, cell_index);
+    // #endif
 }
