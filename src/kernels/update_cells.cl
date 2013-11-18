@@ -6,7 +6,7 @@ __kernel void updateCells(const __global float4 *predicted,
   const uint i = get_global_id(0);
   if (i >= N) return;
   
-  float3 NewPos = fmod(1.0 + predicted[i].xyz, (float3)1.0); 
+  float3 NewPos = fmod(1.0f + predicted[i].xyz, (float3)1.0f); 
 
   // Get cell that belongs to particle
   uint cell_pos = (int) ( (NewPos.x - SYSTEM_MIN_X) / CELL_LENGTH_X ) +
