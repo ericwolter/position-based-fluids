@@ -40,13 +40,8 @@ set(KERNELS
   "${HESP_SOURCE_DIR}/src/kernels/calc_hash.cl"
   "${HESP_SOURCE_DIR}/src/kernels/compute_delta.cl"
   "${HESP_SOURCE_DIR}/src/kernels/compute_scaling.cl"
-  "${HESP_SOURCE_DIR}/src/kernels/find_cells.cl"
-  "${HESP_SOURCE_DIR}/src/kernels/init_cells.cl"
   "${HESP_SOURCE_DIR}/src/kernels/init_cells_old.cl"
   "${HESP_SOURCE_DIR}/src/kernels/predict_positions.cl"
-  "${HESP_SOURCE_DIR}/src/kernels/radix_histogram.cl"
-  "${HESP_SOURCE_DIR}/src/kernels/radix_paste.cl"
-  "${HESP_SOURCE_DIR}/src/kernels/radix_reorder.cl"
   "${HESP_SOURCE_DIR}/src/kernels/update_cells.cl"
   "${HESP_SOURCE_DIR}/src/kernels/update_positions.cl"
   "${HESP_SOURCE_DIR}/src/kernels/update_predicted.cl"
@@ -61,10 +56,7 @@ SET(SHADERS
 )
 
 SET(SCENARIOS
-  "${HESP_SOURCE_DIR}/assets/scenarios/dam_miles.par"
-  "${HESP_SOURCE_DIR}/assets/scenarios/dam_miles.in"
   "${HESP_SOURCE_DIR}/assets/scenarios/dam_coarse.par"
-  "${HESP_SOURCE_DIR}/assets/scenarios/dam_coarse.in"
 )
 
 SET(TEXTURES
