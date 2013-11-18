@@ -163,7 +163,7 @@ __kernel void applyVorticityAndViscosity(const __global float4 *predicted,
     }
 
     float3 eta_N = normalize(eta);
-    const float epsilon = 0.000001f;
+    const float epsilon = 0.000003f;
     float3 vorticityForce = epsilon * cross(eta_N, omega_i);
     float3 vorticityVelocity = vorticityForce * TIMESTEP;
     // if(i==0) {
