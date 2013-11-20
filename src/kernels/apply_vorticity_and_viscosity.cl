@@ -10,7 +10,7 @@ __kernel void applyVorticityAndViscosity(const __global float4 *predicted,
 
     const int END_OF_CELL_LIST = -1;
 
-    int3 current_cell = 100 + convert_int3(predicted[i].xyz * (float3)(NUMBER_OF_CELLS_X, NUMBER_OF_CELLS_Y, NUMBER_OF_CELLS_Z));
+    int3 current_cell = convert_int3(predicted[i].xyz * (float3)(GRID_RES));
 
     float4 viscosity_sum = (float4) 0.0f;
     float3 omega_i = (float3) 0.0f;
@@ -64,7 +64,7 @@ __kernel void applyVorticityAndViscosity(const __global float4 *predicted,
         }
     }
 
-    const float c = 0.00f;
+    const float c = 0.3f;
     deltaVelocities[i] = c * viscosity_sum;
 
     // vorticity
@@ -106,7 +106,7 @@ __kernel void applyVorticityAndViscosity(const __global float4 *predicted,
     }
 
     float3 eta_N = normalize(eta);
-    const float epsilon = 0.0000005f*0;
+    const float epsilon = 0.000005f;
     float3 vorticityForce = epsilon * cross(eta_N, omega_i);
     float3 vorticityVelocity = vorticityForce * TIMESTEP;
     // if(i==0) {

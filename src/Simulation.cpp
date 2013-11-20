@@ -54,17 +54,14 @@ Simulation::~Simulation()
 
 void Simulation::CreateParticles()
 {
-	// Calc SmoothLen
-	mSmoothLen = (Params.xMax - Params.xMin) / Params.xN;
-
     // Compute particle count per axis
 	int ParticlesPerAxis = (int)ceil(pow(Params.particleCount, 1/3.0));
 
 	// Build particles blcok
-    float d = mSmoothLen * Params.grid_spacing;
-    float offsetX = 0.1;
+	float d = Params.h * Params.setupSpacing;
+    float offsetX = (1.0f - ParticlesPerAxis * d) / 2.0f;
     float offsetY = 0.3;
-    float offsetZ = 0.1;
+    float offsetZ = (1.0f - ParticlesPerAxis * d) / 2.0f;
     for (cl_uint i = 0; i< Params.particleCount; i++)
     {
         cl_uint x = ((cl_uint)(i / pow(ParticlesPerAxis, 1)) % ParticlesPerAxis);
@@ -91,7 +88,6 @@ const std::string* Simulation::KernelFileList()
 		"update_velocities.cl",
 		"apply_vorticity_and_viscosity.cl",
 		"update_positions.cl",
-		"calc_hash.cl",
 		""
 	};
 
@@ -127,26 +123,22 @@ bool Simulation::InitKernels()
 #endif // USE_DEBUG
 
     clflags << std::showpoint;
-    clflags << "-DSYSTEM_MIN_X=" << Params.xMin << "f ";
-    clflags << "-DSYSTEM_MAX_X=" << Params.xMax << "f ";
-    clflags << "-DSYSTEM_MIN_Y=" << Params.yMin << "f ";
-    clflags << "-DSYSTEM_MAX_Y=" << Params.yMax << "f ";
-    clflags << "-DSYSTEM_MIN_Z=" << Params.zMin << "f ";
-    clflags << "-DSYSTEM_MAX_Z=" << Params.zMax << "f ";
-    clflags << "-DNUMBER_OF_CELLS_X=" << Params.xN << "f ";
-    clflags << "-DNUMBER_OF_CELLS_Y=" << Params.yN << "f ";
-    clflags << "-DNUMBER_OF_CELLS_Z=" << Params.zN << "f ";
-	clflags << "-DGRID_SIZE="         << (int)(Params.xN * Params.yN * Params.zN) << " ";
-    clflags << "-DCELL_LENGTH_X=" << (Params.xMax - Params.xMin) / Params.xN << "f ";
-    clflags << "-DCELL_LENGTH_Y=" << (Params.yMax - Params.yMin) / Params.yN << "f ";
-    clflags << "-DCELL_LENGTH_Z=" << (Params.zMax - Params.zMin) / Params.zN << "f ";
-    clflags << "-DTIMESTEP=" << Params.timeStepLength << "f ";
-    clflags << "-DREST_DENSITY=" << Params.restDensity << "f ";
-    clflags << "-DPBF_H=" << mSmoothLen << "f ";
-    clflags << "-DPBF_H_2=" << pow(mSmoothLen, 2) << "f ";
-    clflags << "-DPOLY6_FACTOR=" << 315.0f / (64.0f * M_PI * pow(mSmoothLen, 9)) << "f ";
-    clflags << "-DGRAD_SPIKY_FACTOR=" << 45.0f / (M_PI * pow(mSmoothLen, 6)) << "f ";
-    clflags << "-DEPSILON=" << Params.epsilon << "f ";
+    clflags << "-DSYSTEM_MIN_X="      << Params.xMin << "f ";
+    clflags << "-DSYSTEM_MAX_X="      << Params.xMax << "f ";
+    clflags << "-DSYSTEM_MIN_Y="      << Params.yMin << "f ";
+    clflags << "-DSYSTEM_MAX_Y="      << Params.yMax << "f ";
+    clflags << "-DSYSTEM_MIN_Z="      << Params.zMin << "f ";
+    clflags << "-DSYSTEM_MAX_Z="      << Params.zMax << "f ";
+	clflags << "-DGRID_RES="          << (int)Params.gridRes << " ";
+	clflags << "-DGRID_SIZE="         << (int)(Params.gridRes * Params.gridRes * Params.gridRes) << " ";
+    clflags << "-DTIMESTEP="          << Params.timeStepLength << "f ";
+    clflags << "-DREST_DENSITY="      << Params.restDensity << "f ";
+	clflags << "-DPBF_H="             << Params.h << "f ";
+    clflags << "-DPBF_H_2="           << Params.h_2 << "f ";
+	clflags << "-DEPSILON="           << Params.epsilon << "f ";
+    clflags << "-DPOLY6_FACTOR="      << 315.0f / (64.0f * M_PI * pow(Params.h, 9)) << "f ";
+    clflags << "-DPOLY6_FACTOR="      << 315.0f / (64.0f * M_PI * pow(Params.h, 9)) << "f ";
+    clflags << "-DGRAD_SPIKY_FACTOR=" << 45.0f / (M_PI * pow(Params.h, 6)) << "f ";
 
 	// Compile kernels
     cl::Program program = clSetup.createProgram(kernelSources, mCLContext, mCLDevice, clflags.str());
@@ -211,17 +203,8 @@ void Simulation::InitBuffers()
 
 void Simulation::InitCells()
 {
-	// Calc SmoothLen
-	mSmoothLen = (Params.xMax - Params.xMin) / Params.xN;
-
-	// Compute Cell length
-    mCellLength.s[0] = (Params.xMax - Params.xMin) / Params.xN;
-    mCellLength.s[1] = (Params.yMax - Params.yMin) / Params.yN;
-    mCellLength.s[2] = (Params.zMax - Params.zMin) / Params.zN;
-    mCellLength.s[3] = 0.0f;
-
 	// Allocate host buffers
-	const cl_uint cellCount = Params.xN * Params.yN * Params.zN;
+	const cl_uint cellCount = Params.gridRes * Params.gridRes * Params.gridRes;
     delete[] mCells;         mCells         = new cl_int[cellCount];
     delete[] mParticlesList; mParticlesList = new cl_int[Params.particleCount];
 
@@ -325,7 +308,7 @@ void Simulation::updateCells()
 {
     mKernels["initCellsOld"].setArg(0, mCellsBuffer);
     mKernels["initCellsOld"].setArg(1, mParticlesListBuffer);
-    mKernels["initCellsOld"].setArg(2, (cl_uint)(Params.xN * Params.yN * Params.zN));
+	mKernels["initCellsOld"].setArg(2, (cl_uint)(Params.gridRes * Params.gridRes * Params.gridRes));
     mKernels["initCellsOld"].setArg(3, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["initCellsOld"], 0, cl::NDRange(max(mBufferSizeParticlesList, mBufferSizeCells)), mLocalRange);

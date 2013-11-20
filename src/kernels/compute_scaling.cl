@@ -11,8 +11,8 @@ __kernel void computeScaling(__global float4 *predicted,
     const int END_OF_CELL_LIST = -1;
     const float e = EPSILON * REST_DENSITY;
 
-    // calculate $$$\Delta p_i$$$
-    int3 current_cell = 100 + convert_int3(predicted[i].xyz * (float3)(NUMBER_OF_CELLS_X, NUMBER_OF_CELLS_Y, NUMBER_OF_CELLS_Z));
+    // calculate current cell
+    int3 current_cell = convert_int3(predicted[i].xyz * (float3)(GRID_RES));
 
     // Sum of rho_i, |nabla p_k C_i|^2 and nabla p_k C_i for k = i
     float density_sum = 0.0f;

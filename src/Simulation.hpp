@@ -129,7 +129,6 @@ public:
 
     // Lengths of each cell in each direction
     cl_float4 mCellLength;
-	cl_float  mSmoothLen;
 
     // Array for the cells
     cl_int *mCells;

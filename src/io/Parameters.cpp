@@ -17,11 +17,10 @@ using std::runtime_error;
 // A global parameter object
 Parameters Params;
 
-Parameters::Parameters()
-{
-}
+// A variable that indicates a change in the paramaters
+bool ParametersChanged;
 
-void Parameters::LoadParameters(string InputFile)
+void LoadParameters(string InputFile)
 {
     string line; // Complete line
     string parameter; // Parameter found
@@ -54,32 +53,29 @@ void Parameters::LoadParameters(string InputFile)
 		}
 
 		// Store value into relevent parameter
-        /**/ if (parameter == "timestep_length")     ss >> timeStepLength;
-        else if (parameter == "sub_steps")           ss >> subSteps;
-        else if (parameter == "sim_iterations")      ss >> simIterations;
-        else if (parameter == "time_end")            ss >> timeEnd;
-        else if (parameter == "particle_count")      ss >> particleCount;
-        else if (parameter == "reset_sim_on_change") ss >> resetSimOnChange;
-        else if (parameter == "part_out_freq")       ss >> partOutFreq;
-        else if (parameter == "part_out_name_base")  ss >> partOutNameBase;
-        else if (parameter == "vtk_out_freq")        ss >> vtkOutFreq;
-        else if (parameter == "vtk_out_name_base")   ss >> vtkOutNameBase;
-        else if (parameter == "cl_workgroup_1dsize") ss >> clWorkGroupSize1D;
-        else if (parameter == "x_min")               ss >> xMin;
-        else if (parameter == "x_max")               ss >> xMax;
-        else if (parameter == "y_min")               ss >> yMin;
-        else if (parameter == "y_max")               ss >> yMax;
-        else if (parameter == "z_min")               ss >> zMin;
-        else if (parameter == "z_max")               ss >> zMax;
-        else if (parameter == "x_n")                 ss >> xN;
-        else if (parameter == "y_n")                 ss >> yN;
-        else if (parameter == "z_n")                 ss >> zN;
-        else if (parameter == "restdensity")         ss >> restDensity;
-		else if (parameter == "epsilon")             ss >> epsilon;
-		else if (parameter == "grid_spacing")        ss >> grid_spacing;
+        /**/ if (parameter == "timestep_length")     ss >> Params.timeStepLength;
+        else if (parameter == "sub_steps")           ss >> Params.subSteps;
+        else if (parameter == "sim_iterations")      ss >> Params.simIterations;
+        else if (parameter == "time_end")            ss >> Params.timeEnd;
+        else if (parameter == "particle_count")      ss >> Params.particleCount;
+        else if (parameter == "reset_sim_on_change") ss >> Params.resetSimOnChange;
+        else if (parameter == "x_min")               ss >> Params.xMin;
+        else if (parameter == "x_max")               ss >> Params.xMax;
+        else if (parameter == "y_min")               ss >> Params.yMin;
+        else if (parameter == "y_max")               ss >> Params.yMax;
+        else if (parameter == "z_min")               ss >> Params.zMin;
+        else if (parameter == "z_max")               ss >> Params.zMax;
+		else if (parameter == "grid_res")            ss >> Params.gridRes;
+        else if (parameter == "restdensity")         ss >> Params.restDensity;
+		else if (parameter == "epsilon")             ss >> Params.epsilon;
+		else if (parameter == "setup_spacing")       ss >> Params.setupSpacing;
 		else
             cerr << "Unknown parameter " << parameter << endl << "Leaving it out." << endl;
     }
 
     ifs.close();
+
+	// Compute fields
+	Params.h   = 1.0f / Params.gridRes;
+	Params.h_2 = Params.h * Params.h;
 }

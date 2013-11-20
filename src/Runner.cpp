@@ -131,7 +131,7 @@ void Runner::run(Simulation& simulation, CVisual& renderer)
 		if (DetectResourceChanges() || renderer.UICmd_ResetSimulation)
 		{
 			// Reading the configuration file
-			Params.LoadParameters(getPathForScenario("dam_coarse.par"));
+			LoadParameters(getPathForScenario("dam_coarse.par"));
 
 			// Check if particle count changed
 			if ((prevParticleCount != Params.particleCount) || renderer.UICmd_ResetSimulation || Params.resetSimOnChange)

@@ -15,7 +15,7 @@ __kernel void updateCells(const __global float4 *predicted,
     const uint i = get_global_id(0);
     if (i >= N) return;
 
-    int3 current_cell = 100 + convert_int3(predicted[i].xyz * (float3)(NUMBER_OF_CELLS_X, NUMBER_OF_CELLS_Y, NUMBER_OF_CELLS_Z));
+    int3 current_cell = convert_int3(predicted[i].xyz * (float3)(GRID_RES));
 
     uint cell_index = calcGridHash(current_cell);
 

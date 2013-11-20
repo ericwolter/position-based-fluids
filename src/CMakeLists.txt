@@ -37,7 +37,6 @@ add_subdirectory(ocl)
 set(KERNELS
   "${HESP_SOURCE_DIR}/src/hesp.hpp"
   "${HESP_SOURCE_DIR}/src/kernels/apply_vorticity_and_viscosity.cl"
-  "${HESP_SOURCE_DIR}/src/kernels/calc_hash.cl"
   "${HESP_SOURCE_DIR}/src/kernels/compute_delta.cl"
   "${HESP_SOURCE_DIR}/src/kernels/compute_scaling.cl"
   "${HESP_SOURCE_DIR}/src/kernels/init_cells_old.cl"
