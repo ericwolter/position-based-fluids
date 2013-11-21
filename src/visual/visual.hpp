@@ -13,6 +13,8 @@
 #include <glm/gtx/string_cast.hpp>
 #pragma GCC diagnostic pop
 
+#include <AntTweakBar.h>
+
 #include "../hesp.hpp"
 #include "../DataLoader.hpp"
 #include "../Simulation.hpp"
@@ -85,6 +87,7 @@ private:
     GLuint mParticleProgramID;
 
     GLFWwindow *mWindow;
+    TwBar *tweakBar;
 
     // System sizes
     GLuint mSystemBufferID;

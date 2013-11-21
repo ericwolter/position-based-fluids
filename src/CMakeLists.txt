@@ -3,6 +3,7 @@ include_directories(
 	${CMAKE_SOURCE_DIR}/lib/glm
 	${CMAKE_SOURCE_DIR}/lib/glfw/include
 	${CMAKE_SOURCE_DIR}/lib/soil/src/
+  ${CMAKE_SOURCE_DIR}/lib/AntTweakBar/include
 )
 
 if(MSVC)
@@ -67,6 +68,22 @@ SET(TEXTURES
 # include them here so they appear in IDE like Xcode
 add_executable(hesp ${SOURCE} ${HEADER} ${KERNELS} ${SHADERS} ${SCENARIOS} ${TEXTURES})
 
+IF (WIN32)
+  FIND_LIBRARY( ANTTWEAKBAR_LIBRARY AntTweakBar
+    PATHS
+      ${CMAKE_SOURCE_DIR}/lib/AntTweakBar/lib
+    DOC "The AntTweakBar library")
+ELSE (WIN32)
+  FIND_LIBRARY( ANTTWEAKBAR_LIBRARY AntTweakBar
+    PATHS
+      ${CMAKE_SOURCE_DIR}/lib/AntTweakBar/lib
+    PATH_SUFFIXES
+      lib64
+      lib
+      dylib
+    DOC "The AntTweakBar library")
+ENDIF (WIN32)
+
 if (APPLE)
   target_link_libraries(hesp
   	glfw
@@ -77,6 +94,7 @@ if (APPLE)
     ${COCOA_LIB}
     ${IOKIT_LIB}
     ${COREVIDEO_LIB}
+    ${ANTTWEAKBAR_LIBRARY}
   )
 elseif(MSVC)
   target_link_libraries(hesp
