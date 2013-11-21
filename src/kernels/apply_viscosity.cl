@@ -34,28 +34,31 @@ __kernel void applyViscosity(const __global float4 *predicted,
 
                         if (r_length_2 > 0.0f && r_length_2 < PBF_H_2)
                         {
-                            float3 v = velocities[next].xyz - velocities[i].xyz;
-                            float poly6 = POLY6_FACTOR * (PBF_H_2 - r_length_2)
-                                          * (PBF_H_2 - r_length_2)
-                                          * (PBF_H_2 - r_length_2);
+                            // ignore particles where the density is zero
+                            // this is either a numerical issue or a problem
+                            // with estimating the density by sampling the neighborhood
+                            // In this case the standard SPH gradient operator brakes
+                            // because of the division by zero.
+                            if(fabs(predicted[next].w) > 1e-8)
+                            {
+                                float3 v = velocities[next].xyz - velocities[i].xyz;
+                                float poly6 = POLY6_FACTOR * (PBF_H_2 - r_length_2)
+                                              * (PBF_H_2 - r_length_2)
+                                              * (PBF_H_2 - r_length_2);
 
-                            // equation 15
-                            float r_length = sqrt(r_length_2);
-                            float3 gradient_spiky = -1.0f * r / (r_length)
-                                                    * GRAD_SPIKY_FACTOR
-                                                    * (PBF_H - r_length)
-                                                    * (PBF_H - r_length);
-                            // the gradient has to be negated because it is with respect to p_j
-                            // this could be done directly when calculating it, but for now we explicitly
-                            // keep it to improve understanding
-                            omega_i += cross(v.xyz,-gradient_spiky.xyz);
+                                // equation 15
+                                float r_length = sqrt(r_length_2);
+                                float3 gradient_spiky = -1.0f * r / (r_length)
+                                                        * GRAD_SPIKY_FACTOR
+                                                        * (PBF_H - r_length)
+                                                        * (PBF_H - r_length);
+                                // the gradient has to be negated because it is with respect to p_j
+                                // this could be done directly when calculating it, but for now we explicitly
+                                // keep it to improve understanding
+                                omega_i += cross(v.xyz,-gradient_spiky.xyz);
 
-                            viscosity_sum += (1.0f / predicted[next].w) * v * poly6;
-
-                            // #if defined(USE_DEBUG)
-                            // printf("viscosity: i,j: %d,%d result: [%f,%f,%f] density: %f\n", i, next,
-                            //        v.x, v.y, v.z, predicted[j].w);
-                            // #endif // USE_DEBUG
+                                viscosity_sum += (1.0f / predicted[next].w) * v * poly6;
+                            }
                         }
                     }
 

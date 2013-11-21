@@ -31,14 +31,22 @@ __kernel void applyVorticity(const __global float4 *predicted,
 
                         if (r_length_2 > 0.0f && r_length_2 < PBF_H_2)
                         {
-                            float r_length = sqrt(r_length_2);
-                            float4 gradient_spiky = -1.0f * r / (r_length)
-                                                    * GRAD_SPIKY_FACTOR
-                                                    * (PBF_H - r_length)
-                                                    * (PBF_H - r_length);
+                            // ignore particles where the density is zero
+                            // this is either a numerical issue or a problem
+                            // with estimating the density by sampling the neighborhood
+                            // In this case the standard SPH gradient operator brakes
+                            // because of the division by zero.
+                            if(fabs(predicted[next].w) > 1e-8)
+                            {
+                                float r_length = sqrt(r_length_2);
+                                float4 gradient_spiky = -1.0f * r / (r_length)
+                                                        * GRAD_SPIKY_FACTOR
+                                                        * (PBF_H - r_length)
+                                                        * (PBF_H - r_length);
 
-                            float omega_length = length(omegas[next].xyz);
-                            eta += (omega_length / predicted[next].w) * gradient_spiky.xyz;
+                                float omega_length = length(omegas[next].xyz);
+                                eta += (omega_length / predicted[next].w) * gradient_spiky.xyz;
+                            }
                         }
                     }
 
