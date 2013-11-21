@@ -36,6 +36,8 @@ using std::ifstream;
 using std::isnan;
 #endif
 
+static float displayscale = 1.0f;
+
 CVisual::CVisual (const int width, const int height)
     : UICmd_GenerateWaves(false),
       UICmd_ResetSimulation(false),
@@ -73,7 +75,7 @@ void MouseButtonCB( GLFWwindow *, int button , int action , int mods)
 
 void MousePosCB(GLFWwindow *, double x , double y)
 {
-    TwEventMousePosGLFW( (int)x, (int)y );
+    TwEventMousePosGLFW( (int)(x*displayscale), (int)(y*displayscale) );
 }
 
 void KeyFunCB( GLFWwindow *, int key, int scancode, int action, int mods)
@@ -156,7 +158,11 @@ void CVisual::initWindow(const string windowname)
     glDepthFunc(GL_LEQUAL);
 
     TwInit(TW_OPENGL, NULL);
-    TwWindowSize(mWidth, mHeight);
+    int fbwidth , fbheight;
+    glfwGetFramebufferSize( mWindow , &fbwidth , &fbheight );
+    TwWindowSize(fbwidth, fbheight);
+
+    displayscale = (float)fbwidth / (float)mWidth;
 
     tweakBar = TwNewBar("PBFTweak");
     TwAddButton(tweakBar, "Play/Pause" , PlayPause , this , " group=Controls ");
