@@ -300,8 +300,7 @@ void Simulation::computeScaling()
     mKernels["computeScaling"].setArg(3, mParticlesListBuffer);
 	mKernels["computeScaling"].setArg(4, Params.particleCount);
 
-    mQueue.enqueueNDRangeKernel(mKernels["computeScaling"], 0,
-                                mGlobalRange, mLocalRange);
+    mQueue.enqueueNDRangeKernel(mKernels["computeScaling"], 0, mGlobalRange, mLocalRange);
 }
 
 void Simulation::updateCells()

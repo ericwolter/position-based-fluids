@@ -17,15 +17,17 @@ set(SOURCE
 	main.cpp
 	Runner.cpp
 	Simulation.cpp
-  DataLoader.cpp
+	DataLoader.cpp
+	Parameters.cpp
 )
 
 set(HEADER
-  hesp.hpp
-  Particle.hpp
-  Runner.hpp
-  Simulation.hpp
-  DataLoader.hpp
+	hesp.hpp
+	Particle.hpp
+	Runner.hpp
+	Simulation.hpp
+	DataLoader.hpp
+	Parameters.hpp  
 )
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
