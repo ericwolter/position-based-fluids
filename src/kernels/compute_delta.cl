@@ -58,7 +58,8 @@ float rand_3d(float3 pos)
 }
 
 
-__kernel void computeDelta(__global float4 *delta,
+__kernel void computeDelta(__constant struct Parameters* Params, 
+                           __global float4 *delta,
                            const __global float4 *predicted,
                            const __global float *scaling,
                            const __global int *cells,
@@ -73,7 +74,7 @@ __kernel void computeDelta(__global float4 *delta,
 
     uint2 randSeed = (uint2)(1+get_global_id(0), 1);
 
-    int3 current_cell = convert_int3(predicted[i].xyz * (float3)(GRID_RES));
+    int3 current_cell = convert_int3(predicted[i].xyz * (float3)(Params->gridRes));
 
     // Sum of lambdas
     float4 sum = (float4) 0.0f;
@@ -98,20 +99,20 @@ __kernel void computeDelta(__global float4 *delta,
                         float r_length_2 = r.x * r.x + r.y * r.y + r.z * r.z;
                         minR = min(minR, sqrt(r_length_2));
 
-                        if (r_length_2 > 0.0f && r_length_2 < PBF_H_2)
+                        if (r_length_2 > 0.0f && r_length_2 < Params->h_2)
                         {
                             Ncount++;
                             float r_length = sqrt(r_length_2);
                             float4 gradient_spiky = -1.0f * r / (r_length)
                                                     * GRAD_SPIKY_FACTOR
-                                                    * (PBF_H - r_length)
-                                                    * (PBF_H - r_length);
+                                                    * (Params->h - r_length)
+                                                    * (Params->h - r_length);
 
-                            float poly6_r = POLY6_FACTOR * (PBF_H_2 - r_length_2) * (PBF_H_2 - r_length_2) * (PBF_H_2 - r_length_2);
+                            float poly6_r = POLY6_FACTOR * (Params->h_2 - r_length_2) * (Params->h_2 - r_length_2) * (Params->h_2 - r_length_2);
 
                             // equation (13)
-                            const float q_2 = pow(0.7f * PBF_H, 2);
-                            float poly6_q = POLY6_FACTOR * (PBF_H_2 - q_2) * (PBF_H_2 - q_2) * (PBF_H_2 - q_2);
+                            const float q_2 = pow(0.7f * Params->h, 2);
+                            float poly6_q = POLY6_FACTOR * (Params->h_2 - q_2) * (Params->h_2 - q_2) * (Params->h_2 - q_2);
                             const float k = 0.00000001f;
                             const uint n = 4;
 
@@ -131,7 +132,7 @@ __kernel void computeDelta(__global float4 *delta,
     }
 
     // equation (12)
-    float4 delta_p = sum / REST_DENSITY;
+    float4 delta_p = sum / Params->restDensity;
 
     float randDist = 0.003f;
     float4 future = predicted[i] + delta_p;
@@ -142,15 +143,11 @@ __kernel void computeDelta(__global float4 *delta,
     frand(&randSeed);
 
     // Clamp Y
-    if (future.y < SYSTEM_MIN_Y)      future.y = SYSTEM_MIN_Y + frand(&randSeed) * randDist;
-
-    // Clamp Z
-         if (future.z < SYSTEM_MIN_Z) future.z = SYSTEM_MIN_Z + frand(&randSeed) * randDist;
-    else if (future.z > SYSTEM_MAX_Z) future.z = SYSTEM_MAX_Z - frand(&randSeed) * randDist;
-  
-    // Clamp X
-         if (future.x < (SYSTEM_MIN_X + wave_generator))  future.x = SYSTEM_MIN_X + wave_generator + frand(&randSeed) * randDist;
-    else if (future.x > (SYSTEM_MAX_X                 ))  future.x = SYSTEM_MAX_X                  - frand(&randSeed) * randDist;
+    if      (future.y < Params->yMin) future.y = Params->yMin + frand(&randSeed) * randDist;
+    if      (future.z < Params->zMin) future.z = Params->zMin + frand(&randSeed) * randDist;
+    else if (future.z > Params->zMax) future.z = Params->zMax - frand(&randSeed) * randDist;
+    if      (future.x < (Params->xMin + wave_generator))  future.x = Params->xMin + wave_generator + frand(&randSeed) * randDist;
+    else if (future.x > (Params->xMax                 ))  future.x = Params->xMax                  - frand(&randSeed) * randDist;
 
 	// Compute delta
     delta[i] = future - predicted[i];

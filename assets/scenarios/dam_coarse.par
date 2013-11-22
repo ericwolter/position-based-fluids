@@ -1,16 +1,26 @@
-particle_count        20000
-time_end              10000.0
-timestep_length       0.015
-sub_steps             1
-sim_iterations        2
-reset_sim_on_change   0
-x_min                 0.0
-x_max                 2.0
-y_min                 0.0
-y_max                 1.0
-z_min                 0.0
-z_max                 1.0
-grid_res              30
-restdensity           20000
-setup_spacing         0.75
-epsilon               2.0
+ParticleCount         20000
+SetupSpacing          0.75
+ResetSimOnChange      0
+
+XMin                  0.0
+XMax                  2.0
+YMin                  0.0
+YMax                  1.0
+ZMin                  0.0
+ZMax                  1.0
+waveGenAmp            0.3
+waveGenFreq           0.25
+waveGenDuty           4.0
+
+TimeStep              0.019
+SubSteps              1
+SimIterations         3
+GridRes               30
+RestDensity           20000
+Epsilon               2.0
+
+vorticityFactor       0.000005
+viscosityFactor       0.3
+
+surfaceTenstionK      0.00000001
+surfaceTenstionDist   0.7

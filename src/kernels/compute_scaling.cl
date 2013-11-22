@@ -1,4 +1,5 @@
-__kernel void computeScaling(__global float4 *predicted,
+__kernel void computeScaling(__constant struct Parameters* Params,
+                             __global float4 *predicted,
                              __global float *scaling,
                              const __global int *cells,
                              const __global int *particles_list,
@@ -9,10 +10,10 @@ __kernel void computeScaling(__global float4 *predicted,
     if (i >= N) return;
 
     const int END_OF_CELL_LIST = -1;
-    const float e = EPSILON * REST_DENSITY;
+    const float e = Params->epsilon * Params->restDensity;
 
     // calculate current cell
-    int3 current_cell = convert_int3(predicted[i].xyz * (float3)(GRID_RES));
+    int3 current_cell = convert_int3(predicted[i].xyz * (float3)(Params->gridRes));
 
     // Sum of rho_i, |nabla p_k C_i|^2 and nabla p_k C_i for k = i
     float density_sum = 0.0f;
@@ -39,7 +40,7 @@ __kernel void computeScaling(__global float4 *predicted,
                         float r_length_2 = (r.x * r.x + r.y * r.y + r.z * r.z);
 
                         // If h == r every term gets zero, so < h not <= h
-                        if (r_length_2 > 0.0f && r_length_2 < PBF_H_2)
+                        if (r_length_2 > 0.0f && r_length_2 < Params->h_2)
                         {
                             float r_length = sqrt(r_length_2);
 
@@ -48,13 +49,13 @@ __kernel void computeScaling(__global float4 *predicted,
                             // equation (8), if k = i
                             float3 gradient_spiky = r / (r_length)
                                                     * GRAD_SPIKY_FACTOR
-                                                    * (PBF_H - r_length)
-                                                    * (PBF_H - r_length);
+                                                    * (Params->h - r_length)
+                                                    * (Params->h - r_length);
 
                             // equation (2)
-                            float poly6 = POLY6_FACTOR * (PBF_H_2 - r_length_2)
-                                          * (PBF_H_2 - r_length_2)
-                                          * (PBF_H_2 - r_length_2);
+                            float poly6 = POLY6_FACTOR * (Params->h_2 - r_length_2)
+                                          * (Params->h_2 - r_length_2)
+                                          * (Params->h_2 - r_length_2);
                             density_sum += poly6;
 
                             // equation (9), denominator, if k = j
@@ -77,9 +78,9 @@ __kernel void computeScaling(__global float4 *predicted,
     predicted[i].w = density_sum;
 
     // equation (1)
-    float density_constraint = (density_sum / REST_DENSITY) - 1.0f;
+    float density_constraint = (density_sum / Params->restDensity) - 1.0f;
 
     // equation (11)
     scaling[i] = -1.0f * density_constraint / 
-		                 (gradient_sum_k / (REST_DENSITY * REST_DENSITY) + e);
+		                 (gradient_sum_k / (Params->restDensity * Params->restDensity) + e);
 }

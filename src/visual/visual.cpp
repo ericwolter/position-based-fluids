@@ -4,36 +4,18 @@
 #endif
 
 #include "visual.hpp"
-#include "../io/parameters.hpp"
+#include "../ParamUtils.hpp"
+#include "SOIL.h"
 
 #define _USE_MATH_DEFINES
 #include <math.h>
-
-#include <stdexcept>
-#include <iostream>
-#include <cstdlib>
-#include <sstream>
 #include <fstream>
-#include <cmath>
 #include <vector>
 
-#include "SOIL.h"
-
-using std::runtime_error;
-using std::ifstream;
-using std::ios;
-using std::cout;
-using std::cerr;
-using std::endl;
-using std::cin;
-using std::istreambuf_iterator;
-using std::vector;
-using std::ifstream;
+using namespace std;
 
 #ifdef _WINDOWS
 #define isnan(x) _isnan(x)
-#else
-using std::isnan;
 #endif
 
 CVisual::CVisual (const int width, const int height)
@@ -416,9 +398,6 @@ void CVisual::checkInput()
 */
 GLuint CVisual::loadShaders(const string &vertexFilename, const string &fragmentFilename)
 {
-    //cout << vertexFilename << endl;
-    //cout << fragmentFilename << endl;
-
     GLuint programID = 0;
 
     string line; // Used for getline()
@@ -429,28 +408,17 @@ GLuint CVisual::loadShaders(const string &vertexFilename, const string &fragment
     char *errorMsg = NULL;
 
     // Create the shaders
-    GLuint vertexShaderID = glCreateShader(GL_VERTEX_SHADER);
+    GLuint vertexShaderID   = glCreateShader(GL_VERTEX_SHADER);
     GLuint fragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
 
     string shaderCode;
     ifstream ifs(vertexFilename.c_str(), ios::binary);
-
-    // Read in vertex shader code
     if ( !ifs )
-    {
         throw runtime_error("Could not open file for vertex shader!");
-    }
-
-    shaderCode = string( istreambuf_iterator<char>(ifs),
-                         istreambuf_iterator<char>() );
-
+    shaderCode = string( istreambuf_iterator<char>(ifs), istreambuf_iterator<char>() );
     ifs.close();
 
     // Compile Vertex Shader
-#if defined(USE_DEBUG)
-    cout << "Compiling vertex shader " << vertexFilename << endl;
-#endif // USE_DEBUG
-
     source = shaderCode.c_str();
     glShaderSource(vertexShaderID, 1, &source , NULL);
     glCompileShader(vertexShaderID);
@@ -469,27 +437,14 @@ GLuint CVisual::loadShaders(const string &vertexFilename, const string &fragment
         delete[] errorMsg;
     }
 
-    shaderCode.clear();
-
     // Read the Fragment Shader code from the file
     ifs.open(fragmentFilename.c_str(), ios::binary);
-
-    // Read in fragment shader code
     if ( !ifs )
-    {
         throw runtime_error("Could not open file for fragment shader!");
-    }
-
-    shaderCode = string( istreambuf_iterator<char>(ifs),
-                         istreambuf_iterator<char>() );
-
+    shaderCode = string(istreambuf_iterator<char>(ifs), istreambuf_iterator<char>());
     ifs.close();
 
-    // Compile Fragment Shader
-#if defined(USE_DEBUG)
-    cout << "Compiling fragment shader " << fragmentFilename << endl;
-#endif // USE_DEBUG
-
+	// Compile shaders
     source = shaderCode.c_str();
     glShaderSource(fragmentShaderID, 1, &source, NULL);
     glCompileShader(fragmentShaderID);
@@ -507,11 +462,6 @@ GLuint CVisual::loadShaders(const string &vertexFilename, const string &fragment
 
         delete[] errorMsg;
     }
-
-    // Link the program
-#if defined(USE_DEBUG)
-    cout << "Linking program\n" << endl;
-#endif // USE_DEBUG
 
     programID = glCreateProgram();
 

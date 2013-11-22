@@ -1,4 +1,6 @@
-__kernel void applyVorticityAndViscosity(const __global float4 *predicted,
+__kernel void applyVorticityAndViscosity(
+        __constant struct Parameters* Params, 
+        const __global float4 *predicted,
         const __global float4 *velocities,
         __global float4 *deltaVelocities,
         const __global int *cells,
@@ -10,7 +12,7 @@ __kernel void applyVorticityAndViscosity(const __global float4 *predicted,
 
     const int END_OF_CELL_LIST = -1;
 
-    int3 current_cell = convert_int3(predicted[i].xyz * (float3)(GRID_RES));
+    int3 current_cell = convert_int3(predicted[i].xyz * (float3)(Params->gridRes));
 
     float4 viscosity_sum = (float4) 0.0f;
     float3 omega_i = (float3) 0.0f;
@@ -31,19 +33,19 @@ __kernel void applyVorticityAndViscosity(const __global float4 *predicted,
                         float4 r = predicted[i] - predicted[next];
                         float r_length_2 = (r.x * r.x + r.y * r.y + r.z * r.z);
 
-                        if (r_length_2 > 0.0f && r_length_2 < PBF_H_2)
+                        if (r_length_2 > 0.0f && r_length_2 < Params->h_2)
                         {
                             float4 v = velocities[next] - velocities[i];
-                            float poly6 = POLY6_FACTOR * (PBF_H_2 - r_length_2)
-                                          * (PBF_H_2 - r_length_2)
-                                          * (PBF_H_2 - r_length_2);
+                            float poly6 = POLY6_FACTOR * (Params->h_2 - r_length_2)
+                                          * (Params->h_2 - r_length_2)
+                                          * (Params->h_2 - r_length_2);
 
                             // equation 15
                             float r_length = sqrt(r_length_2);
                             float4 gradient_spiky = -1.0f * r / (r_length)
                                                     * GRAD_SPIKY_FACTOR
-                                                    * (PBF_H - r_length)
-                                                    * (PBF_H - r_length);
+                                                    * (Params->h - r_length)
+                                                    * (Params->h - r_length);
                             // the gradient has to be negated because it is with respect to p_j
                             // this could be done directly when calculating it, but for now we explicitly
                             // keep it to improve understanding
@@ -87,13 +89,13 @@ __kernel void applyVorticityAndViscosity(const __global float4 *predicted,
                         float4 r = predicted[i] - predicted[next];
                         float r_length_2 = (r.x * r.x + r.y * r.y + r.z * r.z);
 
-                        if (r_length_2 > 0.0f && r_length_2 < PBF_H_2)
+                        if (r_length_2 > 0.0f && r_length_2 < Params->h_2)
                         {
                             float r_length = sqrt(r_length_2);
                             float4 gradient_spiky = -1.0f * r / (r_length)
                                                     * GRAD_SPIKY_FACTOR
-                                                    * (PBF_H - r_length)
-                                                    * (PBF_H - r_length);
+                                                    * (Params->h - r_length)
+                                                    * (Params->h - r_length);
 
                             eta += (omega_length / predicted[next].w) * gradient_spiky.xyz;
                         }
@@ -108,7 +110,7 @@ __kernel void applyVorticityAndViscosity(const __global float4 *predicted,
     float3 eta_N = normalize(eta);
     const float epsilon = 0.000005f;
     float3 vorticityForce = epsilon * cross(eta_N, omega_i);
-    float3 vorticityVelocity = vorticityForce * TIMESTEP;
+    float3 vorticityVelocity = vorticityForce * Params->timeStep;
     // if(i==0) {
     //     printf("VORTICITY: %d velocity:[%f,%f,%f]\n", i, vorticityVelocity.x, vorticityVelocity.y, vorticityVelocity.z);
     // }

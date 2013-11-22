@@ -1,5 +1,5 @@
 #include "Runner.hpp"
-#include "io/Parameters.hpp"
+#include "ParamUtils.hpp"
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -166,16 +166,15 @@ void Runner::run(Simulation& simulation, CVisual& renderer)
 		if (renderer.UICmd_GenerateWaves)
         {
 			// Wave consts
-			const cl_float wave_push_length = (Params.xMax - Params.xMin) / 4.0f;
-            const cl_float wave_frequency = 0.70f;
+			const cl_float wave_push_length = Params.waveGenAmp * (Params.xMax - Params.xMin);
 
 			// Update the wave position
-			float t = wave_frequency * waveTime;
-            wavePos = (1 - cos(2.0f * M_PI * pow(fmod(t, 1.0f), 3.0f))) * wave_push_length / 2.0f;
+			float t = Params.waveGenFreq * waveTime;
+			wavePos = (1 - cos(2.0f * M_PI * pow(fmod(t, 1.0f), Params.waveGenDuty))) * wave_push_length / 2.0f;
 
 			// Update wave running time
 			if (!renderer.UICmd_PauseSimulation)
-				waveTime += Params.timeStepLength;
+				waveTime += Params.timeStep;
         }
 
 		// Sub frames
@@ -186,7 +185,7 @@ void Runner::run(Simulation& simulation, CVisual& renderer)
 
 			// Incremenent time
 			if (!renderer.UICmd_PauseSimulation)
-				simTime += Params.timeStepLength;
+				simTime += Params.timeStep;
 		}
 
 		// Visualize particles
@@ -198,7 +197,7 @@ void Runner::run(Simulation& simulation, CVisual& renderer)
 			fwrite(framedata, 1, nbytes, ffmpeg);
 		#endif
     }
-    while (simTime <= Params.timeEnd);
+    while (true);
 
 	#if defined(MAKE_VIDEO)
 		pclose(ffmpeg);

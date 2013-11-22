@@ -6,7 +6,8 @@ uint calcGridHash(int3 gridPos)
     return abs(p1*gridPos.x ^ p2*gridPos.y ^ p3*gridPos.z) % GRID_SIZE;
 }
 
-__kernel void updateCells(const __global float4 *predicted,
+__kernel void updateCells(__constant struct Parameters* Params, 
+                          const __global float4 *predicted,
                           __global int *cells,
                           __global int *particles_list,
                           const uint N)
@@ -15,7 +16,7 @@ __kernel void updateCells(const __global float4 *predicted,
     const uint i = get_global_id(0);
     if (i >= N) return;
 
-    int3 current_cell = convert_int3(predicted[i].xyz * (float3)(GRID_RES));
+    int3 current_cell = convert_int3(predicted[i].xyz * (float3)(Params->gridRes));
 
     uint cell_index = calcGridHash(current_cell);
 

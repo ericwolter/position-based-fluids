@@ -1,4 +1,5 @@
-__kernel void updateVelocities(const __global float4 *positions,
+__kernel void updateVelocities(__constant struct Parameters* Params, 
+                               const __global float4 *positions,
                                const __global float4 *predicted,
                                __global float4 *velocities,
                                const uint N)
@@ -6,7 +7,7 @@ __kernel void updateVelocities(const __global float4 *positions,
     const uint i = get_global_id(0);
     if (i >= N) return;
 
-    velocities[i].xyz = (predicted[i].xyz - positions[i].xyz) / TIMESTEP;
+    velocities[i].xyz = (predicted[i].xyz - positions[i].xyz) / Params->timeStep;
 
     // #if defined(USE_DEBUG)
     // printf("updateVelocites: i,t: %d,%f\npos: [%f,%f,%f]\npredict: [%f,%f,%f]\nvel: [%f,%f,%f]\n",

@@ -11,7 +11,7 @@
 #include <algorithm>
 
 #include "hesp.hpp"
-#include "io/Parameters.hpp"
+#include "Parameters.hpp"
 #include "Particle.hpp"
 
 #include <GLFW/glfw3.h>
@@ -118,14 +118,7 @@ public:
     cl::Buffer mScalingFactorsBuffer;
     cl::Buffer mDeltaBuffer;
     cl::Buffer mDeltaVelocityBuffer;
-
-#if !defined(USE_LINKEDCELL)
-    cl::Buffer mRadixCellsBuffer;
-    cl::Buffer mRadixHistogramBuffer;
-    cl::Buffer mRadixGlobSumBuffer;
-    cl::Buffer mRadixCellsOutBuffer;
-    cl::Buffer mFoundCellsBuffer;
-#endif // USE_LINKEDCELL
+	cl::Buffer mParameters;
 
     // Lengths of each cell in each direction
     cl_float4 mCellLength;

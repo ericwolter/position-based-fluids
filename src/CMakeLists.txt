@@ -18,7 +18,7 @@ set(SOURCE
 	Runner.cpp
 	Simulation.cpp
 	DataLoader.cpp
-	Parameters.cpp
+	ParamUtils.cpp
 )
 
 set(HEADER
@@ -28,16 +28,17 @@ set(HEADER
 	Simulation.hpp
 	DataLoader.hpp
 	Parameters.hpp  
+	ParamUtils.hpp
 )
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-add_subdirectory(io)
 add_subdirectory(visual)
 add_subdirectory(ocl)
 
 set(KERNELS
   "${HESP_SOURCE_DIR}/src/hesp.hpp"
+  "${HESP_SOURCE_DIR}/src/parameters.hpp"
   "${HESP_SOURCE_DIR}/src/kernels/apply_vorticity_and_viscosity.cl"
   "${HESP_SOURCE_DIR}/src/kernels/compute_delta.cl"
   "${HESP_SOURCE_DIR}/src/kernels/compute_scaling.cl"

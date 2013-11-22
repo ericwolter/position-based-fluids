@@ -1,13 +1,11 @@
 #include "Simulation.hpp"
 #include "DataLoader.hpp"
-#include "io/Parameters.hpp"
+#include "ParamUtils.hpp"
 #include "ocl/OCLUtils.hpp"
 
 #define _USE_MATH_DEFINES
 #include <math.h>
-#include <cstdio>
 #include <sstream>
-#include <list>
 
 #if defined(__APPLE__)
 #include <OpenGL/OpenGL.h>
@@ -18,15 +16,7 @@
 #include <GL/gl.h>
 #endif
 
-using std::vector;
-using std::cout;
-using std::cerr;
-using std::endl;
-using std::string;
-using std::runtime_error;
-using std::max;
-using std::ceil;
-
+using namespace std;
 
 Simulation::Simulation(const cl::Context &clContext, const cl::Device &clDevice)
     : mCLContext(clContext),
@@ -79,6 +69,7 @@ const std::string* Simulation::KernelFileList()
 {
 	static const std::string kernels[] = 
 	{	
+		"parameters.hpp",
 		"predict_positions.cl",
 		"init_cells_old.cl",
 		"update_cells.cl",
@@ -123,20 +114,19 @@ bool Simulation::InitKernels()
 #endif // USE_DEBUG
 
     clflags << std::showpoint;
-    clflags << "-DSYSTEM_MIN_X="      << Params.xMin << "f ";
-    clflags << "-DSYSTEM_MAX_X="      << Params.xMax << "f ";
-    clflags << "-DSYSTEM_MIN_Y="      << Params.yMin << "f ";
-    clflags << "-DSYSTEM_MAX_Y="      << Params.yMax << "f ";
-    clflags << "-DSYSTEM_MIN_Z="      << Params.zMin << "f ";
-    clflags << "-DSYSTEM_MAX_Z="      << Params.zMax << "f ";
-	clflags << "-DGRID_RES="          << (int)Params.gridRes << " ";
+    //clflags << "-DSYSTEM_MIN_X="      << Params.xMin << "f ";
+    //clflags << "-DSYSTEM_MAX_X="      << Params.xMax << "f ";
+    //clflags << "-DSYSTEM_MIN_Y="      << Params.yMin << "f ";
+    //clflags << "-DSYSTEM_MAX_Y="      << Params.yMax << "f ";
+    //clflags << "-DSYSTEM_MIN_Z="      << Params.zMin << "f ";
+    //clflags << "-DSYSTEM_MAX_Z="      << Params.zMax << "f ";
+	//clflags << "-DGRID_RES="          << (int)Params.gridRes << " ";
+    //clflags << "-DTIMESTEP="          << Params.timeStepLength << "f ";
+    //clflags << "-DREST_DENSITY="      << Params.restDensity << "f ";
+	//clflags << "-DPBF_H="             << Params.h << "f ";
+    //clflags << "-DPBF_H_2="           << Params.h_2 << "f ";
+	//clflags << "-DEPSILON="           << Params.epsilon << "f ";
 	clflags << "-DGRID_SIZE="         << (int)(Params.gridRes * Params.gridRes * Params.gridRes) << " ";
-    clflags << "-DTIMESTEP="          << Params.timeStepLength << "f ";
-    clflags << "-DREST_DENSITY="      << Params.restDensity << "f ";
-	clflags << "-DPBF_H="             << Params.h << "f ";
-    clflags << "-DPBF_H_2="           << Params.h_2 << "f ";
-	clflags << "-DEPSILON="           << Params.epsilon << "f ";
-    clflags << "-DPOLY6_FACTOR="      << 315.0f / (64.0f * M_PI * pow(Params.h, 9)) << "f ";
     clflags << "-DPOLY6_FACTOR="      << 315.0f / (64.0f * M_PI * pow(Params.h, 9)) << "f ";
     clflags << "-DGRAD_SPIKY_FACTOR=" << 45.0f / (M_PI * pow(Params.h, 6)) << "f ";
 
@@ -182,6 +172,8 @@ void Simulation::InitBuffers()
     mDeltaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mDeltaVelocityBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mScalingFactorsBuffer  = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeScalingFactors);
+	mScalingFactorsBuffer  = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeScalingFactors);
+	mParameters            = cl::Buffer(mCLContext, CL_MEM_READ_ONLY,  sizeof(Params));
 
 
 	if (mQueue() != 0)
@@ -198,6 +190,10 @@ void Simulation::InitBuffers()
 
 	// Copy mVelocities (Host) => mVelocitiesBuffer (GPU)
 	mQueue.enqueueWriteBuffer(mVelocitiesBuffer, CL_TRUE, 0, mBufferSizeParticles, mVelocities);
+    mQueue.finish();
+
+	// Copy Params (Host) => mParams (GPU)
+	mQueue.enqueueWriteBuffer(mParameters, CL_TRUE, 0, sizeof(Params), &Params);
     mQueue.finish();
 }
 
@@ -228,95 +224,107 @@ void Simulation::InitCells()
 
 void Simulation::updatePositions()
 {
-    mKernels["updatePositions"].setArg(0, mPositionsBuffer);
-    mKernels["updatePositions"].setArg(1, mPredictedBuffer);
-    mKernels["updatePositions"].setArg(2, mVelocitiesBuffer);
-    mKernels["updatePositions"].setArg(3, mDeltaVelocityBuffer);
-    mKernels["updatePositions"].setArg(4, Params.particleCount);
+	int param = 0;
+    mKernels["updatePositions"].setArg(param++, mPositionsBuffer);
+    mKernels["updatePositions"].setArg(param++, mPredictedBuffer);
+    mKernels["updatePositions"].setArg(param++, mVelocitiesBuffer);
+    mKernels["updatePositions"].setArg(param++, mDeltaVelocityBuffer);
+    mKernels["updatePositions"].setArg(param++, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["updatePositions"], 0, mGlobalRange, mLocalRange);
 }
 
 void Simulation::updateVelocities()
 {
-    mKernels["updateVelocities"].setArg(0, mPositionsBuffer);
-    mKernels["updateVelocities"].setArg(1, mPredictedBuffer);
-    mKernels["updateVelocities"].setArg(2, mVelocitiesBuffer);
-    mKernels["updateVelocities"].setArg(3, Params.particleCount);
+	int param = 0;
+	mKernels["updateVelocities"].setArg(param++, mParameters);
+    mKernels["updateVelocities"].setArg(param++, mPositionsBuffer);
+    mKernels["updateVelocities"].setArg(param++, mPredictedBuffer);
+    mKernels["updateVelocities"].setArg(param++, mVelocitiesBuffer);
+    mKernels["updateVelocities"].setArg(param++, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["updateVelocities"], 0, mGlobalRange, mLocalRange);
 }
 
 void Simulation::applyVorticityAndViscosity()
 {
-    mKernels["applyVorticityAndViscosity"].setArg(0, mPredictedBuffer);
-    mKernels["applyVorticityAndViscosity"].setArg(1, mVelocitiesBuffer);
-    mKernels["applyVorticityAndViscosity"].setArg(2, mDeltaVelocityBuffer);
-    mKernels["applyVorticityAndViscosity"].setArg(3, mCellsBuffer);
-    mKernels["applyVorticityAndViscosity"].setArg(4, mParticlesListBuffer);
-    mKernels["applyVorticityAndViscosity"].setArg(5, Params.particleCount);
+	int param = 0;
+	mKernels["applyVorticityAndViscosity"].setArg(param++, mParameters);
+    mKernels["applyVorticityAndViscosity"].setArg(param++, mPredictedBuffer);
+    mKernels["applyVorticityAndViscosity"].setArg(param++, mVelocitiesBuffer);
+    mKernels["applyVorticityAndViscosity"].setArg(param++, mDeltaVelocityBuffer);
+    mKernels["applyVorticityAndViscosity"].setArg(param++, mCellsBuffer);
+    mKernels["applyVorticityAndViscosity"].setArg(param++, mParticlesListBuffer);
+    mKernels["applyVorticityAndViscosity"].setArg(param++, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["applyVorticityAndViscosity"], 0, mGlobalRange, mLocalRange);
 }
 
 void Simulation::predictPositions()
 {
-    mKernels["predictPositions"].setArg(0, mPositionsBuffer);
-    mKernels["predictPositions"].setArg(1, mPredictedBuffer);
-    mKernels["predictPositions"].setArg(2, mVelocitiesBuffer);
-    mKernels["predictPositions"].setArg(3, Params.particleCount);
+	int param = 0;
+	mKernels["predictPositions"].setArg(param++, mParameters);
+    mKernels["predictPositions"].setArg(param++, mPositionsBuffer);
+    mKernels["predictPositions"].setArg(param++, mPredictedBuffer);
+    mKernels["predictPositions"].setArg(param++, mVelocitiesBuffer);
+    mKernels["predictPositions"].setArg(param++, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["predictPositions"], 0, mGlobalRange, mLocalRange);
 }
 
 void Simulation::updatePredicted()
 {
-    mKernels["updatePredicted"].setArg(0, mPredictedBuffer);
-    mKernels["updatePredicted"].setArg(1, mDeltaBuffer);
-    mKernels["updatePredicted"].setArg(2, Params.particleCount);
+	int param = 0;
+    mKernels["updatePredicted"].setArg(param++, mPredictedBuffer);
+    mKernels["updatePredicted"].setArg(param++, mDeltaBuffer);
+    mKernels["updatePredicted"].setArg(param++, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["updatePredicted"], 0, mGlobalRange, mLocalRange);
 }
 
 void Simulation::computeDelta(cl_float waveGenerator)
 {
-    mKernels["computeDelta"].setArg(0, mDeltaBuffer);
-    mKernels["computeDelta"].setArg(1, mPredictedBuffer);
-    mKernels["computeDelta"].setArg(2, mScalingFactorsBuffer);
-    mKernels["computeDelta"].setArg(3, mCellsBuffer);
-    mKernels["computeDelta"].setArg(4, mParticlesListBuffer);
-    mKernels["computeDelta"].setArg(5, waveGenerator);
-    mKernels["computeDelta"].setArg(6, Params.particleCount);
+    int param = 0;
+	mKernels["computeDelta"].setArg(param++, mParameters);
+	mKernels["computeDelta"].setArg(param++, mDeltaBuffer);
+    mKernels["computeDelta"].setArg(param++, mPredictedBuffer);
+    mKernels["computeDelta"].setArg(param++, mScalingFactorsBuffer);
+    mKernels["computeDelta"].setArg(param++, mCellsBuffer);
+    mKernels["computeDelta"].setArg(param++, mParticlesListBuffer);
+    mKernels["computeDelta"].setArg(param++, waveGenerator);
+    mKernels["computeDelta"].setArg(param++, Params.particleCount);
 
-    mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0,
-                                mGlobalRange, mLocalRange);
+    mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, mGlobalRange, mLocalRange);
 }
 
 void Simulation::computeScaling()
 {
-    mKernels["computeScaling"].setArg(0, mPredictedBuffer);
-    mKernels["computeScaling"].setArg(1, mScalingFactorsBuffer);
-    mKernels["computeScaling"].setArg(2, mCellsBuffer);
-    mKernels["computeScaling"].setArg(3, mParticlesListBuffer);
-	mKernels["computeScaling"].setArg(4, Params.particleCount);
+	int param = 0;
+    mKernels["computeScaling"].setArg(param++, mParameters);
+	mKernels["computeScaling"].setArg(param++, mPredictedBuffer);
+    mKernels["computeScaling"].setArg(param++, mScalingFactorsBuffer);
+    mKernels["computeScaling"].setArg(param++, mCellsBuffer);
+    mKernels["computeScaling"].setArg(param++, mParticlesListBuffer);
+	mKernels["computeScaling"].setArg(param++, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["computeScaling"], 0, mGlobalRange, mLocalRange);
 }
 
 void Simulation::updateCells()
 {
-    mKernels["initCellsOld"].setArg(0, mCellsBuffer);
-    mKernels["initCellsOld"].setArg(1, mParticlesListBuffer);
-	mKernels["initCellsOld"].setArg(2, (cl_uint)(Params.gridRes * Params.gridRes * Params.gridRes));
-    mKernels["initCellsOld"].setArg(3, Params.particleCount);
-
+	int param = 0;
+    mKernels["initCellsOld"].setArg(param++, mCellsBuffer);
+    mKernels["initCellsOld"].setArg(param++, mParticlesListBuffer);
+	mKernels["initCellsOld"].setArg(param++, (cl_uint)(Params.gridRes * Params.gridRes * Params.gridRes));
+    mKernels["initCellsOld"].setArg(param++, Params.particleCount);
     mQueue.enqueueNDRangeKernel(mKernels["initCellsOld"], 0, cl::NDRange(max(mBufferSizeParticlesList, mBufferSizeCells)), mLocalRange);
 
-    mKernels["updateCells"].setArg(0, mPredictedBuffer);
-    mKernels["updateCells"].setArg(1, mCellsBuffer);
-    mKernels["updateCells"].setArg(2, mParticlesListBuffer);
-    mKernels["updateCells"].setArg(3, Params.particleCount);
-
+	param = 0;
+    mKernels["updateCells"].setArg(param++, mParameters);
+    mKernels["updateCells"].setArg(param++, mPredictedBuffer);
+    mKernels["updateCells"].setArg(param++, mCellsBuffer);
+    mKernels["updateCells"].setArg(param++, mParticlesListBuffer);
+    mKernels["updateCells"].setArg(param++, Params.particleCount);
     mQueue.enqueueNDRangeKernel(mKernels["updateCells"], 0, mGlobalRange, mLocalRange);
 }
 
