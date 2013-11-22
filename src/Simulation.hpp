@@ -118,6 +118,7 @@ public:
     cl::Buffer mScalingFactorsBuffer;
     cl::Buffer mDeltaBuffer;
     cl::Buffer mDeltaVelocityBuffer;
+    cl::Buffer mOmegaBuffer;
 	cl::Buffer mParameters;
 
     // Lengths of each cell in each direction
@@ -133,7 +134,8 @@ public:
     void updateCells();
     void updatePositions();
     void updateVelocities();
-    void applyVorticityAndViscosity();
+    void applyViscosity();
+    void applyVorticity();
     void predictPositions();
     void updatePredicted();
     void computeScaling();

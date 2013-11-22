@@ -9,18 +9,23 @@ YMax                  1.0
 ZMin                  0.0
 ZMax                  1.0
 waveGenAmp            0.3
-waveGenFreq           0.25
+waveGenFreq           0.20
 waveGenDuty           4.0
 
-TimeStep              0.019
+TimeStep              0.018
 SubSteps              1
 SimIterations         3
 GridRes               30
 RestDensity           20000
+garvity               0.5
 Epsilon               2.0
 
-vorticityFactor       0.000005
-viscosityFactor       0.3
+#vorticityFactor       0.000001
+vorticityFactor        0.0
+viscosityFactor        0.03
 
-surfaceTenstionK      0.00000001
-surfaceTenstionDist   0.7
+# surfaceTenstionK      0.00007
+# surfaceTenstionDist   0.1
+
+surfaceTenstionK      0.0000000000001
+surfaceTenstionDist   0.9

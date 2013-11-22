@@ -147,12 +147,13 @@ void Runner::run(Simulation& simulation, CVisual& renderer)
 			}
 
 			// Reset grid
-			#if defined(USE_LINKEDCELL)
-				simulation.InitCells();
-			#endif // USE_LINKEDCELL
+			simulation.InitCells();
 
 			// Init kernels
 			KernelBuildOk = simulation.InitKernels();
+
+			// Reset wavee
+			waveTime = 0.0f;
 
 			// Turn off sim reset request
 			renderer.UICmd_ResetSimulation = false;
@@ -176,6 +177,11 @@ void Runner::run(Simulation& simulation, CVisual& renderer)
 			if (!renderer.UICmd_PauseSimulation)
 				waveTime += Params.timeStep;
         }
+		else
+		{
+			waveTime = 0.0f;
+		}
+
 
 		// Sub frames
 		for (cl_uint i = 0; i < Params.subSteps; i++)

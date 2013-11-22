@@ -111,12 +111,11 @@ __kernel void computeDelta(__constant struct Parameters* Params,
                             float poly6_r = POLY6_FACTOR * (Params->h_2 - r_length_2) * (Params->h_2 - r_length_2) * (Params->h_2 - r_length_2);
 
                             // equation (13)
-                            const float q_2 = pow(0.7f * Params->h, 2);
+                            const float q_2 = pow(Params->surfaceTenstionDist * Params->h, 2);
                             float poly6_q = POLY6_FACTOR * (Params->h_2 - q_2) * (Params->h_2 - q_2) * (Params->h_2 - q_2);
-                            const float k = 0.00000001f;
                             const uint n = 4;
 
-                            float s_corr = -1.0f * k * pow(poly6_r / poly6_q, n);
+                            float s_corr = -1.0f * Params->surfaceTenstionK * pow(poly6_r / poly6_q, n);
 
                             // Sum for delta p of scaling factors and grad spiky
                             // in equation (12)
@@ -134,7 +133,7 @@ __kernel void computeDelta(__constant struct Parameters* Params,
     // equation (12)
     float4 delta_p = sum / Params->restDensity;
 
-    float randDist = 0.003f;
+    float randDist = 0.005f;
     float4 future = predicted[i] + delta_p;
 
     // Prime the random... DO NOT REMOVE

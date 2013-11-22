@@ -41,7 +41,6 @@ Simulation::~Simulation()
     delete[] mVelocities;
 }
 
-
 void Simulation::CreateParticles()
 {
     // Compute particle count per axis
@@ -77,7 +76,8 @@ const std::string* Simulation::KernelFileList()
 		"compute_delta.cl",
 		"update_predicted.cl",
 		"update_velocities.cl",
-		"apply_vorticity_and_viscosity.cl",
+        "apply_viscosity.cl",
+        "apply_vorticity.cl",
 		"update_positions.cl",
 		""
 	};
@@ -171,6 +171,7 @@ void Simulation::InitBuffers()
     mVelocitiesBuffer      = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mDeltaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mDeltaVelocityBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
+    mOmegaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mScalingFactorsBuffer  = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeScalingFactors);
 	mScalingFactorsBuffer  = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeScalingFactors);
 	mParameters            = cl::Buffer(mCLContext, CL_MEM_READ_ONLY,  sizeof(Params));
@@ -246,18 +247,33 @@ void Simulation::updateVelocities()
     mQueue.enqueueNDRangeKernel(mKernels["updateVelocities"], 0, mGlobalRange, mLocalRange);
 }
 
-void Simulation::applyVorticityAndViscosity()
+void Simulation::applyViscosity()
 {
 	int param = 0;
-	mKernels["applyVorticityAndViscosity"].setArg(param++, mParameters);
-    mKernels["applyVorticityAndViscosity"].setArg(param++, mPredictedBuffer);
-    mKernels["applyVorticityAndViscosity"].setArg(param++, mVelocitiesBuffer);
-    mKernels["applyVorticityAndViscosity"].setArg(param++, mDeltaVelocityBuffer);
-    mKernels["applyVorticityAndViscosity"].setArg(param++, mCellsBuffer);
-    mKernels["applyVorticityAndViscosity"].setArg(param++, mParticlesListBuffer);
-    mKernels["applyVorticityAndViscosity"].setArg(param++, Params.particleCount);
+	mKernels["applyViscosity"].setArg(param++, mParameters);
+    mKernels["applyViscosity"].setArg(param++, mPredictedBuffer);
+    mKernels["applyViscosity"].setArg(param++, mVelocitiesBuffer);
+    mKernels["applyViscosity"].setArg(param++, mDeltaVelocityBuffer);
+    mKernels["applyViscosity"].setArg(param++, mOmegaBuffer);
+    mKernels["applyViscosity"].setArg(param++, mCellsBuffer);
+    mKernels["applyViscosity"].setArg(param++, mParticlesListBuffer);
+    mKernels["applyViscosity"].setArg(param++, Params.particleCount);
 
-    mQueue.enqueueNDRangeKernel(mKernels["applyVorticityAndViscosity"], 0, mGlobalRange, mLocalRange);
+    mQueue.enqueueNDRangeKernel(mKernels["applyViscosity"], 0, mGlobalRange, mLocalRange);
+}
+
+void Simulation::applyVorticity()
+{
+    int param = 0;
+	mKernels["applyVorticity"].setArg(param++, mParameters);
+    mKernels["applyVorticity"].setArg(param++, mPredictedBuffer);
+    mKernels["applyVorticity"].setArg(param++, mDeltaVelocityBuffer);
+    mKernels["applyVorticity"].setArg(param++, mOmegaBuffer);
+    mKernels["applyVorticity"].setArg(param++, mCellsBuffer);
+    mKernels["applyVorticity"].setArg(param++, mParticlesListBuffer);
+    mKernels["applyVorticity"].setArg(param++, Params.particleCount);
+
+    mQueue.enqueueNDRangeKernel(mKernels["applyVorticity"], 0, mGlobalRange, mLocalRange);
 }
 
 void Simulation::predictPositions()
@@ -365,7 +381,8 @@ void Simulation::Step(bool bPauseSim, cl_float waveGenerator)
     this->updateVelocities();
 
 	// Update vorticity and Viscosity
-	this->applyVorticityAndViscosity();
+    this->applyViscosity();
+    this->applyVorticity();
 
 	// Update particle postions
 	if (!bPauseSim)

@@ -18,6 +18,8 @@ using namespace std;
 #define isnan(x) _isnan(x)
 #endif
 
+static float displayscale = 1.0f;
+
 CVisual::CVisual (const int width, const int height)
     : UICmd_GenerateWaves(false),
       UICmd_ResetSimulation(false),
@@ -47,38 +49,42 @@ CVisual::~CVisual ()
     glfwTerminate();
 }
 
-void CVisual::KeyEvent(GLFWwindow* window,int key,int scancode,int action, int mods) 
+void MouseButtonCB( GLFWwindow *, int button , int action , int mods)
 {
-    // ignore unused parameters, maybe just remove them?
-    (void)window;
-    (void)scancode;
     (void)mods;
-
-	// Ignore none-press events
-	if (action != GLFW_PRESS)
-		return;
-
-	// Process key
-	switch ((char)key)
-	{
-		case 'G':
-		    UICmd_GenerateWaves = !UICmd_GenerateWaves;
-			break;
-		case 'P':
-		    UICmd_PauseSimulation = !UICmd_PauseSimulation;
-			break;
-		case 'R':
-		    UICmd_ResetSimulation = true;
-			break;
-	}
+    TwEventMouseButtonGLFW( button , action );
 }
 
-static void StaticKeyEvent(GLFWwindow* window,int key,int scancode,int action, int mods) 
+void MousePosCB(GLFWwindow *, double x , double y)
 {
-	CVisual* pThis = (CVisual*)glfwGetWindowUserPointer(window);
-	
-	if (pThis != NULL)
-		pThis->KeyEvent(window, key, scancode, action, mods);
+    TwEventMousePosGLFW( (int)(x*displayscale), (int)(y*displayscale) );
+}
+
+void KeyFunCB( GLFWwindow *, int key, int scancode, int action, int mods)
+{
+    (void)scancode;
+    (void)mods;
+    TwEventKeyGLFW( key , action );
+    TwEventCharGLFW( key  , action );
+}
+
+void MouseScrollCB(  GLFWwindow *, double x , double y )
+{
+    (void)x;
+    TwEventMouseWheelGLFW( (int)y );
+}
+
+void TW_CALL PlayPause(void *clientData)
+{
+    ((CVisual *)clientData)->UICmd_PauseSimulation = !((CVisual *)clientData)->UICmd_PauseSimulation;
+}
+void TW_CALL Reset(void *clientData)
+{
+    ((CVisual *)clientData)->UICmd_ResetSimulation = true;
+}
+void TW_CALL GenerateWaves(void *clientData)
+{
+    ((CVisual *)clientData)->UICmd_GenerateWaves = !((CVisual *)clientData)->UICmd_GenerateWaves;
 }
 
 void CVisual::initWindow(const string windowname)
@@ -105,8 +111,21 @@ void CVisual::initWindow(const string windowname)
     // Make the window's context current
     glfwMakeContextCurrent(mWindow);
     glfwSetInputMode(mWindow, GLFW_STICKY_KEYS, GL_TRUE);
-	glfwSetWindowUserPointer(mWindow, this);
-	glfwSetKeyCallback(mWindow, StaticKeyEvent);
+    glfwSetWindowUserPointer(mWindow, this);
+
+    /* Set GLFW event callbacks */
+    // Currently AntTweakBar DOES NOT work out of the box with GLFW3.
+    // For now custom event callbacks have to be implemented.
+    // see: http://blog-imgs-37.fc2.com/s/c/h/schrlab/TwGLFW_cpp.txt
+    // - Directly redirect GLFW mouse button events to AntTweakBar
+    glfwSetMouseButtonCallback( mWindow , MouseButtonCB );
+    // - Directly redirect GLFW mouse position events to AntTweakBar
+    glfwSetCursorPosCallback( mWindow , MousePosCB);
+    // - Directly redirect GLFW mouse wheel events to AntTweakBar
+    glfwSetScrollCallback( mWindow , MouseScrollCB );
+    // - Directly redirect GLFW key events to AntTweakBar
+    glfwSetKeyCallback(mWindow , KeyFunCB);
+
 
 #ifdef _WINDOWS
     glewInit();
@@ -119,6 +138,20 @@ void CVisual::initWindow(const string windowname)
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
     glDepthFunc(GL_LEQUAL);
+
+    TwInit(TW_OPENGL, NULL);
+    int fbwidth , fbheight;
+    glfwGetFramebufferSize( mWindow , &fbwidth , &fbheight );
+    TwWindowSize(fbwidth, fbheight);
+
+    displayscale = (float)fbwidth / (float)mWidth;
+
+    tweakBar = TwNewBar("PBFTweak");
+    TwAddButton(tweakBar, "Play/Pause" , PlayPause , this , " group=Controls ");
+    TwAddButton(tweakBar, "Reset" , Reset , this , " group=Controls ");
+    TwAddButton(tweakBar, "Generate waves" , GenerateWaves , this , " group=Controls ");
+    // static unsigned int numParticles = 10000;
+    // TwAddVarRW(tweakBar, "# of particles", TW_TYPE_UINT32, &numParticles, " group=Parameters max=100000 min=1000 step=100 ");
 }
 
 glm::vec3 CVisual::resolveCamPosition(void) const
@@ -159,20 +192,21 @@ glm::mat4 CVisual::calcLookAtMatrix(const glm::vec3 &cameraPt, const glm::vec3 &
     return rotMat * transMat;
 }
 
-GLvoid CVisual::initSystemVisual(Simulation& sim)
+GLvoid CVisual::initSystemVisual(Simulation &sim)
 {
-	// Store simulation object
-	mSimulation = &sim;
+    // Store simulation object
+    mSimulation = &sim;
 
-	// Compute background size
-	float sizeX = (Params.xMax - Params.xMin) * 10.0f;
+    // Compute background size
+    float sizeX = (Params.xMax - Params.xMin) * 10.0f;
     float sizeY = (Params.yMax - Params.yMin) * 10.0f;
     float sizeZ = (Params.zMax - Params.zMin) * 10.0f;
 
-	// Build background VBO
+    // Build background VBO
     const GLfloat systemVertices[] =
-    {   //   X,           Y,           Z,           Nx,   Ny,   Nz,
-		-sizeX, Params.yMin, Params.zMin, 1.0f,   0.0f, 0.0f, 1.0f, 0.0f,
+    {
+        //   X,           Y,           Z,           Nx,   Ny,   Nz,
+        -sizeX, Params.yMin, Params.zMin, 1.0f,   0.0f, 0.0f, 1.0f, 0.0f,
         +sizeX, Params.yMin, Params.zMin, 1.0f,   0.0f, 0.0f, 1.0f, 0.0f,
         +sizeX,       sizeY, Params.zMin, 1.0f,   0.0f, 0.0f, 1.0f, 0.0f,
         -sizeX,       sizeY, Params.zMin, 1.0f,   0.0f, 0.0f, 1.0f, 0.0f,
@@ -183,13 +217,13 @@ GLvoid CVisual::initSystemVisual(Simulation& sim)
         -sizeX, Params.yMin,       sizeZ, 1.0f,   0.0f, 1.0f, 0.0f, 0.0f,
     };
 
-	// Submit Background VBO
+    // Submit Background VBO
     glGenBuffers(1, &mSystemBufferID);
     glBindBuffer(GL_ARRAY_BUFFER, mSystemBufferID);
     glBufferData(GL_ARRAY_BUFFER, sizeof(systemVertices), systemVertices, GL_STATIC_DRAW);
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-	// Setup Texture
+    // Setup Texture
     glGenTextures(1, &mWallTexture);
     glBindTexture(GL_TEXTURE_2D, mWallTexture);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -204,7 +238,7 @@ GLvoid CVisual::initSystemVisual(Simulation& sim)
     SOIL_free_image_data(image);
     glBindTexture(GL_TEXTURE_2D, 0);
 
-	// Load background drawing shader
+    // Load background drawing shader
     mProgramID = this->loadShaders(getPathForShader("shadervertex.glsl"),
                                    getPathForShader("shaderfragment.glsl"));
 }
@@ -229,10 +263,10 @@ GLvoid CVisual::initParticlesVisual()
 
     glm::mat4 cameraToClipMatrix = glm::perspective(45.0f, mWidth / (GLfloat) mHeight, 0.1f, 1000.0f);
     glm::mat4 modelToWorldMatrix = glm::translate(glm::mat4(1.0f),
-                                       glm::vec3(
-                                           -(Params.xMax - Params.xMin) / 2.0f,
-                                           -(Params.yMax - Params.yMin) / 2.0f,
-                                           -(Params.zMax - Params.zMin) / 2.0f));
+                                   glm::vec3(
+                                       -(Params.xMax - Params.xMin) / 2.0f,
+                                       -(Params.yMax - Params.yMin) / 2.0f,
+                                       -(Params.zMax - Params.zMin) / 2.0f));
 
     //mCamSphere.z = -(mSizeZmax - mSizeZmin) * 2.0f;
 
@@ -302,7 +336,7 @@ GLvoid CVisual::visualizeParticles(void)
     glUseProgram(mParticleProgramID);
     glUniformMatrix4fv(mParticleWorldToCameraMatrixUnif, 1, GL_FALSE, glm::value_ptr(lookAtMat));
 
-	glBindBuffer(GL_ARRAY_BUFFER, mSimulation->mSharingBufferID);
+    glBindBuffer(GL_ARRAY_BUFFER, mSimulation->mSharingBufferID);
     glEnableVertexAttribArray(mParticlePositionAttrib);
     glVertexAttribPointer(mParticlePositionAttrib, 4, GL_FLOAT, GL_FALSE, 0, 0);
     glDrawArrays(GL_POINTS, 0, Params.particleCount);
@@ -312,6 +346,8 @@ GLvoid CVisual::visualizeParticles(void)
     glUnmapBuffer(GL_ARRAY_BUFFER);
 
     glUseProgram(0);
+
+    TwDraw();
 
     glfwSwapBuffers(mWindow);
 }

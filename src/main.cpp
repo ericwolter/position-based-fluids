@@ -165,6 +165,8 @@ int main()
         Runner runner;
         runner.run(simulation, renderer);
 
+
+
     }
     catch (const cl::Error &ecl)
     { 
