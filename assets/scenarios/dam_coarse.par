@@ -1,5 +1,5 @@
 ParticleCount         20000
-SetupSpacing          0.75
+SetupSpacing          0.55
 ResetSimOnChange      0
 
 XMin                  0.0
@@ -12,20 +12,23 @@ waveGenAmp            0.3
 waveGenFreq           0.20
 waveGenDuty           4.0
 
-TimeStep              0.018
+TimeStep              0.020
 SubSteps              1
 SimIterations         3
 GridRes               30
-RestDensity           20000
+RestDensity           100000
 garvity               0.5
-Epsilon               2.0
+Epsilon               0.1
 
 #vorticityFactor       0.000001
-vorticityFactor        0.0
-viscosityFactor        0.03
+vorticityFactor        0.0000001
+viscosityFactor        0.1
 
-# surfaceTenstionK      0.00007
-# surfaceTenstionDist   0.1
+surfaceTenstionK      0.0001
+surfaceTenstionDist   0.1
 
-surfaceTenstionK      0.0000000000001
-surfaceTenstionDist   0.9
+#surfaceTenstionK      0.00005
+#surfaceTenstionDist   0.00000001
+
+# surfaceTenstionK      0.0000000000001
+# surfaceTenstionDist   0.9

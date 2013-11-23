@@ -77,9 +77,12 @@ __kernel void computeDelta(__constant struct Parameters* Params,
     int3 current_cell = convert_int3(predicted[i].xyz * (float3)(Params->gridRes));
 
     // Sum of lambdas
-    float4 sum = (float4) 0.0f;
+    float4 sum = (float4)0.0f;
+    
+    // Debug Stats...
     float minR = 100.0f;
-    int Ncount = 0;
+    int NeighborCount = 0;
+    int ScanCount = 0;
 
     for (int x = -1; x <= 1; ++x)
     {
@@ -98,10 +101,11 @@ __kernel void computeDelta(__constant struct Parameters* Params,
                         float4 r = predicted[i] - predicted[next];
                         float r_length_2 = r.x * r.x + r.y * r.y + r.z * r.z;
                         minR = min(minR, sqrt(r_length_2));
+                        ScanCount++;
 
                         if (r_length_2 > 0.0f && r_length_2 < Params->h_2)
                         {
-                            Ncount++;
+                            NeighborCount++;
                             float r_length = sqrt(r_length_2);
                             float4 gradient_spiky = -1.0f * r / (r_length)
                                                     * GRAD_SPIKY_FACTOR
@@ -153,7 +157,8 @@ __kernel void computeDelta(__constant struct Parameters* Params,
 
     // #if defined(USE_DEBUG)
     //printf("compute_delta: result: i: %d (N=%d)\ndelta: [%f,%f,%f,%f]\n",
-    //      i, Ncount,
+    //      i, NeighborCount,
     //      delta[i].x, delta[i].y, delta[i].z, minR);
+    //printf("Particle i=%d: Neighbors=%d/%d ClosestParticle=%fh\n", i, NeighborCount, ScanCount, minR/Params->h);
     // #endif
 }

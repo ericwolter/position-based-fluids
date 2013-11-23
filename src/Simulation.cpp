@@ -137,6 +137,12 @@ bool Simulation::InitKernels()
 
 	// Build kernels table
 	mKernels = clSetup.createKernelsMap(program);
+
+	// Copy Params (Host) => mParams (GPU)
+	mQueue = cl::CommandQueue(mCLContext, mCLDevice);
+	mQueue.enqueueWriteBuffer(mParameters, CL_TRUE, 0, sizeof(Params), &Params);
+    mQueue.finish();
+
 	return true;
 }
 
@@ -191,10 +197,6 @@ void Simulation::InitBuffers()
 
 	// Copy mVelocities (Host) => mVelocitiesBuffer (GPU)
 	mQueue.enqueueWriteBuffer(mVelocitiesBuffer, CL_TRUE, 0, mBufferSizeParticles, mVelocities);
-    mQueue.finish();
-
-	// Copy Params (Host) => mParams (GPU)
-	mQueue.enqueueWriteBuffer(mParameters, CL_TRUE, 0, sizeof(Params), &Params);
     mQueue.finish();
 }
 
