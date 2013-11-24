@@ -20,6 +20,7 @@ set(SOURCE
 	Simulation.cpp
 	DataLoader.cpp
 	ParamUtils.cpp
+	OCLPerfMon.cpp
 )
 
 set(HEADER
@@ -30,6 +31,7 @@ set(HEADER
 	DataLoader.hpp
 	Parameters.hpp  
 	ParamUtils.hpp
+	OCLPerfMon.h
 )
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)

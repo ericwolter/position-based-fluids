@@ -150,6 +150,10 @@ void CVisual::initWindow(const string windowname)
     TwAddButton(tweakBar, "Play/Pause" , PlayPause , this , " group=Controls ");
     TwAddButton(tweakBar, "Reset" , Reset , this , " group=Controls ");
     TwAddButton(tweakBar, "Generate waves" , GenerateWaves , this , " group=Controls ");
+	
+	// Create bar
+	TwAddVarRO(tweakBar, "Total sim time", TW_TYPE_DOUBLE, &mTotalSimTime, "precision=2 group=Stats");
+
     // static unsigned int numParticles = 10000;
     // TwAddVarRW(tweakBar, "# of particles", TW_TYPE_UINT32, &numParticles, " group=Parameters max=100000 min=1000 step=100 ");
 }
@@ -347,9 +351,41 @@ GLvoid CVisual::visualizeParticles(void)
 
     glUseProgram(0);
 
-    TwDraw();
+	DrawTweekBar();
 
     glfwSwapBuffers(mWindow);
+}
+
+void CVisual::DrawTweekBar()
+{
+	// Update AntTweekBar
+	mTotalSimTime = 0;
+	for (int i = 0; i < mSimulation->PerfData.Trackers.size(); i++)
+	{
+		PM_PERFORMANCE_TRACKER* pTracker = mSimulation->PerfData.Trackers[i];
+
+		// Check if we need to create Bar
+		if (pTracker->Tag == 0)
+		{
+			// Remember that bar was created
+			pTracker->Tag = 1;
+
+			// Create bar
+			TwAddVarRO(tweakBar, pTracker->eventName.c_str(), TW_TYPE_DOUBLE, &pTracker->total_time, "precision=2 group=Stats");
+
+			// Make sure Stats group is folded
+			TwDefine(" PBFTweak/Stats opened=false ");
+		}
+
+		// Accumulate execution time
+		mTotalSimTime += pTracker->total_time;
+	}
+
+	// Make sure bar refresh it's values
+	TwRefreshBar(tweakBar);
+
+	// Actual draw 
+	TwDraw();
 }
 
 void CVisual::checkInput()

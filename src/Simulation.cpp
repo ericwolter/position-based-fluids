@@ -139,7 +139,7 @@ bool Simulation::InitKernels()
 	mKernels = clSetup.createKernelsMap(program);
 
 	// Copy Params (Host) => mParams (GPU)
-	mQueue = cl::CommandQueue(mCLContext, mCLDevice);
+	mQueue = cl::CommandQueue(mCLContext, mCLDevice, CL_QUEUE_PROFILING_ENABLE);
 	mQueue.enqueueWriteBuffer(mParameters, CL_TRUE, 0, sizeof(Params), &Params);
     mQueue.finish();
 
@@ -234,7 +234,7 @@ void Simulation::updatePositions()
     mKernels["updatePositions"].setArg(param++, mDeltaVelocityBuffer);
     mKernels["updatePositions"].setArg(param++, Params.particleCount);
 
-    mQueue.enqueueNDRangeKernel(mKernels["updatePositions"], 0, mGlobalRange, mLocalRange);
+	mQueue.enqueueNDRangeKernel(mKernels["updatePositions"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updatePositions"));
 }
 
 void Simulation::updateVelocities()
@@ -246,7 +246,7 @@ void Simulation::updateVelocities()
     mKernels["updateVelocities"].setArg(param++, mVelocitiesBuffer);
     mKernels["updateVelocities"].setArg(param++, Params.particleCount);
 
-    mQueue.enqueueNDRangeKernel(mKernels["updateVelocities"], 0, mGlobalRange, mLocalRange);
+    mQueue.enqueueNDRangeKernel(mKernels["updateVelocities"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updateVelocities"));
 }
 
 void Simulation::applyViscosity()
@@ -261,7 +261,7 @@ void Simulation::applyViscosity()
     mKernels["applyViscosity"].setArg(param++, mParticlesListBuffer);
     mKernels["applyViscosity"].setArg(param++, Params.particleCount);
 
-    mQueue.enqueueNDRangeKernel(mKernels["applyViscosity"], 0, mGlobalRange, mLocalRange);
+    mQueue.enqueueNDRangeKernel(mKernels["applyViscosity"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("applyViscosity"));
 }
 
 void Simulation::applyVorticity()
@@ -275,7 +275,7 @@ void Simulation::applyVorticity()
     mKernels["applyVorticity"].setArg(param++, mParticlesListBuffer);
     mKernels["applyVorticity"].setArg(param++, Params.particleCount);
 
-    mQueue.enqueueNDRangeKernel(mKernels["applyVorticity"], 0, mGlobalRange, mLocalRange);
+    mQueue.enqueueNDRangeKernel(mKernels["applyVorticity"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("applyVorticity"));
 }
 
 void Simulation::predictPositions()
@@ -287,20 +287,20 @@ void Simulation::predictPositions()
     mKernels["predictPositions"].setArg(param++, mVelocitiesBuffer);
     mKernels["predictPositions"].setArg(param++, Params.particleCount);
 
-    mQueue.enqueueNDRangeKernel(mKernels["predictPositions"], 0, mGlobalRange, mLocalRange);
+    mQueue.enqueueNDRangeKernel(mKernels["predictPositions"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("predictPositions"));
 }
 
-void Simulation::updatePredicted()
+void Simulation::updatePredicted(int iterationIndex)
 {
 	int param = 0;
     mKernels["updatePredicted"].setArg(param++, mPredictedBuffer);
     mKernels["updatePredicted"].setArg(param++, mDeltaBuffer);
     mKernels["updatePredicted"].setArg(param++, Params.particleCount);
 
-    mQueue.enqueueNDRangeKernel(mKernels["updatePredicted"], 0, mGlobalRange, mLocalRange);
+	mQueue.enqueueNDRangeKernel(mKernels["updatePredicted"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updatePredicted", iterationIndex));
 }
 
-void Simulation::computeDelta(cl_float waveGenerator)
+void Simulation::computeDelta(int iterationIndex, cl_float waveGenerator)
 {
     int param = 0;
 	mKernels["computeDelta"].setArg(param++, mParameters);
@@ -312,10 +312,10 @@ void Simulation::computeDelta(cl_float waveGenerator)
     mKernels["computeDelta"].setArg(param++, waveGenerator);
     mKernels["computeDelta"].setArg(param++, Params.particleCount);
 
-    mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, mGlobalRange, mLocalRange);
+	mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
 }
 
-void Simulation::computeScaling()
+void Simulation::computeScaling(int iterationIndex)
 {
 	int param = 0;
     mKernels["computeScaling"].setArg(param++, mParameters);
@@ -325,7 +325,7 @@ void Simulation::computeScaling()
     mKernels["computeScaling"].setArg(param++, mParticlesListBuffer);
 	mKernels["computeScaling"].setArg(param++, Params.particleCount);
 
-    mQueue.enqueueNDRangeKernel(mKernels["computeScaling"], 0, mGlobalRange, mLocalRange);
+	mQueue.enqueueNDRangeKernel(mKernels["computeScaling"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeScaling", iterationIndex));
 }
 
 void Simulation::updateCells()
@@ -335,7 +335,7 @@ void Simulation::updateCells()
     mKernels["initCellsOld"].setArg(param++, mParticlesListBuffer);
 	mKernels["initCellsOld"].setArg(param++, (cl_uint)(Params.gridRes * Params.gridRes * Params.gridRes));
     mKernels["initCellsOld"].setArg(param++, Params.particleCount);
-    mQueue.enqueueNDRangeKernel(mKernels["initCellsOld"], 0, cl::NDRange(max(mBufferSizeParticlesList, mBufferSizeCells)), mLocalRange);
+    mQueue.enqueueNDRangeKernel(mKernels["initCellsOld"], 0, cl::NDRange(max(mBufferSizeParticlesList, mBufferSizeCells)), mLocalRange, NULL, PerfData.GetTrackerEvent("initCells"));
 
 	param = 0;
     mKernels["updateCells"].setArg(param++, mParameters);
@@ -343,7 +343,7 @@ void Simulation::updateCells()
     mKernels["updateCells"].setArg(param++, mCellsBuffer);
     mKernels["updateCells"].setArg(param++, mParticlesListBuffer);
     mKernels["updateCells"].setArg(param++, Params.particleCount);
-    mQueue.enqueueNDRangeKernel(mKernels["updateCells"], 0, mGlobalRange, mLocalRange);
+    mQueue.enqueueNDRangeKernel(mKernels["updateCells"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updateCells"));
 }
 
 void Simulation::Step(bool bPauseSim, cl_float waveGenerator)
@@ -364,19 +364,19 @@ void Simulation::Step(bool bPauseSim, cl_float waveGenerator)
 	for (unsigned int i = 0; i < Params.simIterations; ++i)
     {
 		// Compute scaling value
-        this->computeScaling();
+        this->computeScaling(i);
         /*mQueue.enqueueReadBuffer(mPredictedBuffer, CL_TRUE, 0, mBufferSizeParticles, mPredictions);
         if (mQueue.finish() != CL_SUCCESS)
         	_asm nop;*/
 
 		// Compute position delta
-        this->computeDelta(waveGenerator);
+        this->computeDelta(i, waveGenerator);
         /*mQueue.enqueueReadBuffer(mDeltaBuffer, CL_TRUE, 0, mBufferSizeParticles, mDeltas);
         if (mQueue.finish() != CL_SUCCESS)
         	_asm nop;*/
 
 		// Update predicted position
-        this->updatePredicted();
+        this->updatePredicted(i);
     }
 
 	// Recompute velocities
@@ -393,6 +393,9 @@ void Simulation::Step(bool bPauseSim, cl_float waveGenerator)
 	// Release OpenGL shared object, allowing openGL do to it's thing...
     mQueue.enqueueReleaseGLObjects(&sharedBuffers);
     mQueue.finish(); 
+
+	// Collect performance data
+	PerfData.UpdateTimings();
 }
 
 void Simulation::dumpData( cl_float4 * (&positions), cl_float4 * (&velocities) )

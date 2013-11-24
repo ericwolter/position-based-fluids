@@ -13,6 +13,7 @@
 #include "hesp.hpp"
 #include "Parameters.hpp"
 #include "Particle.hpp"
+#include "OCLPerfMon.h"
 
 #include <GLFW/glfw3.h>
 
@@ -105,9 +106,6 @@ public:
     cl_float4 *mVelocities;
     cl_float4 *mPredictions;
     cl_float4 *mDeltas;
-#if !defined(USE_LINKEDCELL)
-    cl_uint2 *mRadixCells;
-#endif // USE_LINKEDCELL
 
     // The device memory buffers holding the simulation data
     cl::Buffer mCellsBuffer;
@@ -130,6 +128,9 @@ public:
 
     GLuint mSharingBufferID;
 
+	// Performance measurement
+	OCLPerfMon PerfData;
+
     // Private member functions
     void updateCells();
     void updatePositions();
@@ -137,12 +138,9 @@ public:
     void applyViscosity();
     void applyVorticity();
     void predictPositions();
-    void updatePredicted();
-    void computeScaling();
-    void computeDelta(cl_float waveGenerator);
-#if !defined(USE_LINKEDCELL)
-    void radix(void);
-#endif // USE_LINKEDCELL
+    void updatePredicted(int iterationIndex);
+    void computeScaling(int iterationIndex);
+    void computeDelta(int iterationIndex, cl_float waveGenerator);
 
 };
 

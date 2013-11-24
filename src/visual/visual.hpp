@@ -69,6 +69,8 @@ public:
      */
     void checkInput();
 
+	void DrawTweekBar();
+
     glm::vec3 resolveCamPosition(void) const;
 
     glm::mat4 calcLookAtMatrix(const glm::vec3 &cameraPt, const glm::vec3 &lookPt, const glm::vec3 &upPt) const;
@@ -87,7 +89,10 @@ private:
     GLuint mParticleProgramID;
 
     GLFWwindow *mWindow;
-    TwBar *tweakBar;
+    
+	// Tweakbar
+	TwBar *tweakBar;
+	double mTotalSimTime;
 
     // System sizes
     GLuint mSystemBufferID;
