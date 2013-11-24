@@ -6,7 +6,7 @@ struct Parameters
 	int  resetSimOnChange;
 
 	// Scene related
-	int  particleCount;
+	unsigned int  particleCount;
 	float xMin;
 	float xMax;
 	float yMin;
@@ -20,8 +20,8 @@ struct Parameters
 
 	// Simulation consts
 	float timeStep;
-	int   simIterations;
-	int   subSteps;
+	unsigned int   simIterations;
+	unsigned int   subSteps;
 	int   gridRes;
 	float restDensity;
 	float epsilon;
