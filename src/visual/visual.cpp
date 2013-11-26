@@ -281,13 +281,7 @@ GLvoid CVisual::initParticlesVisual(bool blood)
     mParticleModelToWorldMatrixUnif  = glGetUniformLocation(mParticleProgramID, "modelToWorldMatrix");
 
     glm::mat4 cameraToClipMatrix = glm::perspective(45.0f, mWidth / (GLfloat) mHeight, 0.1f, 1000.0f);
-    glm::mat4 modelToWorldMatrix = glm::translate(glm::mat4(1.0f),
-                                   glm::vec3(
-                                       -(Params.xMax - Params.xMin) / 2.0f,
-                                       -(Params.yMax - Params.yMin) / 2.0f,
-                                       -(Params.zMax - Params.zMin) / 2.0f));
-
-    //mCamSphere.z = -(mSizeZmax - mSizeZmin) * 2.0f;
+    glm::mat4 modelToWorldMatrix = glm::translate(glm::mat4(1.0f), glm::vec3(0));
 
     glUseProgram(mProgramID);
     glUniformMatrix4fv(mCameraToClipMatrixUnif, 1, GL_FALSE, glm::value_ptr(cameraToClipMatrix));
