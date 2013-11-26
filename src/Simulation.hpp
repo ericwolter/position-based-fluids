@@ -102,14 +102,16 @@ public:
     size_t mBufferSizeScalingFactors;
 
     // The host memory holding the simulation data
-    cl_float4 *mPositions;
-    cl_float4 *mVelocities;
-    cl_float4 *mPredictions;
-    cl_float4 *mDeltas;
+    cl_float4* mPositions;
+    cl_float4* mVelocities;
+    cl_float4* mPredictions;
+    cl_float4* mDeltas;
+	cl_uint*   mFriendsList;
 
     // The device memory buffers holding the simulation data
     cl::Buffer mCellsBuffer;
     cl::Buffer mParticlesListBuffer;
+	cl::Buffer mFriendsListBuffer;
     cl::Buffer mPositionsBuffer;
     cl::Buffer mPredictedBuffer;
     cl::Buffer mVelocitiesBuffer;
@@ -138,6 +140,7 @@ public:
     void applyViscosity();
     void applyVorticity();
     void predictPositions();
+	void buildFriendsList();
     void updatePredicted(int iterationIndex);
     void computeScaling(int iterationIndex);
     void computeDelta(int iterationIndex, cl_float waveGenerator);

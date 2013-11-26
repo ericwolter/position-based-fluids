@@ -62,15 +62,12 @@ __kernel void computeDelta(__constant struct Parameters* Params,
                            __global float4 *delta,
                            const __global float4 *predicted,
                            const __global float *scaling,
-                           const __global int *cells,
-                           const __global int *particles_list,
+                           const __global int *friends_list,
                            const float wave_generator,
                            const int N)
 {
     const int i = get_global_id(0);
     if (i >= N) return;
-
-    const int END_OF_CELL_LIST = -1;
 
     uint2 randSeed = (uint2)(1+get_global_id(0), 1);
 
@@ -78,58 +75,45 @@ __kernel void computeDelta(__constant struct Parameters* Params,
 
     // Sum of lambdas
     float4 sum = (float4)0.0f;
-    
-    // Debug Stats...
-    float minR = 100.0f;
-    int NeighborCount = 0;
-    int ScanCount = 0;
 
-    for (int x = -1; x <= 1; ++x)
+    // read number of friends
+    int circleParticles[FRIENDS_CIRCLES];
+    for (int j = 0; j < FRIENDS_CIRCLES; j++)
+        circleParticles[j] = friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + j];    
+
+    for (int iCircle = 0; iCircle < FRIENDS_CIRCLES; iCircle++)
     {
-        for (int y = -1; y <= 1; ++y)
+        for (int iFriend = 0; iFriend < circleParticles[iCircle]; iFriend++)
         {
-            for (int z = -1; z <= 1; ++z)
+            // Read friend index from friends_list
+            int j_index = friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + FRIENDS_CIRCLES +   // Offset to first circle -> "circle[0]"
+                                       iCircle * MAX_PARTICLES_IN_CIRCLE +                   // Offset to iCircle      -> "circle[iCircle]"
+                                       iFriend];                                             // Offset to iFriend      -> "circle[iCircle][iFriend]"
+        
+            float4 r = predicted[i] - predicted[j_index];
+            float r_length_2 = r.x * r.x + r.y * r.y + r.z * r.z;
+
+            if (r_length_2 > 0.0f && r_length_2 < Params->h_2)
             {
-                uint cell_index = calcGridHash(current_cell + (int3)(x,y,z));
+                float r_length = sqrt(r_length_2);
+                float4 gradient_spiky = -1.0f * r / (r_length)
+                                        * GRAD_SPIKY_FACTOR
+                                        * (Params->h - r_length)
+                                        * (Params->h - r_length);
 
-                // Next particle in list
-                int next = cells[cell_index];
-                while (next != END_OF_CELL_LIST)
-                {
-                    if (i != next)
-                    {
-                        float4 r = predicted[i] - predicted[next];
-                        float r_length_2 = r.x * r.x + r.y * r.y + r.z * r.z;
-                        minR = min(minR, sqrt(r_length_2));
-                        ScanCount++;
+                float poly6_r = POLY6_FACTOR * (Params->h_2 - r_length_2) * (Params->h_2 - r_length_2) * (Params->h_2 - r_length_2);
 
-                        if (r_length_2 > 0.0f && r_length_2 < Params->h_2)
-                        {
-                            NeighborCount++;
-                            float r_length = sqrt(r_length_2);
-                            float4 gradient_spiky = -1.0f * r / (r_length)
-                                                    * GRAD_SPIKY_FACTOR
-                                                    * (Params->h - r_length)
-                                                    * (Params->h - r_length);
+                // equation (13)
+                const float q_2 = pow(Params->surfaceTenstionDist * Params->h, 2);
+                float poly6_q = POLY6_FACTOR * (Params->h_2 - q_2) * (Params->h_2 - q_2) * (Params->h_2 - q_2);
+                const uint n = 4;
 
-                            float poly6_r = POLY6_FACTOR * (Params->h_2 - r_length_2) * (Params->h_2 - r_length_2) * (Params->h_2 - r_length_2);
+                float s_corr = -1.0f * Params->surfaceTenstionK * pow(poly6_r / poly6_q, n);
 
-                            // equation (13)
-                            const float q_2 = pow(Params->surfaceTenstionDist * Params->h, 2);
-                            float poly6_q = POLY6_FACTOR * (Params->h_2 - q_2) * (Params->h_2 - q_2) * (Params->h_2 - q_2);
-                            const uint n = 4;
+                // Sum for delta p of scaling factors and grad spiky
+                // in equation (12)
 
-                            float s_corr = -1.0f * Params->surfaceTenstionK * pow(poly6_r / poly6_q, n);
-
-                            // Sum for delta p of scaling factors and grad spiky
-                            // in equation (12)
-
-                            sum += (scaling[i] + scaling[next] + s_corr) * gradient_spiky;
-                        }
-                    }
-
-                    next = particles_list[next];
-                }
+                sum += (scaling[i] + scaling[j_index] + s_corr) * gradient_spiky;
             }
         }
     }

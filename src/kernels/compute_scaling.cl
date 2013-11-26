@@ -1,15 +1,13 @@
 __kernel void computeScaling(__constant struct Parameters* Params,
                              __global float4 *predicted,
                              __global float *scaling,
-                             const __global int *cells,
-                             const __global int *particles_list,
+                             const __global int *friends_list,
                              const int N)
 {
     // Scaling = lambda
     const int i = get_global_id(0);
     if (i >= N) return;
 
-    const int END_OF_CELL_LIST = -1;
     const float e = Params->epsilon * Params->restDensity;
 
     // calculate current cell
@@ -19,55 +17,48 @@ __kernel void computeScaling(__constant struct Parameters* Params,
     float density_sum = 0.0f;
     float gradient_sum_k = 0.0f;
     float3 gradient_sum_k_i = (float3) 0.0f;
+    
+    // read number of friends
+    int circleParticles[FRIENDS_CIRCLES];
+    for (int j = 0; j < FRIENDS_CIRCLES; j++)
+        circleParticles[j] = friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + j];    
 
-    for (int x = -1; x <= 1; ++x)
+    for (int iCircle = 0; iCircle < FRIENDS_CIRCLES; iCircle++)
     {
-        for (int y = -1; y <= 1; ++y)
+        for (int iFriend = 0; iFriend < circleParticles[iCircle]; iFriend++)
         {
-            for (int z = -1; z <= 1; ++z)
+            // Read friend index from friends_list
+            int j_index = friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + FRIENDS_CIRCLES +   // Offset to first circle -> "circle[0]"
+                                       iCircle * MAX_PARTICLES_IN_CIRCLE +                   // Offset to iCircle      -> "circle[iCircle]"
+                                       iFriend];                                             // Offset to iFriend      -> "circle[iCircle][iFriend]"
+        
+            float3 r = predicted[i].xyz - predicted[j_index].xyz;
+            float r_length_2 = (r.x * r.x + r.y * r.y + r.z * r.z);
+
+            // If h == r every term gets zero, so < h not <= h
+            if (r_length_2 > 0.0f && r_length_2 < Params->h_2)
             {
+                float r_length = sqrt(r_length_2);
 
-                uint cell_index = calcGridHash(current_cell + (int3)(x,y,z));
+                //CAUTION: the two spiky kernels are only the same
+                //because the result is only used sqaured
+                // equation (8), if k = i
+                float3 gradient_spiky = r / (r_length)
+                                        * GRAD_SPIKY_FACTOR
+                                        * (Params->h - r_length)
+                                        * (Params->h - r_length);
 
-                // Next particle in list
-                int next = cells[cell_index];
+                // equation (2)
+                float poly6 = POLY6_FACTOR * (Params->h_2 - r_length_2)
+                              * (Params->h_2 - r_length_2)
+                              * (Params->h_2 - r_length_2);
+                density_sum += poly6;
 
-                while (next != END_OF_CELL_LIST)
-                {
-                    if (i != next)
-                    {
-                        float3 r = predicted[i].xyz - predicted[next].xyz;
-                        float r_length_2 = (r.x * r.x + r.y * r.y + r.z * r.z);
+                // equation (9), denominator, if k = j
+                gradient_sum_k += length(gradient_spiky) * length(gradient_spiky);
 
-                        // If h == r every term gets zero, so < h not <= h
-                        if (r_length_2 > 0.0f && r_length_2 < Params->h_2)
-                        {
-                            float r_length = sqrt(r_length_2);
-
-                            //CAUTION: the two spiky kernels are only the same
-                            //because the result is only used sqaured
-                            // equation (8), if k = i
-                            float3 gradient_spiky = r / (r_length)
-                                                    * GRAD_SPIKY_FACTOR
-                                                    * (Params->h - r_length)
-                                                    * (Params->h - r_length);
-
-                            // equation (2)
-                            float poly6 = POLY6_FACTOR * (Params->h_2 - r_length_2)
-                                          * (Params->h_2 - r_length_2)
-                                          * (Params->h_2 - r_length_2);
-                            density_sum += poly6;
-
-                            // equation (9), denominator, if k = j
-                            gradient_sum_k += length(gradient_spiky) * length(gradient_spiky);
-
-                            // equation (8), if k = i
-                            gradient_sum_k_i += gradient_spiky;
-                        }
-                    }
-
-                    next = particles_list[next];
-                }
+                // equation (8), if k = i
+                gradient_sum_k_i += gradient_spiky;
             }
         }
     }
