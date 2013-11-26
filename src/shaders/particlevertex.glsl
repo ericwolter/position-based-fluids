@@ -1,4 +1,5 @@
 #version 120
+#extension GL_EXT_gpu_shader4 : require
 
 uniform mat4 cameraToClipMatrix;
 uniform mat4 worldToCameraMatrix;
@@ -10,7 +11,7 @@ varying float frag_velocity;
 
 void main()
 {  
-    frag_velocity = position.w;
+    frag_velocity = gl_VertexID / 20000.0;
     
     vec4 eye_position = worldToCameraMatrix * modelToWorldMatrix * vec4(position.xyz, 1.0);
     gl_Position = cameraToClipMatrix * eye_position;
