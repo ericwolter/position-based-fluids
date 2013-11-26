@@ -86,6 +86,14 @@ void TW_CALL GenerateWaves(void *clientData)
 {
     ((CVisual *)clientData)->UICmd_GenerateWaves = !((CVisual *)clientData)->UICmd_GenerateWaves;
 }
+void TW_CALL Blood(void *clientData)
+{
+    ((CVisual *)clientData)->initParticlesVisual(true);
+}
+void TW_CALL Water(void *clientData)
+{
+    ((CVisual *)clientData)->initParticlesVisual(false);
+}
 
 void CVisual::initWindow(const string windowname)
 {
@@ -150,6 +158,8 @@ void CVisual::initWindow(const string windowname)
     TwAddButton(tweakBar, "Play/Pause" , PlayPause , this , " group=Controls ");
     TwAddButton(tweakBar, "Reset" , Reset , this , " group=Controls ");
     TwAddButton(tweakBar, "Generate waves" , GenerateWaves , this , " group=Controls ");
+    TwAddButton(tweakBar, "Blood" , Blood , this , " group=Controls ");
+    TwAddButton(tweakBar, "Water" , Water , this , " group=Controls ");
 	
 	// Create bar
 	TwAddVarRO(tweakBar, "Total sim time", TW_TYPE_DOUBLE, &mTotalSimTime, "precision=2 group=Stats");
@@ -247,7 +257,7 @@ GLvoid CVisual::initSystemVisual(Simulation &sim)
                                    getPathForShader("shaderfragment.glsl"));
 }
 
-GLvoid CVisual::initParticlesVisual()
+GLvoid CVisual::initParticlesVisual(bool blood)
 {
     mPositionAttrib          = glGetAttribLocation(mProgramID, "position");
     mNormalAttrib            = glGetAttribLocation(mProgramID, "normal");
@@ -257,8 +267,13 @@ GLvoid CVisual::initParticlesVisual()
     mModelToWorldMatrixUnif  = glGetUniformLocation(mProgramID, "modelToWorldMatrix");
     mTextureUnif             = glGetUniformLocation(mProgramID, "texture");
 
-    mParticleProgramID = this->loadShaders(getPathForShader("particlevertex.glsl"),
-                                           getPathForShader("particlefragment.glsl"));
+    if(blood) {
+        mParticleProgramID = this->loadShaders(getPathForShader("pv.glsl"),
+                                               getPathForShader("pf.glsl"));
+    } else {
+        mParticleProgramID = this->loadShaders(getPathForShader("particlevertex.glsl"),
+                                               getPathForShader("particlefragment.glsl"));
+    }
 
     mParticlePositionAttrib          = glGetAttribLocation(mParticleProgramID, "position");
     mParticleCameraToClipMatrixUnif  = glGetUniformLocation(mParticleProgramID, "cameraToClipMatrix");

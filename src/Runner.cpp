@@ -98,7 +98,7 @@ void Runner::run(Simulation& simulation, CVisual& renderer)
 
     // Init render (background, camera etc...)
     renderer.initSystemVisual(simulation);
-    renderer.initParticlesVisual();
+    renderer.initParticlesVisual(true);
 
 	#if defined(MAKE_VIDEO)
 		const string cmd = "ffmpeg -r 30 -f rawvideo -pix_fmt rgb24 "

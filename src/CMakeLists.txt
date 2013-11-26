@@ -58,6 +58,8 @@ set(KERNELS
 SET(SHADERS
   "${HESP_SOURCE_DIR}/src/shaders/particlevertex.glsl"
   "${HESP_SOURCE_DIR}/src/shaders/particlefragment.glsl"
+  "${HESP_SOURCE_DIR}/src/shaders/pv.glsl"
+  "${HESP_SOURCE_DIR}/src/shaders/pf.glsl"
   "${HESP_SOURCE_DIR}/src/shaders/shadervertex.glsl"
   "${HESP_SOURCE_DIR}/src/shaders/shaderfragment.glsl"
 )

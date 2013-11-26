@@ -53,7 +53,7 @@ public:
      */
     GLuint loadShaders(const string &vertexFilename, const string &fragmentFilename);
 
-    GLvoid initParticlesVisual();
+    GLvoid initParticlesVisual(bool blood);
 
     /**
      *  \brief  Initializes system sizes, textures and buffer objects.
