@@ -360,7 +360,7 @@ void CVisual::DrawTweekBar()
 {
 	// Update AntTweekBar
 	mTotalSimTime = 0;
-	for (int i = 0; i < mSimulation->PerfData.Trackers.size(); i++)
+	for (size_t i = 0; i < mSimulation->PerfData.Trackers.size(); i++)
 	{
 		PM_PERFORMANCE_TRACKER* pTracker = mSimulation->PerfData.Trackers[i];
 

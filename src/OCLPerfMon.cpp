@@ -35,7 +35,7 @@ cl::Event* OCLPerfMon::GetTrackerEvent(string trackerName, int iterationIndex)
 	
 void OCLPerfMon::UpdateTimings()
 {
-	for (int i = 0; i < Trackers.size(); i++)
+	for (size_t i = 0; i < Trackers.size(); i++)
 	{
 		// get start and stop times
 		Trackers[i]->time_start = Trackers[i]->event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
