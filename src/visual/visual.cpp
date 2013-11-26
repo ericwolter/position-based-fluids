@@ -34,8 +34,10 @@ CVisual::CVisual (const int width, const int height)
       //mCamSphere( glm::vec3(0.0f, 20.0f, -1.5f) ),
       //mCamTarget( glm::vec3(0.5f,     0.0f,  0.50f) ),
       //mCamSphere( glm::vec3(-500.0f, 17.0f, -1.35f) )
-      mCamTarget( glm::vec3(1.0f,    0.42f,  0.21f) ),
-      mCamSphere( glm::vec3(-540.0f, 31.0f, -1.67f) )
+      // mCamTarget( glm::vec3(1.0f,    0.42f,  0.21f) ),
+      // mCamSphere( glm::vec3(-540.0f, 31.0f, -1.67f) )
+      mCamTarget( glm::vec3(0.0f,    0.0f,  0.0f) ),
+      mCamSphere( glm::vec3(0.0f, 0.0f, -2.0f) )
 {
 }
 
@@ -57,7 +59,7 @@ void MouseButtonCB( GLFWwindow *, int button , int action , int mods)
 
 void MousePosCB(GLFWwindow *, double x , double y)
 {
-    TwEventMousePosGLFW( (int)(x*displayscale), (int)(y*displayscale) );
+    TwEventMousePosGLFW( (int)(x * displayscale), (int)(y * displayscale) );
 }
 
 void KeyFunCB( GLFWwindow *, int key, int scancode, int action, int mods)
@@ -85,6 +87,14 @@ void TW_CALL Reset(void *clientData)
 void TW_CALL GenerateWaves(void *clientData)
 {
     ((CVisual *)clientData)->UICmd_GenerateWaves = !((CVisual *)clientData)->UICmd_GenerateWaves;
+}
+void TW_CALL ShowVelocity(void *clientData)
+{
+    ((CVisual *)clientData)->initParticlesVisual(VELOCITY);
+}
+void TW_CALL ShowSorting(void *clientData)
+{
+    ((CVisual *)clientData)->initParticlesVisual(SORTING);
 }
 
 void CVisual::initWindow(const string windowname)
@@ -150,9 +160,11 @@ void CVisual::initWindow(const string windowname)
     TwAddButton(tweakBar, "Play/Pause" , PlayPause , this , " group=Controls ");
     TwAddButton(tweakBar, "Reset" , Reset , this , " group=Controls ");
     TwAddButton(tweakBar, "Generate waves" , GenerateWaves , this , " group=Controls ");
-	
-	// Create bar
-	TwAddVarRO(tweakBar, "Total sim time", TW_TYPE_DOUBLE, &mTotalSimTime, "precision=2 group=Stats");
+    TwAddButton(tweakBar, "Show velocity" , ShowVelocity , this , " group=Controls ");
+    TwAddButton(tweakBar, "Show sorting" , ShowSorting , this , " group=Controls ");
+
+    // Create bar
+    TwAddVarRO(tweakBar, "Total sim time", TW_TYPE_DOUBLE, &mTotalSimTime, "precision=2 group=Stats");
 
     // static unsigned int numParticles = 10000;
     // TwAddVarRW(tweakBar, "# of particles", TW_TYPE_UINT32, &numParticles, " group=Parameters max=100000 min=1000 step=100 ");
@@ -247,7 +259,8 @@ GLvoid CVisual::initSystemVisual(Simulation &sim)
                                    getPathForShader("shaderfragment.glsl"));
 }
 
-GLvoid CVisual::initParticlesVisual()
+bool first = true;
+GLvoid CVisual::initParticlesVisual(ParticleRenderType renderType)
 {
     mPositionAttrib          = glGetAttribLocation(mProgramID, "position");
     mNormalAttrib            = glGetAttribLocation(mProgramID, "normal");
@@ -257,8 +270,18 @@ GLvoid CVisual::initParticlesVisual()
     mModelToWorldMatrixUnif  = glGetUniformLocation(mProgramID, "modelToWorldMatrix");
     mTextureUnif             = glGetUniformLocation(mProgramID, "texture");
 
-    mParticleProgramID = this->loadShaders(getPathForShader("particlevertex.glsl"),
-                                           getPathForShader("particlefragment.glsl"));
+    switch (renderType)
+    {
+    case SORTING:
+        mParticleProgramID = this->loadShaders(getPathForShader("sortingvertex.glsl"),
+                                               getPathForShader("sortingfragment.glsl"));
+        break;
+
+    default:
+        mParticleProgramID = this->loadShaders(getPathForShader("particlevertex.glsl"),
+                                               getPathForShader("particlefragment.glsl"));
+        break;
+    }
 
     mParticlePositionAttrib          = glGetAttribLocation(mParticleProgramID, "position");
     mParticleCameraToClipMatrixUnif  = glGetUniformLocation(mParticleProgramID, "cameraToClipMatrix");
@@ -351,41 +374,41 @@ GLvoid CVisual::visualizeParticles(void)
 
     glUseProgram(0);
 
-	DrawTweekBar();
+    DrawTweekBar();
 
     glfwSwapBuffers(mWindow);
 }
 
 void CVisual::DrawTweekBar()
 {
-	// Update AntTweekBar
-	mTotalSimTime = 0;
-	for (size_t i = 0; i < mSimulation->PerfData.Trackers.size(); i++)
-	{
-		PM_PERFORMANCE_TRACKER* pTracker = mSimulation->PerfData.Trackers[i];
+    // Update AntTweekBar
+    mTotalSimTime = 0;
+    for (size_t i = 0; i < mSimulation->PerfData.Trackers.size(); i++)
+    {
+        PM_PERFORMANCE_TRACKER *pTracker = mSimulation->PerfData.Trackers[i];
 
-		// Check if we need to create Bar
-		if (pTracker->Tag == 0)
-		{
-			// Remember that bar was created
-			pTracker->Tag = 1;
+        // Check if we need to create Bar
+        if (pTracker->Tag == 0)
+        {
+            // Remember that bar was created
+            pTracker->Tag = 1;
 
-			// Create bar
-			TwAddVarRO(tweakBar, pTracker->eventName.c_str(), TW_TYPE_DOUBLE, &pTracker->total_time, "precision=2 group=Stats");
+            // Create bar
+            TwAddVarRO(tweakBar, pTracker->eventName.c_str(), TW_TYPE_DOUBLE, &pTracker->total_time, "precision=2 group=Stats");
 
-			// Make sure Stats group is folded
-			TwDefine(" PBFTweak/Stats opened=false ");
-		}
+            // Make sure Stats group is folded
+            TwDefine(" PBFTweak/Stats opened=false ");
+        }
 
-		// Accumulate execution time
-		mTotalSimTime += pTracker->total_time;
-	}
+        // Accumulate execution time
+        mTotalSimTime += pTracker->total_time;
+    }
 
-	// Make sure bar refresh it's values
-	TwRefreshBar(tweakBar);
+    // Make sure bar refresh it's values
+    TwRefreshBar(tweakBar);
 
-	// Actual draw 
-	TwDraw();
+    // Actual draw
+    TwDraw();
 }
 
 void CVisual::checkInput()
@@ -516,7 +539,7 @@ GLuint CVisual::loadShaders(const string &vertexFilename, const string &fragment
     shaderCode = string(istreambuf_iterator<char>(ifs), istreambuf_iterator<char>());
     ifs.close();
 
-	// Compile shaders
+    // Compile shaders
     source = shaderCode.c_str();
     glShaderSource(fragmentShaderID, 1, &source, NULL);
     glCompileShader(fragmentShaderID);

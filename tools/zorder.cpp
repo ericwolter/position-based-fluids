@@ -19,7 +19,7 @@ const int Dim = 2;
 
 struct Point
 {
-    float _p[ Dim ];
+    int _p[ Dim ];
 
     friend std::ostream& operator << (std::ostream& stream, const Point &p)
     {
@@ -169,8 +169,8 @@ bool test(const Point &p, const Point& q)
 ////////////////////////////////////////////////////////////////////////////////
 Point makePoint(float x, float y, float z) {
     Point p;
-    p._p[0] = x;
-    p._p[1] = y;
+    p._p[0] = (int)x;
+    p._p[1] = (int)y;
     return p;
 }
 
@@ -188,7 +188,7 @@ int main()
     {
         for (int j = 0; j < 8; ++j)
         {
-            pointVec.push_back(makePoint(j/10.0f, i/10.0f, 0.0f));
+            pointVec.push_back(makePoint(j, i, 0.0f));
         }
     }
 
@@ -196,7 +196,7 @@ int main()
     printVector(pointVec);
 
     // Sort points on Z Order curve
-    std::sort( pointVec.begin(), pointVec.end(), ZOrderLessThan );
+    std::sort( pointVec.begin(), pointVec.end(), test );
 
     cout << "Sorted:" << endl;
     printVector(pointVec);

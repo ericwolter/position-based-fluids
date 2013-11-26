@@ -52,11 +52,14 @@ set(KERNELS
   "${HESP_SOURCE_DIR}/src/kernels/update_positions.cl"
   "${HESP_SOURCE_DIR}/src/kernels/update_predicted.cl"
   "${HESP_SOURCE_DIR}/src/kernels/update_velocities.cl"
+  "${HESP_SOURCE_DIR}/src/kernels/sort.cl"
 )
 
 SET(SHADERS
   "${HESP_SOURCE_DIR}/src/shaders/particlevertex.glsl"
   "${HESP_SOURCE_DIR}/src/shaders/particlefragment.glsl"
+  "${HESP_SOURCE_DIR}/src/shaders/sortingvertex.glsl"
+  "${HESP_SOURCE_DIR}/src/shaders/sortingfragment.glsl"
   "${HESP_SOURCE_DIR}/src/shaders/shadervertex.glsl"
   "${HESP_SOURCE_DIR}/src/shaders/shaderfragment.glsl"
 )

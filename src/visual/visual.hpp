@@ -28,14 +28,20 @@ static const unsigned int DIM = 3;
 
 using std::string;
 
+enum ParticleRenderType
+{
+    VELOCITY,
+    SORTING
+};
+
 
 /**
  *  \brief  CVisual
  */
 class CVisual
 {
-public: 
-	void KeyEvent(GLFWwindow* window,int key,int scancode,int action, int mods);
+public:
+    void KeyEvent(GLFWwindow *window, int key, int scancode, int action, int mods);
 
 public:
     // Default constructor
@@ -51,14 +57,14 @@ public:
     /**
      *  \brief  Loads vertex and fragment shader.
      */
-    GLuint loadShaders(const string &vertexFilename, const string &fragmentFilename);
+    static GLuint loadShaders(const string &vertexFilename, const string &fragmentFilename);
 
-    GLvoid initParticlesVisual();
+    GLvoid initParticlesVisual(ParticleRenderType renderType);
 
     /**
      *  \brief  Initializes system sizes, textures and buffer objects.
      */
-    GLvoid initSystemVisual(Simulation& sim);
+    GLvoid initSystemVisual(Simulation &sim);
 
     GLvoid visualizeParticles(void);
 
@@ -69,30 +75,30 @@ public:
      */
     void checkInput();
 
-	void DrawTweekBar();
+    void DrawTweekBar();
 
     glm::vec3 resolveCamPosition(void) const;
 
     glm::mat4 calcLookAtMatrix(const glm::vec3 &cameraPt, const glm::vec3 &lookPt, const glm::vec3 &upPt) const;
 
 public:
-	bool UICmd_GenerateWaves;
-	bool UICmd_ResetSimulation;
-	bool UICmd_PauseSimulation;
+    bool UICmd_GenerateWaves;
+    bool UICmd_ResetSimulation;
+    bool UICmd_PauseSimulation;
 
 private:
     // Window stuff
     int mWidth;
     int mHeight;
 
-	GLuint mProgramID; /**< Program ID for OpenGL shaders */
+    GLuint mProgramID; /**< Program ID for OpenGL shaders */
     GLuint mParticleProgramID;
 
     GLFWwindow *mWindow;
-    
-	// Tweakbar
-	TwBar *tweakBar;
-	double mTotalSimTime;
+
+    // Tweakbar
+    TwBar *tweakBar;
+    double mTotalSimTime;
 
     // System sizes
     GLuint mSystemBufferID;
@@ -111,7 +117,7 @@ private:
     glm::vec3 mCamTarget;
     glm::vec3 mCamSphere;
 
-	Simulation* mSimulation;
+    Simulation *mSimulation;
 
     GLuint mParticlePositionAttrib;
     GLint mParticleCameraToClipMatrixUnif;
