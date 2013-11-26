@@ -24,8 +24,8 @@ Simulation::Simulation(const cl::Context &clContext, const cl::Device &clDevice)
       mPositions(NULL),
       mVelocities(NULL),
 	  mPredictions(NULL),
-	  mFriendsList(NULL),
 	  mDeltas(NULL),
+      mFriendsList(NULL),
       mCells(NULL),
       mParticlesList(NULL)
 {
@@ -63,6 +63,8 @@ void Simulation::CreateParticles()
         mPositions[i].s[2] = offsetZ + (z /*+ (y % 2) * .5*/) * d;
         mPositions[i].s[3] = 0;
     }
+
+    random_shuffle(&mPositions[0],&mPositions[Params.particleCount-1]);
 }
 
 const std::string* Simulation::KernelFileList()
