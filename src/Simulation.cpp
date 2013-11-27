@@ -85,6 +85,7 @@ const std::string *Simulation::KernelFileList()
         "update_positions.cl",
         "build_friends_list.cl",
         "sort.cl",
+        "radixsort.cl",
         ""
     };
 
