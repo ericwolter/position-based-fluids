@@ -22,6 +22,21 @@ int index(int i, int n)
     return ip;
 }
 
+int expandBits(int x)
+{
+    x = (x | (x << 16)) & 0x030000FF;
+    x = (x | (x <<  8)) & 0x0300F00F;
+    x = (x | (x <<  4)) & 0x030C30C3;
+    x = (x | (x <<  2)) & 0x09249249;
+
+    return x;
+}
+
+int mortonNumber(int3 gridPos)
+{
+    return expandBits(gridPos.x) | (expandBits(gridPos.y) << 1) | (expandBits(gridPos.z) << 2);
+}
+
 __kernel void computeKeys(__constant struct Parameters* Params, 
                          const __global float4 *positions,
                          __global int *keys,
@@ -32,7 +47,7 @@ __kernel void computeKeys(__constant struct Parameters* Params,
 
     if(i < numParticles) {
         int3 current_cell = convert_int3(positions[i].xyz * (float3)(Params->gridRes));
-        keys[i] = current_cell.x;
+        keys[i] = mortonNumber(current_cell);
     } else {
         keys[i] = 2147483647 - 1; //max_int
     }
