@@ -39,6 +39,20 @@ __kernel void computeKeys(__constant struct Parameters* Params,
     permutation[i] = i;
 }
 
+__kernel void sortParticles(const __global int *permutation,
+                            const __global float4 *positionsYin,
+                            __global float4 *positionsYang,
+                            const __global float4 *velocitiesYin,
+                            __global float4 *velocitiesYang,
+                            const uint N)
+{
+    const uint i = get_global_id(0);
+    if (i >= N) return;
+
+    positionsYang[i] = positionsYin[permutation[i]];
+    velocitiesYang[i] = velocitiesYin[permutation[i]];
+}
+
 // compute the histogram for each radix and each virtual processor for the pass
 __kernel void histogram(const __global int *d_Keys,
                         __global int *d_Histograms,

@@ -112,9 +112,11 @@ public:
     cl::Buffer mCellsBuffer;
     cl::Buffer mParticlesListBuffer;
 	cl::Buffer mFriendsListBuffer;
-    cl::Buffer mPositionsBuffer;
+    cl::BufferGL mPositionsYinBuffer;
+    cl::BufferGL mPositionsYangBuffer;
     cl::Buffer mPredictedBuffer;
-    cl::Buffer mVelocitiesBuffer;
+    cl::Buffer mVelocitiesYinBuffer;
+    cl::Buffer mVelocitiesYangBuffer;
     cl::Buffer mScalingFactorsBuffer;
     cl::Buffer mDeltaBuffer;
     cl::Buffer mDeltaVelocityBuffer;
@@ -137,7 +139,8 @@ public:
     cl_int *mCells;
     cl_int *mParticlesList;
 
-    GLuint mSharingBufferID;
+    GLuint mSharingYinBufferID;
+    GLuint mSharingYangBufferID;
 
 	// Performance measurement
 	OCLPerfMon PerfData;

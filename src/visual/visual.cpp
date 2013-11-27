@@ -359,7 +359,7 @@ GLvoid CVisual::visualizeParticles(void)
         glUniform1f(glGetUniformLocation(mParticleProgramID, "particleCount"), Params.particleCount);
     }
 
-    glBindBuffer(GL_ARRAY_BUFFER, mSimulation->mSharingBufferID);
+    glBindBuffer(GL_ARRAY_BUFFER, mSimulation->mSharingYinBufferID);
     glEnableVertexAttribArray(mParticlePositionAttrib);
     glVertexAttribPointer(mParticlePositionAttrib, 4, GL_FLOAT, GL_FALSE, 0, 0);
     glDrawArrays(GL_POINTS, 0, Params.particleCount);
