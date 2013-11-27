@@ -267,6 +267,7 @@ GLvoid CVisual::initParticlesVisual(ParticleRenderType renderType)
     mModelToWorldMatrixUnif  = glGetUniformLocation(mProgramID, "modelToWorldMatrix");
     mTextureUnif             = glGetUniformLocation(mProgramID, "texture");
 
+    mRenderType              = renderType;
     switch (renderType)
     {
     case SORTING:
@@ -278,7 +279,7 @@ GLvoid CVisual::initParticlesVisual(ParticleRenderType renderType)
         mParticleProgramID = this->loadShaders(getPathForShader("particlevertex.glsl"),
                                                getPathForShader("particlefragment.glsl"));
         break;
-}
+    }
     mParticlePositionAttrib          = glGetAttribLocation(mParticleProgramID, "position");
     mParticleCameraToClipMatrixUnif  = glGetUniformLocation(mParticleProgramID, "cameraToClipMatrix");
     mParticleWorldToCameraMatrixUnif = glGetUniformLocation(mParticleProgramID, "worldToCameraMatrix");
@@ -352,6 +353,11 @@ GLvoid CVisual::visualizeParticles(void)
 
     glUseProgram(mParticleProgramID);
     glUniformMatrix4fv(mParticleWorldToCameraMatrixUnif, 1, GL_FALSE, glm::value_ptr(lookAtMat));
+
+    if (mRenderType == SORTING)
+    {
+        glUniform1f(glGetUniformLocation(mParticleProgramID, "particleCount"), Params.particleCount);
+    }
 
     glBindBuffer(GL_ARRAY_BUFFER, mSimulation->mSharingBufferID);
     glEnableVertexAttribArray(mParticlePositionAttrib);

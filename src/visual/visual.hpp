@@ -126,6 +126,8 @@ private:
 
     GLuint mWallTexture;
 
+    ParticleRenderType mRenderType;
+
 };
 
 #endif // _VISUAL_HPP

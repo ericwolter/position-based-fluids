@@ -5,13 +5,15 @@ uniform mat4 cameraToClipMatrix;
 uniform mat4 worldToCameraMatrix;
 uniform mat4 modelToWorldMatrix;
 
+uniform float particleCount;
+
 attribute vec4 position;
 
 varying float frag_velocity;
 
 void main()
 {  
-    frag_velocity = gl_VertexID / 20000.0;
+    frag_velocity = gl_VertexID / particleCount;
     
     vec4 eye_position = worldToCameraMatrix * modelToWorldMatrix * vec4(position.xyz, 1.0);
     gl_Position = cameraToClipMatrix * eye_position;

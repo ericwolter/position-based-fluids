@@ -376,7 +376,7 @@ void Simulation::updateCells()
 bool tickTock = false;
 void Simulation::sort(int iterationIndex)
 {
-    const int bucketSize = 16;
+    const int bucketSize = Params.segmentSize;
     int param = 0;
     mKernels["sort"].setArg(param++, mPositionsBuffer);
     mKernels["sort"].setArg(param++, mVelocitiesBuffer);
@@ -438,7 +438,7 @@ void Simulation::Step(bool bPauseSim, cl_float waveGenerator)
     if (!bPauseSim)
         this->updatePositions();
 
-    for (unsigned int i = 0; i < 6; ++i)
+    for (unsigned int i = 0; i < Params.sortIterations; ++i)
     {
         this->sort(i);
     }

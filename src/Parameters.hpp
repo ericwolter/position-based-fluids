@@ -38,6 +38,10 @@ struct Parameters
 	// Setup related
 	float setupSpacing;
 
+	// Sorting
+	unsigned int segmentSize;
+	unsigned int sortIterations;
+
 	// Computed fields
 	float h;
 	float h_2;

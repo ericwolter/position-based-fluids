@@ -82,7 +82,9 @@ void LoadParameters(string InputFile)
 		else if (parameter == "viscosityfactor")     ss >> Params.viscosityFactor;
 		else if (parameter == "surfacetenstionk")    ss >> Params.surfaceTenstionK;
 		else if (parameter == "surfacetenstiondist") ss >> Params.surfaceTenstionDist;
-		else if (parameter == "setupspacing")        ss >> Params.setupSpacing;
+        else if (parameter == "setupspacing")        ss >> Params.setupSpacing;
+        else if (parameter == "segmentsize")         ss >> Params.segmentSize;
+        else if (parameter == "sortiterations")      ss >> Params.sortIterations;
 		else
             cerr << "Unknown parameter " << parameter << endl << "Leaving it out." << endl;
     }
