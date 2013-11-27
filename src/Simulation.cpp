@@ -24,8 +24,9 @@ Simulation::Simulation(const cl::Context &clContext, const cl::Device &clDevice)
       mCLDevice(clDevice),
       mPositions(NULL),
       mVelocities(NULL),
-      mPredictions(NULL),
-      mDeltas(NULL),
+	  mPredictions(NULL),
+	  mDeltas(NULL),
+      mFriendsList(NULL),
       mCells(NULL),
       mParticlesList(NULL)
 {
@@ -82,6 +83,7 @@ const std::string *Simulation::KernelFileList()
         "apply_viscosity.cl",
         "apply_vorticity.cl",
         "update_positions.cl",
+        "build_friends_list.cl",
         "sort.cl",
         ""
     };
@@ -129,8 +131,15 @@ bool Simulation::InitKernels()
     //clflags << "-DREST_DENSITY="      << Params.restDensity << "f ";
     //clflags << "-DPBF_H="             << Params.h << "f ";
     //clflags << "-DPBF_H_2="           << Params.h_2 << "f ";
-    //clflags << "-DEPSILON="           << Params.epsilon << "f ";
-    clflags << "-DGRID_SIZE="         << (int)(Params.gridRes * Params.gridRes * Params.gridRes) << " ";
+	//clflags << "-DEPSILON="           << Params.epsilon << "f ";
+	
+	clflags << "-DEND_OF_CELL_LIST="            << (int)(-1)         << " ";
+
+	clflags << "-DFRIENDS_CIRCLES="             << (int)(Params.friendsCircles)     << " ";  // Defines how many friends circle are we going to scan for
+	clflags << "-DMAX_PARTICLES_IN_CIRCLE="     << (int)(Params.particlesPerCircle) << " ";  // Defines the max number of particles per cycle
+	clflags << "-DPARTICLE_FRIENDS_BLOCK_SIZE=" << (int)(Params.friendsCircles + Params.friendsCircles * Params.particlesPerCircle) << " ";  // FRIENDS_CIRCLES + FRIENDS_CIRCLES * MAX_PARTICLES_IN_CIRCLE
+
+	clflags << "-DGRID_SIZE="         << (int)(Params.gridRes * Params.gridRes * Params.gridRes) << " ";
     clflags << "-DPOLY6_FACTOR="      << 315.0f / (64.0f * M_PI * pow(Params.h, 9)) << "f ";
     clflags << "-DGRAD_SPIKY_FACTOR=" << 45.0f / (M_PI * pow(Params.h, 6)) << "f ";
 
@@ -162,8 +171,9 @@ void Simulation::InitBuffers()
     delete[] mVelocities;  mVelocities  = new cl_float4[Params.particleCount];
     delete[] mPredictions; mPredictions = new cl_float4[Params.particleCount]; // (used for debugging)
     delete[] mDeltas;      mDeltas      = new cl_float4[Params.particleCount]; // (used for debugging)
-
-    // Position particles
+	delete[] mFriendsList; mFriendsList = new cl_uint  [Params.particleCount * 200]; // (used for debugging)
+	
+	// Position particles
     CreateParticles();
 
     // Initialize particle speed arrays
@@ -183,12 +193,10 @@ void Simulation::InitBuffers()
     mDeltaVelocityBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mOmegaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mScalingFactorsBuffer  = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeScalingFactors);
-    mScalingFactorsBuffer  = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeScalingFactors);
-    mParameters            = cl::Buffer(mCLContext, CL_MEM_READ_ONLY,  sizeof(Params));
+	mParameters            = cl::Buffer(mCLContext, CL_MEM_READ_ONLY,  sizeof(Params));
 
-
-    if (mQueue() != 0)
-        mQueue.flush();
+	if (mQueue() != 0)
+		mQueue.flush();
 
     // Copy mPositions (Host) => mPositionsBuffer (GPU) (we have to lock the shared buffer)
     vector<cl::Memory> sharedBuffers;
@@ -227,6 +235,12 @@ void Simulation::InitCells()
     // Write buffer for particles
     mParticlesListBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticlesList);
     mQueue.enqueueWriteBuffer(mParticlesListBuffer, CL_TRUE, 0, mBufferSizeParticlesList, mParticlesList);
+
+	// Init Friends list buffer
+	int BufSize = Params.particleCount * 200 * sizeof(cl_uint);
+	memset(mFriendsList, 0, BufSize);
+	mFriendsListBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, BufSize);
+    mQueue.enqueueWriteBuffer(mFriendsListBuffer, CL_TRUE, 0, BufSize, mFriendsList);
 }
 
 void Simulation::updatePositions()
@@ -261,8 +275,7 @@ void Simulation::applyViscosity()
     mKernels["applyViscosity"].setArg(param++, mVelocitiesBuffer);
     mKernels["applyViscosity"].setArg(param++, mDeltaVelocityBuffer);
     mKernels["applyViscosity"].setArg(param++, mOmegaBuffer);
-    mKernels["applyViscosity"].setArg(param++, mCellsBuffer);
-    mKernels["applyViscosity"].setArg(param++, mParticlesListBuffer);
+	mKernels["applyViscosity"].setArg(param++, mFriendsListBuffer);
     mKernels["applyViscosity"].setArg(param++, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["applyViscosity"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("applyViscosity"));
@@ -275,8 +288,7 @@ void Simulation::applyVorticity()
     mKernels["applyVorticity"].setArg(param++, mPredictedBuffer);
     mKernels["applyVorticity"].setArg(param++, mDeltaVelocityBuffer);
     mKernels["applyVorticity"].setArg(param++, mOmegaBuffer);
-    mKernels["applyVorticity"].setArg(param++, mCellsBuffer);
-    mKernels["applyVorticity"].setArg(param++, mParticlesListBuffer);
+	mKernels["applyVorticity"].setArg(param++, mFriendsListBuffer);
     mKernels["applyVorticity"].setArg(param++, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["applyVorticity"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("applyVorticity"));
@@ -292,6 +304,19 @@ void Simulation::predictPositions()
     mKernels["predictPositions"].setArg(param++, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["predictPositions"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("predictPositions"));
+}
+
+void Simulation::buildFriendsList()
+{
+	int param = 0;
+	mKernels["buildFriendsList"].setArg(param++, mParameters);
+    mKernels["buildFriendsList"].setArg(param++, mPredictedBuffer);
+    mKernels["buildFriendsList"].setArg(param++, mCellsBuffer);
+    mKernels["buildFriendsList"].setArg(param++, mParticlesListBuffer);
+    mKernels["buildFriendsList"].setArg(param++, mFriendsListBuffer);
+    mKernels["buildFriendsList"].setArg(param++, Params.particleCount);
+
+	mQueue.enqueueNDRangeKernel(mKernels["buildFriendsList"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("buildFriendsList"));
 }
 
 void Simulation::updatePredicted(int iterationIndex)
@@ -311,8 +336,7 @@ void Simulation::computeDelta(int iterationIndex, cl_float waveGenerator)
     mKernels["computeDelta"].setArg(param++, mDeltaBuffer);
     mKernels["computeDelta"].setArg(param++, mPredictedBuffer);
     mKernels["computeDelta"].setArg(param++, mScalingFactorsBuffer);
-    mKernels["computeDelta"].setArg(param++, mCellsBuffer);
-    mKernels["computeDelta"].setArg(param++, mParticlesListBuffer);
+	mKernels["computeDelta"].setArg(param++, mFriendsListBuffer);
     mKernels["computeDelta"].setArg(param++, waveGenerator);
     mKernels["computeDelta"].setArg(param++, Params.particleCount);
 
@@ -325,9 +349,8 @@ void Simulation::computeScaling(int iterationIndex)
     mKernels["computeScaling"].setArg(param++, mParameters);
     mKernels["computeScaling"].setArg(param++, mPredictedBuffer);
     mKernels["computeScaling"].setArg(param++, mScalingFactorsBuffer);
-    mKernels["computeScaling"].setArg(param++, mCellsBuffer);
-    mKernels["computeScaling"].setArg(param++, mParticlesListBuffer);
-    mKernels["computeScaling"].setArg(param++, Params.particleCount);
+	mKernels["computeScaling"].setArg(param++, mFriendsListBuffer);
+	mKernels["computeScaling"].setArg(param++, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["computeScaling"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeScaling", iterationIndex));
 }
@@ -378,10 +401,15 @@ void Simulation::Step(bool bPauseSim, cl_float waveGenerator)
     // Predicit positions
     this->predictPositions();
 
-    // Update cells
-    this->updateCells();
+	// Update cells
+	this->updateCells();
 
-    for (unsigned int i = 0; i < Params.simIterations; ++i)
+	// Build friends list
+	this->buildFriendsList();
+	//mQueue.enqueueReadBuffer(mFriendsListBuffer, CL_TRUE, 0, mBufferSizeParticles, mFriendsList);
+	//mQueue.finish(); 
+	
+	for (unsigned int i = 0; i < Params.simIterations; ++i)
     {
         // Compute scaling value
         this->computeScaling(i);

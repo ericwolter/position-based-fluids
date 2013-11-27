@@ -22,7 +22,6 @@ struct Parameters
 	float timeStep;
 	unsigned int   simIterations;
 	unsigned int   subSteps;
-	int   gridRes;
 	float restDensity;
 	float epsilon;
 	float garvity;
@@ -30,6 +29,11 @@ struct Parameters
 	float viscosityFactor;
 	float surfaceTenstionK;
 	float surfaceTenstionDist;
+
+	// Grid and friends list
+	int  friendsCircles;
+	int  particlesPerCircle;
+	int  gridRes;
 
 	// Setup related
 	float setupSpacing;

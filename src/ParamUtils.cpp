@@ -92,4 +92,6 @@ void LoadParameters(string InputFile)
 	// Compute fields
 	Params.h   = 1.0f / Params.gridRes;
 	Params.h_2 = Params.h * Params.h;
+	Params.friendsCircles     = 5;
+	Params.particlesPerCircle = 20;
 }
