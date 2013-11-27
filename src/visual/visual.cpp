@@ -34,10 +34,8 @@ CVisual::CVisual (const int width, const int height)
       //mCamSphere( glm::vec3(0.0f, 20.0f, -1.5f) ),
       //mCamTarget( glm::vec3(0.5f,     0.0f,  0.50f) ),
       //mCamSphere( glm::vec3(-500.0f, 17.0f, -1.35f) )
-      // mCamTarget( glm::vec3(1.0f,    0.42f,  0.21f) ),
-      // mCamSphere( glm::vec3(-540.0f, 31.0f, -1.67f) )
-      mCamTarget( glm::vec3(0.0f,    0.0f,  0.0f) ),
-      mCamSphere( glm::vec3(0.0f, 0.0f, -2.0f) )
+      mCamTarget( glm::vec3(1.0f,    0.42f,  0.21f) ),
+      mCamSphere( glm::vec3(-540.0f, 31.0f, -1.67f) )
 {
 }
 
