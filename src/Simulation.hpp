@@ -121,6 +121,15 @@ public:
     cl::Buffer mOmegaBuffer;
 	cl::Buffer mParameters;
 
+    // Radix buffers
+    cl::Buffer mInKeysBuffer;
+    cl::Buffer mInPermutationBuffer;
+    cl::Buffer mOutKeysBuffer;
+    cl::Buffer mOutPermutationBuffer;
+    cl::Buffer mHistogramBuffer;
+    cl::Buffer mGlobSumBuffer;
+    cl::Buffer mHistoTempBuffer;
+
     // Lengths of each cell in each direction
     cl_float4 mCellLength;
 
@@ -145,6 +154,7 @@ public:
     void computeScaling(int iterationIndex);
     void computeDelta(int iterationIndex, cl_float waveGenerator);
     void sort(int iterationIndex);
+    void radixsort();
 
     uint calcGridHash(cl_int3 gridPos);
     bool compareHash(const cl_float4 &p1, const cl_float4 &p2);

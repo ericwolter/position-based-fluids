@@ -22,16 +22,21 @@ int index(int i, int n)
     return ip;
 }
 
-__kernel void computeKey(__constant struct Parameters* Params, 
+__kernel void computeKeys(__constant struct Parameters* Params, 
                          const __global float4 *positions,
                          __global int *keys,
-                         const uint N)
+                         __global int *permutation,
+                         const uint numParticles)
 {
     const uint i = get_global_id(0);
-    if (i >= N) return;
 
-    int3 current_cell = convert_int3(positions[i].xyz * (float3)(Params->gridRes));
-    keys[i] = current_cell.x ^ current_cell.y ^ current_cell.z;
+    if(i < numParticles) {
+        int3 current_cell = convert_int3(positions[i].xyz * (float3)(Params->gridRes));
+        keys[i] = current_cell.x ^ current_cell.y ^ current_cell.z;
+    } else {
+        keys[i] = 2147483647 - 1; //max_int
+    }
+    permutation[i] = i;
 }
 
 // compute the histogram for each radix and each virtual processor for the pass
