@@ -4,6 +4,7 @@
 #include "ocl/OCLUtils.hpp"
 
 #define _USE_MATH_DEFINES
+#include <math.h>
 #include <cmath>
 #include <sstream>
 #include <algorithm>
@@ -86,7 +87,6 @@ const std::string *Simulation::KernelFileList()
         "apply_vorticity.cl",
         "update_positions.cl",
         "build_friends_list.cl",
-        "sort.cl",
         "radixsort.cl",
         ""
     };
@@ -442,7 +442,7 @@ void Simulation::radixsort()
     // }
     // cout << endl;
 
-    for (uint pass = 0; pass < _PASS; pass++)
+    for (size_t pass = 0; pass < _PASS; pass++)
     {
         // Histogram(pass);
         const size_t h_nblocitems = _ITEMS;
@@ -521,16 +521,25 @@ void Simulation::radixsort()
     // delete[] keys;
     // delete[] permutation;
 
+	// Lock Yang buffer (Yin is already locked)
+    //vector<cl::Memory> sharedBuffers;
+    //sharedBuffers.push_back(mPositionsYangBuffer);
+    //mQueue.enqueueAcquireGLObjects(&sharedBuffers);
+
+	// Execute particle reposition
     param = 0;
     mKernels["sortParticles"].setArg(param++, mInPermutationBuffer);
     mKernels["sortParticles"].setArg(param++, mPositionsYinBuffer);
     mKernels["sortParticles"].setArg(param++, mPositionsYangBuffer);
     mKernels["sortParticles"].setArg(param++, mVelocitiesYinBuffer);
     mKernels["sortParticles"].setArg(param++, mVelocitiesYangBuffer);
-    mKernels["sortParticles"].setArg(param++, mInPermutationBuffer);
+    mKernels["sortParticles"].setArg(param++, Params.particleCount);
     mQueue.enqueueNDRangeKernel(mKernels["sortParticles"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("sortParticles"));
 
-    // Double buffering of positions and velocity buffers
+	// UnLock Yang buffer 
+    //mQueue.enqueueReleaseGLObjects(&sharedBuffers);
+
+	// Double buffering of positions and velocity buffers
     cl::BufferGL tmp1 = mPositionsYinBuffer;
     mPositionsYinBuffer = mPositionsYangBuffer;
     mPositionsYangBuffer = tmp1;
@@ -552,8 +561,10 @@ void Simulation::Step(bool bPauseSim, cl_float waveGenerator)
     // Enqueue GL buffer acquire
     vector<cl::Memory> sharedBuffers;
     sharedBuffers.push_back(mPositionsYinBuffer);
+	sharedBuffers.push_back(mPositionsYangBuffer);
     mQueue.enqueueAcquireGLObjects(&sharedBuffers);
-    // Predicit positions
+
+	// Predicit positions
     this->predictPositions();
 
     // Update cells

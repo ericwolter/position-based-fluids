@@ -390,7 +390,7 @@ void CVisual::DrawTweekBar()
             pTracker->Tag = 1;
 
             // Create bar
-            TwAddVarRO(tweakBar, pTracker->eventName.c_str(), TW_TYPE_DOUBLE, &pTracker->total_time, "precision=2 group=Stats");
+            TwAddVarRO(tweakBar, ("  " + pTracker->eventName).c_str(), TW_TYPE_DOUBLE, &pTracker->total_time, "precision=2 group=Stats");
 
             // Make sure Stats group is folded
             TwDefine(" PBFTweak/Stats opened=false ");

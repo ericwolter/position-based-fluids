@@ -56,9 +56,9 @@ __kernel void computeKeys(__constant struct Parameters* Params,
 
 __kernel void sortParticles(const __global int *permutation,
                             const __global float4 *positionsYin,
-                            __global float4 *positionsYang,
+                                  __global float4 *positionsYang,
                             const __global float4 *velocitiesYin,
-                            __global float4 *velocitiesYang,
+                                  __global float4 *velocitiesYang,
                             const uint N)
 {
     const uint i = get_global_id(0);

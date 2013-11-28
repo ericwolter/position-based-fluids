@@ -159,7 +159,6 @@ public:
     void sort(int iterationIndex);
     void radixsort();
 
-    uint calcGridHash(cl_int3 gridPos);
     bool compareHash(const cl_float4 &p1, const cl_float4 &p2);
     // bool compareZ(const cl_float4 &p1, const cl_float4 &p2);
 };
