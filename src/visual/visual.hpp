@@ -77,6 +77,8 @@ public:
 
     void DrawTweekBar();
 
+	void DrawPerformanceGraph();
+
     glm::vec3 resolveCamPosition(void) const;
 
     glm::mat4 calcLookAtMatrix(const glm::vec3 &cameraPt, const glm::vec3 &lookPt, const glm::vec3 &upPt) const;

@@ -6,6 +6,7 @@
 #include "visual.hpp"
 #include "../ParamUtils.hpp"
 #include "SOIL.h"
+#include "../ocl/TwOpenGLCore.h"
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -19,6 +20,8 @@ using namespace std;
 #endif
 
 static float displayscale = 1.0f;
+
+CTwGraphOpenGLCore tw;
 
 CVisual::CVisual (const int width, const int height)
     : UICmd_GenerateWaves(false),
@@ -166,6 +169,9 @@ void CVisual::initWindow(const string windowname)
 
     // static unsigned int numParticles = 10000;
     // TwAddVarRW(tweakBar, "# of particles", TW_TYPE_UINT32, &numParticles, " group=Parameters max=100000 min=1000 step=100 ");
+
+	tw.Init();
+	TwGenerateDefaultFonts();
 }
 
 glm::vec3 CVisual::resolveCamPosition(void) const
@@ -405,6 +411,81 @@ void CVisual::DrawTweekBar()
 
     // Actual draw
     TwDraw();
+
+	DrawPerformanceGraph();
+}
+
+void CVisual::DrawPerformanceGraph()
+{
+	// Compute sizes
+	const int ViewWidth    = 1280;
+	const int ViewHeight   = 720;
+	const int BarHeight    = 20;
+	const int BarWidth     = ViewWidth * 0.9;
+	const int BarTop       = ViewHeight - BarHeight * 2;
+	const int BarBottom    = BarTop + BarHeight;
+	const int BarLeft      = (ViewWidth - BarWidth) / 2;
+	const int BarRight     = ViewWidth - BarLeft;
+
+	static void* pTextObj = tw.NewTextObj();
+
+	tw.BeginDraw(ViewWidth, ViewHeight);
+
+	// Find total time
+	float totalTime = 0;
+    for (size_t i = 0; i < mSimulation->PerfData.Trackers.size(); i++)
+        totalTime += mSimulation->PerfData.Trackers[i]->total_time;
+	
+	// Draw
+	//const color32 StartClr[] = {0xDE6866, 0x9ADE66, 0x66AADE};
+	//const color32 EndClr[]   = {0xDEA1A0, 0xBAE09D, 0x9ABFDB};
+	const color32 StartClr[] = {0xFF0000, 0x00FF00, 0x0000FF};
+	const color32 EndClr[]   = {0xA00000, 0x00A000, 0x0000A0};
+	const color32 Alpha      = 0x80000000;
+	int prevX = BarLeft;
+	float accTime = 0;
+    for (size_t i = 0; i < mSimulation->PerfData.Trackers.size(); i++)
+    {
+        PM_PERFORMANCE_TRACKER* pTracker = mSimulation->PerfData.Trackers[i];
+
+		// Add segment time
+		accTime += pTracker->total_time;
+
+		// Compute screen position
+		int newX = BarLeft + (0.5f + accTime * BarWidth / totalTime);
+
+		// draw bar
+		tw.DrawRect(prevX, BarTop, newX, BarBottom, Alpha | StartClr[i % 3], Alpha | EndClr[i % 3], Alpha | StartClr[i % 3], Alpha | EndClr[i % 3]);
+
+		// Do we have space for text?
+		if (newX - prevX > 4)
+		{
+			// Draw name text
+			const int NameVertOffset = -2;
+			tw.BuildText(pTextObj, &pTracker->eventName, NULL, NULL, 1, g_DefaultSmallFont, 0, 0);
+			tw.SetScissor(prevX+2, BarTop + NameVertOffset, newX - prevX, BarHeight);
+			tw._DrawText(pTextObj, prevX+2, BarTop + NameVertOffset, 0xffffffffu, 0x00ffffffu);
+
+			// Build ms text
+			char tmp[128];
+			sprintf_s(tmp, "%3.2f", pTracker->total_time);
+			string str(tmp);
+
+			// Draw time text
+			const int MSVertOffset = 9;
+			tw.BuildText(pTextObj, &str, NULL, NULL, 1, g_DefaultSmallFont, 0, 0);
+			tw.SetScissor(prevX+2, BarTop + MSVertOffset, newX - prevX, BarHeight);
+			tw._DrawText(pTextObj, prevX+2, BarTop + MSVertOffset, 0xffffffffu, 0x00ffffffu);
+
+			// Remove Scissor
+			tw.SetScissor(0, 0, 0, 0);
+		}
+
+		// Update prev X
+		prevX = newX;
+	}
+
+	tw.EndDraw();
 }
 
 void CVisual::checkInput()
