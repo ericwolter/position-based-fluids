@@ -546,12 +546,20 @@ void CVisual::DrawFriendsHistogram()
 
 		// Build ms text
 		char tmp[128];
-		sprintf(tmp, "%3.0f", barHeight * 100);
+		sprintf(tmp, "%2.0f%%", barHeight * 100);
 		string str(tmp);
 
 		// Draw time text
 		tw.BuildText(pTextObj, &str, NULL, NULL, 1, g_DefaultSmallFont, 0, 0);
-		tw._DrawText(pTextObj, screenX1, HistBottom - 10, 0xff000000u, 0);
+		tw._DrawText(pTextObj, screenX1, screenY1 - 10, 0xffffffffu, 0);
+
+		// friends text
+		sprintf(tmp, "%2.0f", (float)Histogram[iHist] / Params.particleCount);
+		str = tmp;
+
+		// Draw time text
+		tw.BuildText(pTextObj, &str, NULL, NULL, 1, g_DefaultSmallFont, 0, 0);
+		tw._DrawText(pTextObj, screenX1+2, HistBottom - 12, 0xffff0000u, 0);
 	}
 
 	tw.EndDraw();

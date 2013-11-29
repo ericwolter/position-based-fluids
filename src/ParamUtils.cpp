@@ -74,7 +74,9 @@ void LoadParameters(string InputFile)
 		else if (parameter == "timestep")            ss >> Params.timeStep;
         else if (parameter == "simiterations")       ss >> Params.simIterations;
         else if (parameter == "substeps")            ss >> Params.subSteps;
-		else if (parameter == "gridres")             ss >> Params.gridRes;
+		
+		else if (parameter == "smoothlen")           ss >> Params.h;
+		else if (parameter == "gridbuffersize")      ss >> Params.gridBufSize;
         else if (parameter == "restdensity")         ss >> Params.restDensity;
 		else if (parameter == "epsilon")             ss >> Params.epsilon;
 		else if (parameter == "garvity")             ss >> Params.garvity;
@@ -92,7 +94,6 @@ void LoadParameters(string InputFile)
     ifs.close();
 
 	// Compute fields
-	Params.h   = 1.0f / Params.gridRes;
 	Params.h_2 = Params.h * Params.h;
 	Params.friendsCircles     = 5;
 	Params.particlesPerCircle = 20;

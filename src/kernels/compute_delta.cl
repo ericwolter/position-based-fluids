@@ -60,8 +60,7 @@ float rand_3d(float3 pos)
 
 __kernel void computeDelta(__constant struct Parameters* Params, 
                            __global float4 *delta,
-                           const __global float4 *predicted,
-                           const __global float *scaling,
+                           const __global float4 *predicted, // xyz=predicted, w=scaling
                            const __global int *friends_list,
                            const float wave_generator,
                            const int N)
@@ -71,58 +70,67 @@ __kernel void computeDelta(__constant struct Parameters* Params,
 
     uint2 randSeed = (uint2)(1+get_global_id(0), 1);
 
-    int3 current_cell = convert_int3(predicted[i].xyz * (float3)(Params->gridRes));
+    // equation (13)
+    const float q_2 = pow(Params->surfaceTenstionDist * Params->h, 2);
+    const float poly6_q = pow(Params->h_2 - q_2, 3);
 
     // Sum of lambdas
-    float4 sum = (float4)0.0f;
+    float3 sum = (float3)0.0f;
+    const float h_2_cache = Params->h_2;
+    const float h_cache = Params->h;
 
     // read number of friends
+    int totalFriends = 0;
     int circleParticles[FRIENDS_CIRCLES];
     for (int j = 0; j < FRIENDS_CIRCLES; j++)
-        circleParticles[j] = friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + j];    
+        totalFriends += circleParticles[j] = friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + j];    
 
+    int proccedFriends = 0;
     for (int iCircle = 0; iCircle < FRIENDS_CIRCLES; iCircle++)
     {
+        // Check if we want to process/skip next friends circle
+        if (((float)proccedFriends) / totalFriends > 0.5)
+            continue;
+        
+        // Add next circle to process count
+        proccedFriends += circleParticles[iCircle];
+        
+        // Compute friends list start offset
+        int baseIndex = i * PARTICLE_FRIENDS_BLOCK_SIZE + FRIENDS_CIRCLES +   // Offset to first circle -> "circle[0]"
+                        iCircle * MAX_PARTICLES_IN_CIRCLE;                    // Offset to iCircle      -> "circle[iCircle]"
+    
+        // Process friends in circle
         for (int iFriend = 0; iFriend < circleParticles[iCircle]; iFriend++)
         {
             // Read friend index from friends_list
-            int j_index = friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + FRIENDS_CIRCLES +   // Offset to first circle -> "circle[0]"
-                                       iCircle * MAX_PARTICLES_IN_CIRCLE +                   // Offset to iCircle      -> "circle[iCircle]"
-                                       iFriend];                                             // Offset to iFriend      -> "circle[iCircle][iFriend]"
+            const int j_index = friends_list[baseIndex + iFriend];  
         
-            float4 r = predicted[i] - predicted[j_index];
-            float r_length_2 = r.x * r.x + r.y * r.y + r.z * r.z;
+            // Compute r, length(r) and length(r)^2
+            const float3 r         = predicted[i].xyz - predicted[j_index].xyz;
+            const float r_length_2 = dot(r, r);
+            const float r_length   = sqrt(r_length_2);
 
-            if (r_length_2 > 0.0f && r_length_2 < Params->h_2)
-            {
-                float r_length = sqrt(r_length_2);
-                float4 gradient_spiky = -1.0f * r / (r_length)
-                                        * GRAD_SPIKY_FACTOR
-                                        * (Params->h - r_length)
-                                        * (Params->h - r_length);
+            const float3 gradient_spiky = -1.0f * GRAD_SPIKY_FACTOR * 
+                                           r / (r_length) *
+                                          (Params->h - r_length) * 
+                                          (Params->h - r_length);
 
-                float poly6_r = POLY6_FACTOR * (Params->h_2 - r_length_2) * (Params->h_2 - r_length_2) * (Params->h_2 - r_length_2);
+            const float r_2_diff = h_2_cache - r_length_2;
+            const float poly6_r = r_2_diff * r_2_diff * r_2_diff;
 
-                // equation (13)
-                const float q_2 = pow(Params->surfaceTenstionDist * Params->h, 2);
-                float poly6_q = POLY6_FACTOR * (Params->h_2 - q_2) * (Params->h_2 - q_2) * (Params->h_2 - q_2);
-                const uint n = 4;
+            const float r_q_radio = poly6_r / poly6_q;
+            const float s_corr = Params->surfaceTenstionK * r_q_radio * r_q_radio * r_q_radio * r_q_radio;
 
-                float s_corr = -1.0f * Params->surfaceTenstionK * pow(poly6_r / poly6_q, n);
-
-                // Sum for delta p of scaling factors and grad spiky
-                // in equation (12)
-
-                sum += (scaling[i] + scaling[j_index] + s_corr) * gradient_spiky;
-            }
+            // Sum for delta p of scaling factors and grad spiky (equation 12)
+            sum += (predicted[i].w + predicted[j_index].w + s_corr) * gradient_spiky;
         }
     }
 
     // equation (12)
-    float4 delta_p = sum / Params->restDensity;
+    float3 delta_p = sum / Params->restDensity;
 
     float randDist = 0.005f;
-    float4 future = predicted[i] + delta_p;
+    float3 future = predicted[i].xyz + delta_p;
 
     // Prime the random... DO NOT REMOVE
     frand(&randSeed);
@@ -137,7 +145,7 @@ __kernel void computeDelta(__constant struct Parameters* Params,
     else if (future.x > (Params->xMax                 ))  future.x = Params->xMax                  - frand(&randSeed) * randDist;
 
 	// Compute delta
-    delta[i] = future - predicted[i];
+    delta[i].xyz = future - predicted[i].xyz;
 
     // #if defined(USE_DEBUG)
     //printf("compute_delta: result: i: %d (N=%d)\ndelta: [%f,%f,%f,%f]\n",

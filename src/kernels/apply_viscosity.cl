@@ -14,12 +14,22 @@ __kernel void applyViscosity(
     float3 omega_i = (float3) 0.0f;
 
     // read number of friends
+    int totalFriends = 0;
     int circleParticles[FRIENDS_CIRCLES];
     for (int j = 0; j < FRIENDS_CIRCLES; j++)
-        circleParticles[j] = friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + j];    
+        totalFriends += circleParticles[j] = friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + j];    
 
+    int proccedFriends = 0;
     for (int iCircle = 0; iCircle < FRIENDS_CIRCLES; iCircle++)
     {
+        // Check if we want to process/skip next friends circle
+        if (((float)proccedFriends) / totalFriends > 0.5)
+            continue;
+        
+        // Add next circle to process count
+        proccedFriends += circleParticles[iCircle];
+    
+        // Process friends in circle
         for (int iFriend = 0; iFriend < circleParticles[iCircle]; iFriend++)
         {
             // Read friend index from friends_list

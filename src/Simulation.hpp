@@ -69,6 +69,7 @@ public:
     cl::Buffer mVelocitiesYinBuffer;
     cl::Buffer mVelocitiesYangBuffer;
     cl::Buffer mScalingFactorsBuffer;
+	cl::Buffer mDensityBuffer;
     cl::Buffer mDeltaBuffer;
     cl::Buffer mDeltaVelocityBuffer;
     cl::Buffer mOmegaBuffer;
@@ -102,6 +103,7 @@ public:
     void computeScaling(int iterationIndex);
     void computeDelta(int iterationIndex);
     void radixsort();
+	void packData(cl::Buffer packTarget, cl::Buffer packSource, int iterationIndex);
 
 public:
     // Default constructor.

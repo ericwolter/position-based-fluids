@@ -22,6 +22,7 @@ struct Parameters
 	float timeStep;
 	unsigned int   simIterations;
 	unsigned int   subSteps;
+	float h;
 	float restDensity;
 	float epsilon;
 	float garvity;
@@ -33,7 +34,7 @@ struct Parameters
 	// Grid and friends list
 	int  friendsCircles;
 	int  particlesPerCircle;
-	int  gridRes;
+	int  gridBufSize;
 
 	// Setup related
 	float setupSpacing;
@@ -43,6 +44,5 @@ struct Parameters
 	unsigned int sortIterations;
 
 	// Computed fields
-	float h;
 	float h_2;
 };

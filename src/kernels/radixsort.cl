@@ -46,7 +46,7 @@ __kernel void computeKeys(__constant struct Parameters* Params,
     const uint i = get_global_id(0);
 
     if(i < numParticles) {
-        int3 current_cell = convert_int3(positions[i].xyz * (float3)(Params->gridRes));
+        int3 current_cell = convert_int3(positions[i].xyz / Params->h);
         keys[i] = mortonNumber(current_cell);
     } else {
         keys[i] = 2147483647 - 1; //max_int

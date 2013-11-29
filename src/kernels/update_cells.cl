@@ -1,9 +1,16 @@
+int expandBits1(int x)
+{
+    x = (x | (x << 16)) & 0x030000FF;
+    x = (x | (x <<  8)) & 0x0300F00F;
+    x = (x | (x <<  4)) & 0x030C30C3;
+    x = (x | (x <<  2)) & 0x09249249;
+
+    return x;
+}
+
 uint calcGridHash(int3 gridPos)
 {
-    const uint p1 = 73856093; // some large primes
-    const uint p2 = 19349663;
-    const uint p3 = 83492791;
-    return abs(p1*gridPos.x ^ p2*gridPos.y ^ p3*gridPos.z) % GRID_SIZE;
+    return (expandBits1(gridPos.x) | (expandBits1(gridPos.y) << 1) | (expandBits1(gridPos.z) << 2)) % GRID_BUG_SIZE;
 }
 
 __kernel void updateCells(__constant struct Parameters* Params, 
@@ -16,7 +23,7 @@ __kernel void updateCells(__constant struct Parameters* Params,
     const uint i = get_global_id(0);
     if (i >= N) return;
 
-    int3 current_cell = convert_int3(predicted[i].xyz * (float3)(Params->gridRes));
+    int3 current_cell = convert_int3(predicted[i].xyz / Params->h);
 
     uint cell_index = calcGridHash(current_cell);
 
