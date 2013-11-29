@@ -351,7 +351,7 @@ void Simulation::updatePredicted(int iterationIndex)
     mQueue.enqueueNDRangeKernel(mKernels["updatePredicted"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updatePredicted", iterationIndex));
 }
 
-void Simulation::computeDelta(int iterationIndex, cl_float waveGenerator)
+void Simulation::computeDelta(int iterationIndex)
 {
     int param = 0;
     mKernels["computeDelta"].setArg(param++, mParameters);
@@ -359,7 +359,7 @@ void Simulation::computeDelta(int iterationIndex, cl_float waveGenerator)
     mKernels["computeDelta"].setArg(param++, mPredictedBuffer);
     mKernels["computeDelta"].setArg(param++, mScalingFactorsBuffer);
     mKernels["computeDelta"].setArg(param++, mFriendsListBuffer);
-    mKernels["computeDelta"].setArg(param++, waveGenerator);
+    mKernels["computeDelta"].setArg(param++, fWavePos);
     mKernels["computeDelta"].setArg(param++, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
@@ -393,22 +393,6 @@ void Simulation::updateCells()
     mKernels["updateCells"].setArg(param++, mParticlesListBuffer);
     mKernels["updateCells"].setArg(param++, Params.particleCount);
     mQueue.enqueueNDRangeKernel(mKernels["updateCells"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updateCells"));
-}
-
-bool tickTock = false;
-void Simulation::sort(int iterationIndex)
-{
-    const int bucketSize = Params.segmentSize;
-    int param = 0;
-    mKernels["sort"].setArg(param++, mPositionsYinBuffer);
-    mKernels["sort"].setArg(param++, mVelocitiesYinBuffer);
-    mKernels["sort"].setArg(param++, bucketSize);
-    mKernels["sort"].setArg(param++, tickTock ? bucketSize / 2 : 0);
-    mKernels["sort"].setArg(param++, Params.particleCount);
-    mKernels["sort"].setArg(param++, Params.particleCount / bucketSize);
-    mQueue.enqueueNDRangeKernel(mKernels["sort"], 0, cl::NDRange(Params.particleCount / bucketSize), mLocalRange, NULL, PerfData.GetTrackerEvent("sort", iterationIndex));
-
-    tickTock = !tickTock;
 }
 
 void Simulation::radixsort()
@@ -553,7 +537,7 @@ void Simulation::radixsort()
     mSharingYangBufferID = tmp3;
 }
 
-void Simulation::Step(bool bPauseSim, cl_float waveGenerator)
+void Simulation::Step()
 {
     // Why is this here?
     glFinish();
@@ -572,8 +556,8 @@ void Simulation::Step(bool bPauseSim, cl_float waveGenerator)
 
     // Build friends list
     this->buildFriendsList();
-    //mQueue.enqueueReadBuffer(mFriendsListBuffer, CL_TRUE, 0, mBufferSizeParticles, mFriendsList);
-    //mQueue.finish();
+	if (bReadFriendsList)
+		mQueue.enqueueReadBuffer(mFriendsListBuffer, CL_TRUE, 0, mBufferSizeParticles, mFriendsList);
 
     for (unsigned int i = 0; i < Params.simIterations; ++i)
     {
@@ -584,7 +568,7 @@ void Simulation::Step(bool bPauseSim, cl_float waveGenerator)
             _asm nop;*/
 
         // Compute position delta
-        this->computeDelta(i, waveGenerator);
+        this->computeDelta(i);
         /*mQueue.enqueueReadBuffer(mDeltaBuffer, CL_TRUE, 0, mBufferSizeParticles, mDeltas);
         if (mQueue.finish() != CL_SUCCESS)
             _asm nop;*/
@@ -600,14 +584,11 @@ void Simulation::Step(bool bPauseSim, cl_float waveGenerator)
     this->applyViscosity();
     this->applyVorticity();
 
-    // Update particle postions
+    // Update particle buffers
     if (!bPauseSim)
         this->updatePositions();
 
-    // for (unsigned int i = 0; i < Params.sortIterations; ++i)
-    // {
-    //     this->sort(i);
-    // }
+	// sort particles buffer
     this->radixsort();
 
     // Release OpenGL shared object, allowing openGL do to it's thing...

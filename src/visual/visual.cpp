@@ -27,6 +27,7 @@ CVisual::CVisual (const int width, const int height)
     : UICmd_GenerateWaves(false),
       UICmd_ResetSimulation(false),
       UICmd_PauseSimulation(false),
+	  UICmd_FriendsHistogarm(false),
       mWidth(width),
       mHeight(height),
       mProgramID(0),
@@ -97,6 +98,10 @@ void TW_CALL ShowSorting(void *clientData)
 {
     ((CVisual *)clientData)->initParticlesVisual(SORTING);
 }
+void TW_CALL FriendsHistogram(void *clientData)
+{
+    ((CVisual *)clientData)->UICmd_FriendsHistogarm = !((CVisual *)clientData)->UICmd_FriendsHistogarm;
+}
 
 void CVisual::initWindow(const string windowname)
 {
@@ -163,6 +168,7 @@ void CVisual::initWindow(const string windowname)
     TwAddButton(tweakBar, "Generate waves" , GenerateWaves , this , " group=Controls ");
     TwAddButton(tweakBar, "Show velocity" , ShowVelocity , this , " group=Controls ");
     TwAddButton(tweakBar, "Show sorting" , ShowSorting , this , " group=Controls ");
+	TwAddButton(tweakBar, "Firends Histogram" , FriendsHistogram , this , " group=Controls ");
 
     // Create bar
     TwAddVarRO(tweakBar, "Total sim time", TW_TYPE_DOUBLE, &mTotalSimTime, "precision=2 group=Stats");
@@ -413,6 +419,10 @@ void CVisual::DrawTweekBar()
     TwDraw();
 
 	DrawPerformanceGraph();
+
+	// Draw Friends histogram
+	if (UICmd_FriendsHistogarm)
+		DrawFriendsHistogram();
 }
 
 void CVisual::DrawPerformanceGraph()
@@ -464,18 +474,18 @@ void CVisual::DrawPerformanceGraph()
 			const int NameVertOffset = -2;
 			tw.BuildText(pTextObj, &pTracker->eventName, NULL, NULL, 1, g_DefaultSmallFont, 0, 0);
 			tw.SetScissor(prevX+2, BarTop + NameVertOffset, newX - prevX, BarHeight);
-			tw._DrawText(pTextObj, prevX+2, BarTop + NameVertOffset, 0xffffffffu, 0x00ffffffu);
+			tw._DrawText(pTextObj, prevX+2, BarTop + NameVertOffset, 0xffffffffu, 0);
 
 			// Build ms text
 			char tmp[128];
-			sprintf_s(tmp, "%3.2f", pTracker->total_time);
+			sprintf(tmp, "%3.2f", pTracker->total_time);
 			string str(tmp);
 
 			// Draw time text
 			const int MSVertOffset = 9;
 			tw.BuildText(pTextObj, &str, NULL, NULL, 1, g_DefaultSmallFont, 0, 0);
 			tw.SetScissor(prevX+2, BarTop + MSVertOffset, newX - prevX, BarHeight);
-			tw._DrawText(pTextObj, prevX+2, BarTop + MSVertOffset, 0xffffffffu, 0x00ffffffu);
+			tw._DrawText(pTextObj, prevX+2, BarTop + MSVertOffset, 0xffffffffu, 0);
 
 			// Remove Scissor
 			tw.SetScissor(0, 0, 0, 0);
@@ -483,6 +493,65 @@ void CVisual::DrawPerformanceGraph()
 
 		// Update prev X
 		prevX = newX;
+	}
+
+	tw.EndDraw();
+}
+
+void CVisual::DrawFriendsHistogram()
+{
+	static void* pTextObj = tw.NewTextObj();
+
+	// Histogram
+	int Histogram[32];
+	memset(Histogram, 0, sizeof(Histogram));
+
+	// Compute histogram data
+	for (int iPart = 0; iPart < Params.particleCount; iPart++)
+		for (int iCircle = 0; iCircle < Params.friendsCircles; iCircle++)
+			Histogram[iCircle] += mSimulation->mFriendsList[iPart * (Params.friendsCircles * (1 + Params.particlesPerCircle)) + iCircle];
+
+	// Compute total friends
+	int histTotal = 0;
+	for (int iHist = 0; iHist < Params.friendsCircles; iHist++)
+		histTotal += Histogram[iHist];
+
+	// Define coordinates
+	const int ViewWidth    = 1280;
+	const int ViewHeight   = 720;
+	const int HistWidth    = 100;
+	const int HistHeight   = 100;
+	const int HistTop      = 10;
+	const int HistBottom   = HistTop + HistHeight;
+	const int HistLeft     = ViewWidth*0.95 - HistWidth;
+	const int HistRight    = HistLeft + HistWidth;
+	const int BarsWidth   = HistWidth / Params.friendsCircles;
+
+	tw.BeginDraw(ViewWidth, ViewHeight);
+
+	// Draw
+	tw.DrawRect(HistLeft - 2, HistTop - 2,HistRight + 2, HistBottom + 2, 0x50ffffff);
+	
+	for (int iHist = 0; iHist < Params.friendsCircles; iHist++)
+	{
+		// Compute bar height
+		float barHeight = (float)Histogram[iHist] / histTotal; 
+
+		// Compute screen pos
+		int   screenY1 = HistBottom - barHeight * HistHeight - 1;
+		int   screenX1 = 1 + HistLeft + BarsWidth * iHist;
+
+		// Draw
+		tw.DrawRect(screenX1, screenY1, screenX1 + BarsWidth - 2, HistBottom, 0xff00ff0ff);
+
+		// Build ms text
+		char tmp[128];
+		sprintf(tmp, "%3.0f", barHeight * 100);
+		string str(tmp);
+
+		// Draw time text
+		tw.BuildText(pTextObj, &str, NULL, NULL, 1, g_DefaultSmallFont, 0, 0);
+		tw._DrawText(pTextObj, screenX1, HistBottom - 10, 0xff000000u, 0);
 	}
 
 	tw.EndDraw();

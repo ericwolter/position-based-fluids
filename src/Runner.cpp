@@ -183,12 +183,16 @@ void Runner::run(Simulation& simulation, CVisual& renderer)
             waveTime = 0.0f;
         }
 
+		// Load simulation settings
+		simulation.bPauseSim        = renderer.UICmd_PauseSimulation;
+		simulation.bReadFriendsList = renderer.UICmd_FriendsHistogarm;
+		simulation.fWavePos         = wavePos;
 
         // Sub frames
         for (cl_uint i = 0; i < Params.subSteps; i++)
         {
             // Execute simulation
-            simulation.Step(renderer.UICmd_PauseSimulation, wavePos);
+            simulation.Step();
 
             // Incremenent time
             if (!renderer.UICmd_PauseSimulation)

@@ -79,6 +79,8 @@ public:
 
 	void DrawPerformanceGraph();
 
+	void DrawFriendsHistogram();
+
     glm::vec3 resolveCamPosition(void) const;
 
     glm::mat4 calcLookAtMatrix(const glm::vec3 &cameraPt, const glm::vec3 &lookPt, const glm::vec3 &upPt) const;
@@ -87,6 +89,7 @@ public:
     bool UICmd_GenerateWaves;
     bool UICmd_ResetSimulation;
     bool UICmd_PauseSimulation;
+	bool UICmd_FriendsHistogarm;
 
 private:
     // Window stuff

@@ -24,10 +24,6 @@ using std::map;
 using std::vector;
 using std::string;
 
-
-/**
-*  \brief CParser
-*/
 class Simulation
 {
 private:
@@ -35,50 +31,12 @@ private:
     Simulation &operator=(const Simulation &other);
     Simulation (const Simulation &other);
 
+	// Init particles positions
 	void CreateParticles();
 
-public:
-
-    /**
-    *  \brief  Default constructor.
-    */
-    explicit Simulation(const cl::Context &clContext, const cl::Device &clDevice);
-
-    /**
-    *  \brief  Destructor.
-    */
-    ~Simulation ();
-
-	/**
-    *  \brief  Create all buffer and particles
-    */
-	void InitBuffers();
-
-	/**
-    *  \brief Init Grid
-    */
-    void InitCells();
-
-	/**
-    *  \brief Load and build kernels
-    */
-    bool InitKernels();
-
-	/**
-    *  \brief Perform single simulation step
-    */
-    void Step(bool bPauseSim, cl_float waveGenerator);
-
-	/**
-    *  \brief Copy current positions and velocities
-    */
+    // Copy current positions and velocities
     void dumpData( cl_float4 * (&positions), cl_float4 * (&velocities) );
     
-	/**
-    *  \brief Get a list of kernel files
-    */
-	const std::string* KernelFileList();
-
 public:
 
     // OpenCL objects supplied by OpenCL setup
@@ -100,13 +58,6 @@ public:
     size_t mBufferSizeCells;
     size_t mBufferSizeParticlesList;
     size_t mBufferSizeScalingFactors;
-
-    // The host memory holding the simulation data
-    cl_float4* mPositions;
-    cl_float4* mVelocities;
-    cl_float4* mPredictions;
-    cl_float4* mDeltas;
-	cl_uint*   mFriendsList;
 
     // The device memory buffers holding the simulation data
     cl::Buffer mCellsBuffer;
@@ -139,12 +90,6 @@ public:
     cl_int *mCells;
     cl_int *mParticlesList;
 
-    GLuint mSharingYinBufferID;
-    GLuint mSharingYangBufferID;
-
-	// Performance measurement
-	OCLPerfMon PerfData;
-
     // Private member functions
     void updateCells();
     void updatePositions();
@@ -155,12 +100,51 @@ public:
 	void buildFriendsList();
     void updatePredicted(int iterationIndex);
     void computeScaling(int iterationIndex);
-    void computeDelta(int iterationIndex, cl_float waveGenerator);
-    void sort(int iterationIndex);
+    void computeDelta(int iterationIndex);
     void radixsort();
 
-    bool compareHash(const cl_float4 &p1, const cl_float4 &p2);
-    // bool compareZ(const cl_float4 &p1, const cl_float4 &p2);
+public:
+    // Default constructor.
+    explicit Simulation(const cl::Context &clContext, const cl::Device &clDevice);
+
+    // Destructor.
+    ~Simulation ();
+
+    // Create all buffer and particles
+	void InitBuffers();
+
+    // Init Grid
+    void InitCells();
+
+    // Load and build kernels
+    bool InitKernels();
+
+    // Perform single simulation step
+    void Step();
+
+    // Get a list of kernel files
+	const std::string* KernelFileList();
+
+public:
+
+	// Open GL Sharing buffers
+    GLuint mSharingYinBufferID;
+    GLuint mSharingYangBufferID;
+
+	// Performance measurement
+	OCLPerfMon PerfData;
+
+	// Rendering state
+	bool      bPauseSim;
+	bool      bReadFriendsList;
+	cl_float  fWavePos;
+	
+    // debug buffers (placed in host memory)
+    cl_float4* mPositions;
+    cl_float4* mVelocities;
+    cl_float4* mPredictions;
+    cl_float4* mDeltas;
+	cl_uint*   mFriendsList;
 };
 
 #endif // __SIMULATION_HPP
