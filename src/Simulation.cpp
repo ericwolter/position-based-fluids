@@ -25,13 +25,13 @@ unsigned int _NKEYS = 0;
 Simulation::Simulation(const cl::Context &clContext, const cl::Device &clDevice)
     : mCLContext(clContext),
       mCLDevice(clDevice),
+      mCells(NULL),
+      mParticlesList(NULL),
       mPositions(NULL),
       mVelocities(NULL),
       mPredictions(NULL),
       mDeltas(NULL),
-      mFriendsList(NULL),
-      mCells(NULL),
-      mParticlesList(NULL)
+      mFriendsList(NULL)
 {
 }
 

@@ -32,9 +32,9 @@ struct Parameters
 	float surfaceTenstionDist;
 
 	// Grid and friends list
-	int  friendsCircles;
-	int  particlesPerCircle;
-	int  gridBufSize;
+	unsigned int  friendsCircles;
+	unsigned int  particlesPerCircle;
+	unsigned int  gridBufSize;
 
 	// Setup related
 	float setupSpacing;

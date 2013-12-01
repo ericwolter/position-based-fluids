@@ -6,7 +6,11 @@
 #include "visual.hpp"
 #include "../ParamUtils.hpp"
 #include "SOIL.h"
-#include "../ocl/TwOpenGLCore.h"
+#ifdef _WINDOWS
+#include "../../lib/AntTweakBar/src/TwOpenGLCore.h"
+#else
+#include "../../lib/AntTweakBar/src/TwOpenGL.h"
+#endif
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -21,7 +25,11 @@ using namespace std;
 
 static float displayscale = 1.0f;
 
-CTwGraphOpenGLCore tw;
+#ifdef _WINDOWS
+    CTwGraphOpenGLCore tw;
+#else
+    CTwGraphOpenGL tw;
+#endif
 
 CVisual::CVisual (const int width, const int height)
     : UICmd_GenerateWaves(false),
@@ -435,7 +443,7 @@ void CVisual::DrawPerformanceGraph()
 	const int BarTop       = ViewHeight - BarHeight * 2;
 	const int BarBottom    = BarTop + BarHeight;
 	const int BarLeft      = (ViewWidth - BarWidth) / 2;
-	const int BarRight     = ViewWidth - BarLeft;
+	// const int BarRight     = ViewWidth - BarLeft;
 
 	static void* pTextObj = tw.NewTextObj();
 
@@ -474,7 +482,7 @@ void CVisual::DrawPerformanceGraph()
 			const int NameVertOffset = -2;
 			tw.BuildText(pTextObj, &pTracker->eventName, NULL, NULL, 1, g_DefaultSmallFont, 0, 0);
 			tw.SetScissor(prevX+2, BarTop + NameVertOffset, newX - prevX, BarHeight);
-			tw._DrawText(pTextObj, prevX+2, BarTop + NameVertOffset, 0xffffffffu, 0);
+			tw.DrawText(pTextObj, prevX+2, BarTop + NameVertOffset, 0xffffffffu, 0);
 
 			// Build ms text
 			char tmp[128];
@@ -485,7 +493,7 @@ void CVisual::DrawPerformanceGraph()
 			const int MSVertOffset = 9;
 			tw.BuildText(pTextObj, &str, NULL, NULL, 1, g_DefaultSmallFont, 0, 0);
 			tw.SetScissor(prevX+2, BarTop + MSVertOffset, newX - prevX, BarHeight);
-			tw._DrawText(pTextObj, prevX+2, BarTop + MSVertOffset, 0xffffffffu, 0);
+			tw.DrawText(pTextObj, prevX+2, BarTop + MSVertOffset, 0xffffffffu, 0);
 
 			// Remove Scissor
 			tw.SetScissor(0, 0, 0, 0);
@@ -507,13 +515,13 @@ void CVisual::DrawFriendsHistogram()
 	memset(Histogram, 0, sizeof(Histogram));
 
 	// Compute histogram data
-	for (int iPart = 0; iPart < Params.particleCount; iPart++)
-		for (int iCircle = 0; iCircle < Params.friendsCircles; iCircle++)
+	for (unsigned int iPart = 0; iPart < Params.particleCount; iPart++)
+		for (unsigned int iCircle = 0; iCircle < Params.friendsCircles; iCircle++)
 			Histogram[iCircle] += mSimulation->mFriendsList[iPart * (Params.friendsCircles * (1 + Params.particlesPerCircle)) + iCircle];
 
 	// Compute total friends
 	int histTotal = 0;
-	for (int iHist = 0; iHist < Params.friendsCircles; iHist++)
+	for (unsigned int iHist = 0; iHist < Params.friendsCircles; iHist++)
 		histTotal += Histogram[iHist];
 
 	// Define coordinates
@@ -532,7 +540,7 @@ void CVisual::DrawFriendsHistogram()
 	// Draw
 	tw.DrawRect(HistLeft - 2, HistTop - 2,HistRight + 2, HistBottom + 2, 0x50ffffff);
 	
-	for (int iHist = 0; iHist < Params.friendsCircles; iHist++)
+	for (unsigned int iHist = 0; iHist < Params.friendsCircles; iHist++)
 	{
 		// Compute bar height
 		float barHeight = (float)Histogram[iHist] / histTotal; 
@@ -542,7 +550,7 @@ void CVisual::DrawFriendsHistogram()
 		int   screenX1 = 1 + HistLeft + BarsWidth * iHist;
 
 		// Draw
-		tw.DrawRect(screenX1, screenY1, screenX1 + BarsWidth - 2, HistBottom, 0xff00ff0ff);
+		tw.DrawRect(screenX1, screenY1, screenX1 + BarsWidth - 2, HistBottom, 0xff00ffff);
 
 		// Build ms text
 		char tmp[128];
@@ -551,7 +559,7 @@ void CVisual::DrawFriendsHistogram()
 
 		// Draw time text
 		tw.BuildText(pTextObj, &str, NULL, NULL, 1, g_DefaultSmallFont, 0, 0);
-		tw._DrawText(pTextObj, screenX1, screenY1 - 10, 0xffffffffu, 0);
+		tw.DrawText(pTextObj, screenX1, screenY1 - 10, 0xffffffffu, 0);
 
 		// friends text
 		sprintf(tmp, "%2.0f", (float)Histogram[iHist] / Params.particleCount);
@@ -559,7 +567,7 @@ void CVisual::DrawFriendsHistogram()
 
 		// Draw time text
 		tw.BuildText(pTextObj, &str, NULL, NULL, 1, g_DefaultSmallFont, 0, 0);
-		tw._DrawText(pTextObj, screenX1+2, HistBottom - 12, 0xffff0000u, 0);
+		tw.DrawText(pTextObj, screenX1+2, HistBottom - 12, 0xffff0000u, 0);
 	}
 
 	tw.EndDraw();
