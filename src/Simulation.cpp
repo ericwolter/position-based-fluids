@@ -397,7 +397,7 @@ void Simulation::updateCells()
 
 	param = 0;
 	mKernels["resetPartList"].setArg(param++, mCellsBuffer);
-	mQueue.enqueueNDRangeKernel(mKernels["resetPartList"], 0, cl::NDRange(Params.particleCount), mLocalRange, NULL, PerfData.GetTrackerEvent("resetGrid"));
+	mQueue.enqueueNDRangeKernel(mKernels["resetPartList"], 0, cl::NDRange(Params.particleCount), mLocalRange, NULL, PerfData.GetTrackerEvent("resetPartList"));
 
     param = 0;
     mKernels["updateCells"].setArg(param++, mParameters);
