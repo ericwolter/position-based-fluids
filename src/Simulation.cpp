@@ -566,8 +566,6 @@ void Simulation::Step()
 
     // Build friends list
     this->buildFriendsList();
-	if (bReadFriendsList)
-		mQueue.enqueueReadBuffer(mFriendsListBuffer, CL_TRUE, 0, sizeof(cl_uint) * Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle), mFriendsList);
 
     for (unsigned int i = 0; i < Params.simIterations; ++i)
     {
@@ -604,6 +602,9 @@ void Simulation::Step()
 	// sort particles buffer
     this->radixsort();
 
+    if (bReadFriendsList)
+        mQueue.enqueueReadBuffer(mFriendsListBuffer, CL_TRUE, 0, sizeof(cl_uint) * Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle), mFriendsList);
+    
     // Release OpenGL shared object, allowing openGL do to it's thing...
     mQueue.enqueueReleaseGLObjects(&sharedBuffers);
     mQueue.finish();
