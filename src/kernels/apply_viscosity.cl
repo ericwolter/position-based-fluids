@@ -54,13 +54,11 @@ __kernel void applyViscosity(
 
                     // equation 15
                     const float r_length = sqrt(r_length_2);
-                    const float3 gradient_spiky = -1.0f * r / (r_length)
+                    const float3 gradient_spiky = r / (r_length)
                                             * (Params->h - r_length)
                                             * (Params->h - r_length);
                     // the gradient has to be negated because it is with respect to p_j
-                    // this could be done directly when calculating it, but for now we explicitly
-                    // keep it to improve understanding
-                    omega_i += cross(v,-gradient_spiky);
+                    omega_i += cross(v,gradient_spiky);
 
                     viscosity_sum += (1.0f / predicted[j_index].w) * v * (h2_r2_diff * h2_r2_diff * h2_r2_diff);
                 }

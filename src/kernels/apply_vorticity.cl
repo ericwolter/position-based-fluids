@@ -52,7 +52,7 @@ __kernel void applyVorticity(
                                         * (Params->h - r_length)
                                         * (Params->h - r_length);
 
-                    const float omega_length = length(omegas[j_index].xyz);
+                    const float omega_length = fast_length(omegas[j_index].xyz);
                     eta += (omega_length / predicted[j_index].w) * gradient_spiky;
                 }
             }
