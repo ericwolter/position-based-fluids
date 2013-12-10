@@ -335,10 +335,10 @@ GLuint CVisual::createSharingBuffer(const GLsizei size) const
 double last_frame_timestamp = glfwGetTime();
 double last_frame = 0.0f;
 double weighted_time = 0.0f;
-const double weight = 0.1;
 
 GLvoid CVisual::visualizeParticles(void)
 {
+    const double weight = 0.5;
     double current_frame_timestamp = glfwGetTime();
     double current_frame = current_frame_timestamp - last_frame_timestamp;
     weighted_time = current_frame * (1.0 - weight) + last_frame * weight;
