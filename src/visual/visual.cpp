@@ -332,8 +332,19 @@ GLuint CVisual::createSharingBuffer(const GLsizei size) const
     return bufferID;
 }
 
+double last_frame_timestamp = glfwGetTime();
+double last_frame = 0.0f;
+double weighted_time = 0.0f;
+const double weight = 0.1;
+
 GLvoid CVisual::visualizeParticles(void)
 {
+    double current_frame_timestamp = glfwGetTime();
+    double current_frame = current_frame_timestamp - last_frame_timestamp;
+    weighted_time = current_frame * (1.0 - weight) + last_frame * weight;
+    last_frame = weighted_time;
+    last_frame_timestamp = current_frame_timestamp;
+
     glClearColor(0.05f, 0.05f, 0.05f, 0.0f); // Dark blue background
     glClearDepth(1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -646,7 +657,7 @@ void CVisual::checkInput()
 
     // Write current settings to window title
     char szTitle[100];
-    sprintf(szTitle, "eye=(%3.2f %3.2f %3.2f) target=(%3.2f %3.2f %3.2f)", mCamSphere.x, mCamSphere.y, mCamSphere.z, mCamTarget.x, mCamTarget.y, mCamTarget.z);
+    sprintf(szTitle, "fps=%3.2f eye=(%3.2f %3.2f %3.2f) target=(%3.2f %3.2f %3.2f)", 1.0/(weighted_time), mCamSphere.x, mCamSphere.y, mCamSphere.z, mCamTarget.x, mCamTarget.y, mCamTarget.z);
     glfwSetWindowTitle(mWindow, szTitle);
 }
 
