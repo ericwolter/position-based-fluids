@@ -31,12 +31,12 @@ __kernel void applyVorticity(
         for (int iFriend = 0; iFriend < circleParticles[iCircle]; iFriend++)
         {
             // Read friend index from friends_list
-            int j_index = friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + FRIENDS_CIRCLES +   // Offset to first circle -> "circle[0]"
+            const int j_index = friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + FRIENDS_CIRCLES +   // Offset to first circle -> "circle[0]"
                                        iCircle * MAX_PARTICLES_IN_CIRCLE +                   // Offset to iCircle      -> "circle[iCircle]"
                                        iFriend];                                             // Offset to iFriend      -> "circle[iCircle][iFriend]"
         
-            float4 r = predicted[i] - predicted[j_index];
-            float r_length_2 = (r.x * r.x + r.y * r.y + r.z * r.z);
+            const float3 r = predicted[i].xyz - predicted[j_index].xyz;
+            const float r_length_2 = (r.x * r.x + r.y * r.y + r.z * r.z);
 
             if (r_length_2 > 0.0f && r_length_2 < Params->h_2)
             {
@@ -47,22 +47,21 @@ __kernel void applyVorticity(
                 // because of the division by zero.
                 if(fabs(predicted[j_index].w) > 1e-8)
                 {
-                    float r_length = sqrt(r_length_2);
-                    float4 gradient_spiky = -1.0f * r / (r_length)
-                                            * GRAD_SPIKY_FACTOR
+                    const float r_length = sqrt(r_length_2);
+                    const float3 gradient_spiky = -1.0f * r / (r_length)
                                         * (Params->h - r_length)
                                         * (Params->h - r_length);
 
-                    float omega_length = length(omegas[j_index].xyz);
-                    eta += (omega_length / predicted[j_index].w) * gradient_spiky.xyz;
+                    const float omega_length = length(omegas[j_index].xyz);
+                    eta += (omega_length / predicted[j_index].w) * gradient_spiky;
                 }
             }
         }
     }
 
-    float3 eta_N = normalize(eta);
-    float3 vorticityForce = Params->vorticityFactor * cross(eta_N, omegas[i].xyz);
-    float3 vorticityVelocity = vorticityForce * Params->timeStep;
+    const float3 eta_N = normalize(eta * GRAD_SPIKY_FACTOR);
+    const float3 vorticityForce = Params->vorticityFactor * cross(eta_N, omegas[i].xyz);
+    const float3 vorticityVelocity = vorticityForce * Params->timeStep;
 
-    deltaVelocities[i] += (float4)(vorticityVelocity.x, vorticityVelocity.y, vorticityVelocity.z, 0.0f);
+    deltaVelocities[i] += (float4)(vorticityVelocity, 0.0f);
 }
