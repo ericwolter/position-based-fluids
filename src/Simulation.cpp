@@ -170,7 +170,6 @@ void Simulation::InitBuffers()
     // Define CL buffer sizes
     mBufferSizeParticles      = Params.particleCount * sizeof(cl_float4);
     mBufferSizeParticlesList  = Params.particleCount * sizeof(cl_int);
-    mBufferSizeScalingFactors = Params.particleCount * sizeof(cl_float);
 
     // Allocate CPU buffers
     delete[] mPositions;   mPositions   = new cl_float4[Params.particleCount];
@@ -200,7 +199,6 @@ void Simulation::InitBuffers()
     mDeltaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mDeltaVelocityBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mOmegaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
-    mScalingFactorsBuffer  = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeScalingFactors);
 	mDensityBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.particleCount * sizeof(cl_float));
     mParameters            = cl::Buffer(mCLContext, CL_MEM_READ_ONLY,  sizeof(Params));
 
@@ -381,7 +379,6 @@ void Simulation::computeScaling(int iterationIndex)
     int param = 0;
     mKernels["computeScaling"].setArg(param++, mParameters);
     mKernels["computeScaling"].setArg(param++, mPredictedBuffer);
-    mKernels["computeScaling"].setArg(param++, mScalingFactorsBuffer);
     mKernels["computeScaling"].setArg(param++, mDensityBuffer);
     mKernels["computeScaling"].setArg(param++, mFriendsListBuffer);
     mKernels["computeScaling"].setArg(param++, Params.particleCount);
