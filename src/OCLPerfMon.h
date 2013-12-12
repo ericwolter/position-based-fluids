@@ -19,6 +19,7 @@ typedef struct
 	cl_ulong time_start; // [nano sec]
 	cl_ulong time_end;   // [nano sec]
 	double total_time;   // [millisec]
+	double last_time;	 // [millisec]
 
 	// User define type
 	int Tag;

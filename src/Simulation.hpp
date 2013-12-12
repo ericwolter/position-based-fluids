@@ -57,7 +57,6 @@ public:
     size_t mBufferSizeParticles;
     size_t mBufferSizeCells;
     size_t mBufferSizeParticlesList;
-    size_t mBufferSizeScalingFactors;
 
     // The device memory buffers holding the simulation data
     cl::Buffer mCellsBuffer;
@@ -68,7 +67,6 @@ public:
     cl::Buffer mPredictedBuffer;
     cl::Buffer mVelocitiesYinBuffer;
     cl::Buffer mVelocitiesYangBuffer;
-    cl::Buffer mScalingFactorsBuffer;
 	cl::Buffer mDensityBuffer;
     cl::Buffer mDeltaBuffer;
     cl::Buffer mDeltaVelocityBuffer;

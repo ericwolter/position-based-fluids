@@ -26,6 +26,7 @@ set(SOURCE
 	OCLPerfMon.cpp
 	UIManager.cpp    
 	ZPR.cpp
+	OGL_Utils.cpp
 )
 
 set(HEADER
@@ -39,6 +40,7 @@ set(HEADER
 	OCLPerfMon.h
 	UIManager.h
 	ZPR.h
+	OGL_Utils.h
 )
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)

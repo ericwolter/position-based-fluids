@@ -1,6 +1,5 @@
 __kernel void computeScaling(__constant struct Parameters* Params,
                              __global float4 *predicted,
-                             __global float *scaling,
                              __global float *density,
                              const __global int *friends_list,
                              const int N)
@@ -79,6 +78,5 @@ __kernel void computeScaling(__constant struct Parameters* Params,
     // equation (11)
     float scalingResult = -1.0f * density_constraint / 
                     (gradient_sum_k / (Params->restDensity * Params->restDensity) + e);
-    scaling[i] = scalingResult;
     predicted[i].w = scalingResult;
 }

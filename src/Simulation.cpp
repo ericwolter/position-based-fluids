@@ -170,7 +170,6 @@ void Simulation::InitBuffers()
     // Define CL buffer sizes
     mBufferSizeParticles      = Params.particleCount * sizeof(cl_float4);
     mBufferSizeParticlesList  = Params.particleCount * sizeof(cl_int);
-    mBufferSizeScalingFactors = Params.particleCount * sizeof(cl_float);
 
     // Allocate CPU buffers
     delete[] mPositions;   mPositions   = new cl_float4[Params.particleCount];
@@ -200,7 +199,6 @@ void Simulation::InitBuffers()
     mDeltaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mDeltaVelocityBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mOmegaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
-    mScalingFactorsBuffer  = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeScalingFactors);
 	mDensityBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.particleCount * sizeof(cl_float));
     mParameters            = cl::Buffer(mCLContext, CL_MEM_READ_ONLY,  sizeof(Params));
 
@@ -382,7 +380,6 @@ void Simulation::computeScaling(int iterationIndex)
     int param = 0;
     mKernels["computeScaling"].setArg(param++, mParameters);
     mKernels["computeScaling"].setArg(param++, mPredictedBuffer);
-    mKernels["computeScaling"].setArg(param++, mScalingFactorsBuffer);
     mKernels["computeScaling"].setArg(param++, mDensityBuffer);
     mKernels["computeScaling"].setArg(param++, mFriendsListBuffer);
     mKernels["computeScaling"].setArg(param++, Params.particleCount);
@@ -397,8 +394,8 @@ void Simulation::updateCells()
 	mQueue.enqueueNDRangeKernel(mKernels["resetGrid"], 0, cl::NDRange(Params.gridBufSize), mLocalRange, NULL, PerfData.GetTrackerEvent("resetGrid"));
 
 	param = 0;
-	mKernels["resetPartList"].setArg(param++, mCellsBuffer);
-	mQueue.enqueueNDRangeKernel(mKernels["resetPartList"], 0, cl::NDRange(Params.particleCount), mLocalRange, NULL, PerfData.GetTrackerEvent("resetGrid"));
+	mKernels["resetPartList"].setArg(param++, mParticlesListBuffer);
+	mQueue.enqueueNDRangeKernel(mKernels["resetPartList"], 0, cl::NDRange(Params.particleCount), mLocalRange, NULL, PerfData.GetTrackerEvent("resetPartList"));
 
     param = 0;
     mKernels["updateCells"].setArg(param++, mParameters);
@@ -570,8 +567,6 @@ void Simulation::Step()
 
     // Build friends list
     this->buildFriendsList();
-	if (bReadFriendsList)
-		mQueue.enqueueReadBuffer(mFriendsListBuffer, CL_TRUE, 0, sizeof(cl_uint) * Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle), mFriendsList);
 
     for (unsigned int i = 0; i < Params.simIterations; ++i)
     {
@@ -608,6 +603,9 @@ void Simulation::Step()
 	// sort particles buffer
     this->radixsort();
 
+    if (bReadFriendsList)
+        mQueue.enqueueReadBuffer(mFriendsListBuffer, CL_TRUE, 0, sizeof(cl_uint) * Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle), mFriendsList);
+    
     // Release OpenGL shared object, allowing openGL do to it's thing...
     mQueue.enqueueReleaseGLObjects(&sharedBuffers);
     mQueue.finish();

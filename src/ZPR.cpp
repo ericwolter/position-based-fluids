@@ -7,6 +7,7 @@
 
 #include <cmath>
 #include "hesp.hpp"
+#include "ZPR.h"
 
 // Model view matrices
 glm::mat4x4 ZPR_ModelViewMatrix;
@@ -29,23 +30,30 @@ glm::ivec4  Viewport;
 bool DragActive = false;
 bool CtrlPressed = false;
 
+void ComputeMVMatrix()
+{
+    // Build and get matrix
+	ZPR_ModelViewMatrix = glm::lookAt(camEye, camLookAt, camUp);
+	ZPR_InvModelViewMatrix = glm::inverse(ZPR_ModelViewMatrix);
+}
+
 void ZPR_SetupView(glm::mat4x4 projectionMatrix, glm::ivec4* viewport)
 {
 	ProjMatrix = projectionMatrix;
 	InvProjMatrix = glm::inverse(projectionMatrix);
+
+	// Setup 
+	camLookAt = glm::vec3(1.097321030, -0.293091655, 0.234185457);
+	camEye    = glm::vec3(0.370147407,  0.882159948, 1.898292300);
+	camUp     = glm::vec3(0.217547148,  0.839536190, 0.497847676);
+	ZPR_RollReset();
+	ComputeMVMatrix();
 
 	// Store view port
 	if (viewport != NULL)
 		Viewport = *viewport;
 	else
 		glGetIntegerv(GL_VIEWPORT, &Viewport[0]);
-}
-
-void ComputeMVMatrix()
-{
-    // Build and get matrix
-	ZPR_ModelViewMatrix = glm::lookAt(camEye, camLookAt, camUp);
-	ZPR_InvModelViewMatrix = glm::inverse(ZPR_ModelViewMatrix);
 }
 
 bool ZPR_ViewportToWorld(glm::vec3 View, glm::vec3& World)
@@ -132,7 +140,6 @@ void ZPR_EventMouseButtonGLFW(GLFWwindow* window, int button, int action, int mo
 	DragActive = (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT)   == GLFW_PRESS) ||
 	             (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS) ||
 				 (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_RIGHT)  == GLFW_PRESS);
-
 }
 
 void ZPR_EventMousePosGLFW(GLFWwindow* window, double x, double y)

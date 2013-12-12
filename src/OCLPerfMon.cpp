@@ -41,7 +41,11 @@ void OCLPerfMon::UpdateTimings()
 		Trackers[i]->time_start = Trackers[i]->event.getProfilingInfo<CL_PROFILING_COMMAND_START>();
 		Trackers[i]->time_end   = Trackers[i]->event.getProfilingInfo<CL_PROFILING_COMMAND_END>();
 
+		const float weight = 0.5;
+		double current_time = (Trackers[i]->time_end - Trackers[i]->time_start) / 1000000.0; 
+
 		// Compute total time
-		Trackers[i]->total_time = (Trackers[i]->time_end - Trackers[i]->time_start) / 1000000.0;
+		Trackers[i]->total_time = current_time * (1.0 - weight) + Trackers[i]->last_time * weight;
+		Trackers[i]->last_time = Trackers[i]->total_time;
 	}
 }

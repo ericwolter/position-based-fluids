@@ -33,12 +33,12 @@ __kernel void applyViscosity(
         for (int iFriend = 0; iFriend < circleParticles[iCircle]; iFriend++)
         {
             // Read friend index from friends_list
-            int j_index = friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + FRIENDS_CIRCLES +   // Offset to first circle -> "circle[0]"
+            const int j_index = friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + FRIENDS_CIRCLES +   // Offset to first circle -> "circle[0]"
                                        iCircle * MAX_PARTICLES_IN_CIRCLE +                   // Offset to iCircle      -> "circle[iCircle]"
                                        iFriend];                                             // Offset to iFriend      -> "circle[iCircle][iFriend]"
         
-            float3 r = predicted[i].xyz - predicted[j_index].xyz;
-            float r_length_2 = (r.x * r.x + r.y * r.y + r.z * r.z);
+            const float3 r = predicted[i].xyz - predicted[j_index].xyz;
+            const float r_length_2 = (r.x * r.x + r.y * r.y + r.z * r.z);
 
             if (r_length_2 > 0.0f && r_length_2 < Params->h_2)
             {
@@ -49,31 +49,28 @@ __kernel void applyViscosity(
                 // because of the division by zero.
                 if(fabs(predicted[j_index].w) > 1e-8)
                 {
-                    float3 v = velocities[j_index].xyz - velocities[i].xyz;
-                    float poly6 = POLY6_FACTOR * (Params->h_2 - r_length_2)
-                                  * (Params->h_2 - r_length_2)
-                                  * (Params->h_2 - r_length_2);
+                    const float3 v = velocities[j_index].xyz - velocities[i].xyz;
+                    const float h2_r2_diff = Params->h_2 - r_length_2;
 
                     // equation 15
-                    float r_length = sqrt(r_length_2);
-                    float3 gradient_spiky = -1.0f * r / (r_length)
-                                            * GRAD_SPIKY_FACTOR
+                    const float r_length = sqrt(r_length_2);
+                    const float3 gradient_spiky = r / (r_length)
                                             * (Params->h - r_length)
                                             * (Params->h - r_length);
                     // the gradient has to be negated because it is with respect to p_j
-                    // this could be done directly when calculating it, but for now we explicitly
-                    // keep it to improve understanding
-                    omega_i += cross(v.xyz,-gradient_spiky.xyz);
+                    omega_i += cross(v,gradient_spiky);
 
-                    viscosity_sum += (1.0f / predicted[j_index].w) * v * poly6;
+                    viscosity_sum += (1.0f / predicted[j_index].w) * v * (h2_r2_diff * h2_r2_diff * h2_r2_diff);
                 }
             }
         }
     }
 
-    const float c = Params->viscosityFactor;
-    deltaVelocities[i] = c * (float4)(viscosity_sum.x,viscosity_sum.y,viscosity_sum.z,0.0f);
+    viscosity_sum *= POLY6_FACTOR;
+    deltaVelocities[i] = Params->viscosityFactor * (float4)(viscosity_sum, 0.0f);
 
     // save omega for later calculation of vorticity
-    omegas[i] = (float4)(omega_i.x, omega_i.y, omega_i.z, 0.0f);
+    // cross product is compatible with scalar multiplication
+    omega_i *= GRAD_SPIKY_FACTOR;
+    omegas[i] = (float4)(omega_i, 0.0f);
 }
