@@ -6,13 +6,13 @@ using namespace std;
 
 GLuint g_SelectedProgram;
 
-GLuint UniformLoc(char* szName)
+GLuint UniformLoc(const char* szName)
 {
 	GLuint retVal = glGetUniformLocation(g_SelectedProgram, szName);
 	return retVal;
 }
 
-GLuint AttribLoc(char* szName)
+GLuint AttribLoc(const char* szName)
 {
 	return glGetAttribLocation(g_SelectedProgram, szName);
 }

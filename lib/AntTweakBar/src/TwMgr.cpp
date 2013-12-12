@@ -7,6 +7,9 @@
 //
 //  ---------------------------------------------------------------------------
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtautological-compare"
+#pragma GCC diagnostic ignored "-Wshift-op-parentheses"
 
 #include "TwPrecomp.h"
 #include <AntTweakBar.h>
@@ -6750,4 +6753,5 @@ bool CRect::Subtract(const vector<CRect>& _Rects, vector<CRect>& _OutRects) cons
 }
 
 //  ---------------------------------------------------------------------------
+#pragma GCC diagnostic pop
 

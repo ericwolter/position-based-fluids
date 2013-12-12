@@ -9,7 +9,7 @@ include_directories(
 if(MSVC)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -pedantic")
 else()
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -pedantic -Wall -Wextra -Werror -Wfatal-errors")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -pedantic -Wall -Wextra -Werror -Wfatal-errors -D_MACOSX -ObjC++")
 endif()
 
 set(GLOBAL PROPERTY USE_FOLDERS ON)

@@ -1,8 +1,8 @@
 
-#include "..\OGL_Utils.h"
-#include "..\ParamUtils.hpp"
+#include "../OGL_Utils.h"
+#include "../ParamUtils.hpp"
 #include "visual.hpp"
-#include "..\ZPR.h"
+#include "../ZPR.h"
 
 #include "SOIL.h"
 
@@ -18,13 +18,13 @@ using namespace std;
 #endif
 
 CVisual::CVisual (const int width, const int height)
-    : UICmd_GenerateWaves(false),
+    : mWindow(NULL),
+      UICmd_GenerateWaves(false),
       UICmd_ResetSimulation(false),
       UICmd_PauseSimulation(false),
-	  UICmd_FriendsHistogarm(false),
+      UICmd_FriendsHistogarm(false),
       mWidth(width),
       mHeight(height),
-      mWindow(NULL),
       mSystemBufferID(0)
 {
 }
@@ -72,25 +72,25 @@ GLvoid CVisual::initSystemVisual(Simulation &sim)
     // Store simulation object
     mSimulation = &sim;
 
-	ZPR_Reset();
+    ZPR_Reset();
 }
 
 GLvoid CVisual::initParticlesVisual()
 {
-	// Load Shaders
-	mParticleProgramID =  OGLU_LoadProgram(getPathForShader("particlevertex.glsl").c_str(), getPathForShader("particlefragment.glsl").c_str());
+    // Load Shaders
+    mParticleProgramID =  OGLU_LoadProgram(getPathForShader("particlevertex.glsl").c_str(), getPathForShader("particlefragment.glsl").c_str());
 
-	// Compute projection matrix
-	float FOV = 45.0f;
-	mProjectionMatrix = glm::perspective(FOV, mWidth / (GLfloat) mHeight, 0.1f, 10.0f);
+    // Compute projection matrix
+    float FOV = 45.0f;
+    mProjectionMatrix = glm::perspective(FOV, mWidth / (GLfloat) mHeight, 0.1f, 10.0f);
 
-	// compute mWidthOfNearPlane
-	int viewport[4];
-	glGetIntegerv(GL_VIEWPORT, viewport);
-	mWidthOfNearPlane = (float)abs(viewport[2]-viewport[0]) / (2.0 * tan(0.5 * FOV * M_PI / 180.0));
+    // compute mWidthOfNearPlane
+    int viewport[4];
+    glGetIntegerv(GL_VIEWPORT, viewport);
+    mWidthOfNearPlane = (float)abs(viewport[2] - viewport[0]) / (2.0 * tan(0.5 * FOV * M_PI / 180.0));
 
-	// Update ZPR
-	ZPR_SetupView(mProjectionMatrix, NULL);
+    // Update ZPR
+    ZPR_SetupView(mProjectionMatrix, NULL);
 }
 
 GLuint CVisual::createSharingBuffer(const GLsizei size) const
@@ -108,39 +108,40 @@ GLuint CVisual::createSharingBuffer(const GLsizei size) const
 
 void CheckGLError()
 {
-	if (glGetError() != 0)
-		_asm nop;
-
+    // if (glGetError() != 0)
+    // _asm nop;
 }
 
 GLvoid CVisual::visualizeParticles()
 {
-	// Clear target
-	glClearColor(0.05f, 0.05f, 0.05f, 0.0f); // Dark blue background
+    // Clear target
+    glClearColor(0.05f, 0.05f, 0.05f, 0.0f); // Dark blue background
     glClearDepth(1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	glUseProgram(g_SelectedProgram = mParticleProgramID);
+    glUseProgram(g_SelectedProgram = mParticleProgramID);
 
-	// Setup uniforms
-	glUniformMatrix4fv(UniformLoc("projectionMatrix"), 1, GL_FALSE, glm::value_ptr(mProjectionMatrix));
+    // Setup uniforms
+    glUniformMatrix4fv(UniformLoc("projectionMatrix"), 1, GL_FALSE, glm::value_ptr(mProjectionMatrix));
     glUniformMatrix4fv(UniformLoc("modelViewMatrix"),  1, GL_FALSE, glm::value_ptr(ZPR_ModelViewMatrix));
-	glUniform1i(UniformLoc("particleCount"),    Params.particleCount);
-	glUniform1i(UniformLoc("colorMethod"),      0);
-	glUniform1f(UniformLoc("widthOfNearPlane"), mWidthOfNearPlane);
-	glUniform1f(UniformLoc("pointSize"),        Params.particleRenderSize);
+    glUniform1i(UniformLoc("particleCount"),    Params.particleCount);
+    glUniform1i(UniformLoc("colorMethod"),      0);
+    glUniform1f(UniformLoc("widthOfNearPlane"), mWidthOfNearPlane);
+    glUniform1f(UniformLoc("pointSize"),        Params.particleRenderSize);
 
-	// Bind positions buffer
+    // Bind positions buffer
     glBindBuffer(GL_ARRAY_BUFFER, mSimulation->mSharingYinBufferID);
-	glEnableVertexAttribArray(AttribLoc("position"));
+    glEnableVertexAttribArray(AttribLoc("position"));
     glVertexAttribPointer(AttribLoc("position"), 4, GL_FLOAT, GL_FALSE, 0, 0);
 
-	// Draw particles
+    // Draw particles
     glDrawArrays(GL_POINTS, 0, Params.particleCount);
-    
-	// Unbind buffer
-	glDisableVertexAttribArray(AttribLoc("position"));
+
+    // Unbind buffer
+    glDisableVertexAttribArray(AttribLoc("position"));
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    glUseProgram(0);
 }
 
 GLvoid CVisual::presentToScreen()
