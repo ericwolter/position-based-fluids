@@ -1,5 +1,6 @@
 #include "Runner.hpp"
 #include "ParamUtils.hpp"
+#include "UIManager.h"
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -15,12 +16,6 @@
 
 #include <fstream>
 using std::ifstream;
-
-#if defined(MAKE_VIDEO)
-#include <unistd.h>
-static const int WINDOW_WIDTH = 1280;
-static const int WINDOW_HEIGHT = 720;
-#endif // MAKE_VIDEO
 
 bool Runner::DetectResourceChanges() 
 {
@@ -98,25 +93,10 @@ void Runner::run(Simulation& simulation, CVisual& renderer)
 
     // Init render (background, camera etc...)
     renderer.initSystemVisual(simulation);
-    renderer.initParticlesVisual(SORTING);
+    renderer.initParticlesVisual();
 
-    #if defined(MAKE_VIDEO)
-        const string cmd = "ffmpeg -r 30 -f rawvideo -pix_fmt rgb24 "
-                           "-s 1280x720 -an -i - -threads 2 -preset slow "
-                           "-crf 18 -pix_fmt yuv420p -vf vflip -y output.mp4";
-
-        // Frame data to write into
-        const size_t nbytes = 3 * WINDOW_WIDTH * WINDOW_HEIGHT;
-        char *framedata = new char[nbytes];
-
-        FILE *ffmpeg;
-
-        if ( !(ffmpeg = popen(cmd.c_str(), "w") ) )
-        {
-            perror("Error using ffmpeg!");
-            exit(-1);
-        }
-    #endif // MAKE_VIDEO
+	// Init UIManager
+	UIManager_Init(renderer.mWindow, &renderer, &simulation);
 
     // Main loop
     bool KernelBuildOk = false;
@@ -202,12 +182,11 @@ void Runner::run(Simulation& simulation, CVisual& renderer)
         // Visualize particles
         renderer.visualizeParticles();
 
-        renderer.checkInput();
+		// Draw UI
+		UIManager_Draw();
 
-        #if defined(MAKE_VIDEO)
-            glReadPixels(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, framedata);
-            fwrite(framedata, 1, nbytes, ffmpeg);
-        #endif
+		renderer.presentToScreen();
+
     }
     while (true);
 

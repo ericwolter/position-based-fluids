@@ -43,6 +43,9 @@ struct Parameters
 	unsigned int segmentSize;
 	unsigned int sortIterations;
 
+	// Rendering related
+	float particleRenderSize;
+
 	// Computed fields
 	float h_2;
 };

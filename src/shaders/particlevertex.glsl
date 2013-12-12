@@ -1,28 +1,35 @@
 #version 120
 #extension GL_EXT_gpu_shader4 : require
 
-uniform mat4 cameraToClipMatrix;
-uniform mat4 worldToCameraMatrix;
-uniform mat4 modelToWorldMatrix;
+uniform mat4 modelViewMatrix;
+uniform mat4 projectionMatrix;
+
+uniform float widthOfNearPlane;
+uniform float pointSize;
+uniform int   particleCount;
+uniform int   colorMethod;
 
 attribute vec4 position;
 
-varying float frag_velocity;
+varying float frag_color;
+varying vec3  frag_vsPosition; // View space position
 
 void main()
 {  
-    frag_velocity = position.w;
+    // Choose color
+    frag_color = colorMethod == 0 ? position.w : float(gl_VertexID) / particleCount;
     
-    vec4 eye_position = worldToCameraMatrix * modelToWorldMatrix * vec4(position.xyz, 1.0);
-    gl_Position = cameraToClipMatrix * eye_position;
+    // Model -> View space 
+    vec4 eye_position = modelViewMatrix * vec4(position.xyz, 1.0);
 
-    float a = 1.0;
-    float b = 0.0;
-    float c = 10.0;
-    float d = length(position.xyz);
-    float size = 10.0;
-    float derived_size = size * sqrt(1.0/(a + b * d + c * d * d));
+    // Send viewspace position to fragment shader
+    frag_vsPosition = eye_position.xyz;
 
-    gl_PointSize = 18.0 / gl_Position.w;
+    // View -> Homogeneous space
+    gl_Position = projectionMatrix * eye_position;
+
+    // Compute point size
+    // http://gamedev.stackexchange.com/a/54492
+    gl_PointSize = widthOfNearPlane * pointSize / gl_Position.w;
 }
 

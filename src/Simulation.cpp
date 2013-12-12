@@ -373,7 +373,8 @@ void Simulation::computeDelta(int iterationIndex)
     mKernels["computeDelta"].setArg(param++, fWavePos);
     mKernels["computeDelta"].setArg(param++, Params.particleCount);
 
-    mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
+    //mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
+	mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, cl::NDRange(((Params.particleCount+127)/128)*128), cl::NDRange(128), NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
 }
 
 void Simulation::computeScaling(int iterationIndex)

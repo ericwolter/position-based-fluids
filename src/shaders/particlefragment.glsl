@@ -1,35 +1,44 @@
 #version 120
 
-varying float frag_velocity;
-varying float frag_pointsize;
 
-const vec3 light_direction = vec3(1.0, 1.0, 1.0);
-const vec4 light_intensity = vec4(1.0, 1.0, 1.0, 1.0);
 
-// adapted from: http://www.arcsynthesis.org/gltut/Illumination/Tutorial%2013.html
-void fakeSphere(out vec3 cameraNormal)
-{
-    vec2 mapping = gl_PointCoord*vec2(2.0) - vec2(1.0);
-    float lensqr = dot(mapping, mapping);
-    if(lensqr > 1.0) {
-        discard;
-    }
+uniform mat4  projectionMatrix;
+uniform float pointSize;
+uniform int   colorMethod;
 
-    cameraNormal = vec3(mapping, sqrt(1.0 - lensqr));
-}
+varying float frag_color;
+varying vec3  frag_vsPosition; // View space position
+
+// const vec3 light_direction = vec3(1.0, 1.0, 1.0);
+// const vec4 light_intensity = vec4(1.0, 1.0, 1.0, 1.0);
 
 void main()
 {
-    vec3 cameraPos;
-    vec3 cameraNormal;
-    fakeSphere(cameraNormal);
+    // calculate normal from texture coordinates
+    vec3 n;
+    n.xy = gl_PointCoord.st*vec2(2.0, 2.0) + vec2(-1.0, -1.0);
+ 
+    // discard pixels outside circle
+    float mag = dot(n.xy, n.xy);
+    if (mag > 1.0) discard;   
+    n.z = sqrt(1.0-mag);
+ 
+    // point on surface of sphere in eye space
+    vec4 spherePosEye = vec4(frag_vsPosition + n * pointSize, 1.0);
+ 
+    // convert to ClipSpace
+    vec4 clipSpacePos = projectionMatrix * spherePosEye;
+    float ndcDepth = clipSpacePos.z/clipSpacePos.w;
+    
+    // Clip adjusted-z
+    if (ndcDepth < -1.0)
+        discard;
+ 
+    // Transform into window coordinates coordinates
+    float far = gl_DepthRange.far;
+    float near = gl_DepthRange.near;
+    gl_FragDepth = (abs(far - near) * ndcDepth + near + far) / 2.0;
 
-    vec3 normCamSpace = normalize(cameraNormal);
-    float cosAngIncidence = dot(normCamSpace, light_direction);
-    cosAngIncidence = clamp(cosAngIncidence, 0.0, 1.0);
-
-    vec4 frag_diffuse = vec4(frag_velocity, frag_velocity, 1.0, 1.0);
-    gl_FragColor = light_intensity * frag_diffuse * cosAngIncidence;
-
-    // gl_FragColor = vec4(gl_FragCoord.z, gl_FragCoord.z, gl_FragCoord.z, 1.0);
+    // Compute color
+    gl_FragData[0] = vec4(n, 1.0); 
 }

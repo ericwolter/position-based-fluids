@@ -87,6 +87,9 @@ void LoadParameters(string InputFile)
         else if (parameter == "setupspacing")        ss >> Params.setupSpacing;
         else if (parameter == "segmentsize")         ss >> Params.segmentSize;
         else if (parameter == "sortiterations")      ss >> Params.sortIterations;
+
+		else if (parameter == "particlerendersize")  ss >> Params.particleRenderSize;
+			 
 		else
             cerr << "Unknown parameter " << parameter << endl << "Leaving it out." << endl;
     }

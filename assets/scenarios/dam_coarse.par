@@ -33,3 +33,6 @@ GridBufferSize          67108864 # 1024*1024*64 = 67108864
 # Radix related
 SegmentSize             16
 SortIterations          6
+
+# Rendering related
+ParticleRenderSize      0.017

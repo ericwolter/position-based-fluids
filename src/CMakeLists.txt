@@ -12,7 +12,10 @@ else()
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -pedantic -Wall -Wextra -Werror -Wfatal-errors")
 endif()
 
+set(GLOBAL PROPERTY USE_FOLDERS ON)
+
 add_definitions(-DUSE_LINKEDCELL)
+add_definitions(-DTW_EXPORTS)
 
 set(SOURCE
 	main.cpp
@@ -21,6 +24,8 @@ set(SOURCE
 	DataLoader.cpp
 	ParamUtils.cpp
 	OCLPerfMon.cpp
+	UIManager.cpp    
+	ZPR.cpp
 )
 
 set(HEADER
@@ -32,6 +37,8 @@ set(HEADER
 	Parameters.hpp  
 	ParamUtils.hpp
 	OCLPerfMon.h
+	UIManager.h
+	ZPR.h
 )
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -61,10 +68,6 @@ set(KERNELS
 SET(SHADERS
   "${HESP_SOURCE_DIR}/src/shaders/particlevertex.glsl"
   "${HESP_SOURCE_DIR}/src/shaders/particlefragment.glsl"
-  "${HESP_SOURCE_DIR}/src/shaders/sortingvertex.glsl"
-  "${HESP_SOURCE_DIR}/src/shaders/sortingfragment.glsl"
-  "${HESP_SOURCE_DIR}/src/shaders/shadervertex.glsl"
-  "${HESP_SOURCE_DIR}/src/shaders/shaderfragment.glsl"
 )
 
 SET(SCENARIOS
@@ -75,25 +78,34 @@ SET(TEXTURES
   "${HESP_SOURCE_DIR}/assets/textures/wall.tga"
 )
 
+SET(ANT_TWEAK_BAR_SRC
+  "${CMAKE_SOURCE_DIR}/lib/AntTweakBar/src/LoadOGL.cpp"
+  "${CMAKE_SOURCE_DIR}/lib/AntTweakBar/src/LoadOGLCore.cpp"
+  "${CMAKE_SOURCE_DIR}/lib/AntTweakBar/src/TwOpenGL.cpp"
+  "${CMAKE_SOURCE_DIR}/lib/AntTweakBar/src/TwOpenGLCore.cpp"
+  "${CMAKE_SOURCE_DIR}/lib/AntTweakBar/src/TwFonts.cpp"
+  "${CMAKE_SOURCE_DIR}/lib/AntTweakBar/src/TwMgr.cpp"
+  "${CMAKE_SOURCE_DIR}/lib/AntTweakBar/src/TwBar.cpp"
+  "${CMAKE_SOURCE_DIR}/lib/AntTweakBar/src/TwColors.cpp"
+  "${CMAKE_SOURCE_DIR}/lib/AntTweakBar/src/TwEventGLFW.c"
+)
+
+if (WIN32)
+    SET(ANT_TWEAK_BAR_SRC_WIN32
+      "${CMAKE_SOURCE_DIR}/lib/AntTweakBar/src/TwDirect3D9.cpp"
+      "${CMAKE_SOURCE_DIR}/lib/AntTweakBar/src/TwDirect3D10.cpp"
+      "${CMAKE_SOURCE_DIR}/lib/AntTweakBar/src/TwDirect3D11.cpp"
+    )
+endif()    
+    
+SOURCE_GROUP("_Resources" FILES ${TEXTURES})
+SOURCE_GROUP("_Shaders" FILES ${SHADERS})
+SOURCE_GROUP("_Kernels" FILES ${KERNELS})
+SOURCE_GROUP("_AntTweakBar" FILES ${ANT_TWEAK_BAR_SRC} ${ANT_TWEAK_BAR_SRC_WIN32})
+
 # also headers are not necessary for cmake, 
 # include them here so they appear in IDE like Xcode
-add_executable(hesp ${SOURCE} ${HEADER} ${KERNELS} ${SHADERS} ${SCENARIOS} ${TEXTURES})
-
-IF (WIN32)
-  FIND_LIBRARY( ANTTWEAKBAR_LIBRARY AntTweakBar
-    PATHS
-      ${CMAKE_SOURCE_DIR}/lib/AntTweakBar/lib
-    DOC "The AntTweakBar library")
-ELSE (WIN32)
-  FIND_LIBRARY( ANTTWEAKBAR_LIBRARY AntTweakBar
-    PATHS
-      ${CMAKE_SOURCE_DIR}/lib/AntTweakBar/lib
-    PATH_SUFFIXES
-      lib64
-      lib
-      dylib
-    DOC "The AntTweakBar library")
-ENDIF (WIN32)
+add_executable(hesp ${SOURCE} ${HEADER} ${KERNELS} ${SHADERS} ${SCENARIOS} ${TEXTURES} ${ANT_TWEAK_BAR_SRC} ${ANT_TWEAK_BAR_SRC_WIN32})
 
 if (APPLE)
   target_link_libraries(hesp

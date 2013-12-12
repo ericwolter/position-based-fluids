@@ -49,90 +49,48 @@ public:
 
     ~CVisual(); // Destructor
 
-    /**
-     *  \brief  Initializes window.
-     */
     void initWindow(const string windowname = "GLFW Window");
 
-    /**
-     *  \brief  Loads vertex and fragment shader.
-     */
     static GLuint loadShaders(const string &vertexFilename, const string &fragmentFilename);
 
-    GLvoid initParticlesVisual(ParticleRenderType renderType);
+    GLvoid initParticlesVisual();
 
-    /**
-     *  \brief  Initializes system sizes, textures and buffer objects.
-     */
     GLvoid initSystemVisual(Simulation &sim);
 
-    GLvoid visualizeParticles(void);
+    GLvoid visualizeParticles();
 
-    GLuint createSharingBuffer(const GLsizei size) const;
+	GLvoid presentToScreen();
 
-    /**
-     *  \brief  Checks if we want to generate waves with 'G'.
-     */
-    void checkInput();
-
-    void DrawTweekBar();
-
-	void DrawPerformanceGraph();
-
-	void DrawFriendsHistogram();
-
-    glm::vec3 resolveCamPosition(void) const;
-
-    glm::mat4 calcLookAtMatrix(const glm::vec3 &cameraPt, const glm::vec3 &lookPt, const glm::vec3 &upPt) const;
+	GLuint createSharingBuffer(const GLsizei size) const;
 
 public:
-    bool UICmd_GenerateWaves;
+    GLFWwindow* mWindow;
+
+	bool UICmd_GenerateWaves;
     bool UICmd_ResetSimulation;
     bool UICmd_PauseSimulation;
 	bool UICmd_FriendsHistogarm;
+	bool UICmd_ColorMethod;
 
 private:
     // Window stuff
     int mWidth;
     int mHeight;
 
-    GLuint mProgramID; /**< Program ID for OpenGL shaders */
     GLuint mParticleProgramID;
 
-    GLFWwindow *mWindow;
-
-    // Tweakbar
-    TwBar *tweakBar;
-    double mTotalSimTime;
+	// Projection related
+	float mWidthOfNearPlane;
+	glm::mat4 mProjectionMatrix;
 
     // System sizes
     GLuint mSystemBufferID;
 
-    GLuint mPositionAttrib;
-    GLuint mNormalAttrib;
-    GLuint mTexcoordAttrib;
-
-    // Uniforms...
-    GLint mCameraToClipMatrixUnif;
-    GLint mWorldToCameraMatrixUnif;
-    GLint mModelToWorldMatrixUnif;
-    GLint mTextureUnif;
-
-    // Camera stuff
-    glm::vec3 mCamTarget;
-    glm::vec3 mCamSphere;
-
     Simulation *mSimulation;
-
-    GLuint mParticlePositionAttrib;
-    GLint mParticleCameraToClipMatrixUnif;
-    GLint mParticleWorldToCameraMatrixUnif;
-    GLint mParticleModelToWorldMatrixUnif;
 
     GLuint mWallTexture;
 
     ParticleRenderType mRenderType;
-
 };
 
 #endif // _VISUAL_HPP
