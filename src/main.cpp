@@ -9,14 +9,7 @@
 #include <stdexcept>
 
 
-#if defined(__APPLE__)
-#include <OpenGL/OpenGL.h>
-#elif defined(UNIX)
-#include <GL/glx.h>
-#else // _WINDOWS
-#include <Windows.h>
-#include <GL/gl.h>
-#endif
+#include "Precomp_OpenGL.h"
 
 #include "hesp.hpp"
 #include "ocl/OCLUtils.hpp"

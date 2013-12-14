@@ -7,7 +7,8 @@ include_directories(
 )
 
 if(MSVC)
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -pedantic")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+	add_definitions(-D_CRT_SECURE_NO_WARNINGS)
 else()
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -pedantic -Wall -Wextra -Werror -Wfatal-errors")
 endif()
@@ -41,6 +42,7 @@ set(HEADER
 	UIManager.h
 	ZPR.h
 	OGL_Utils.h
+	Precomp_OpenGL.h
 )
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -68,8 +70,11 @@ set(KERNELS
 )
 
 SET(SHADERS
-  "${HESP_SOURCE_DIR}/src/shaders/particlevertex.glsl"
-  "${HESP_SOURCE_DIR}/src/shaders/particlefragment.glsl"
+  "${HESP_SOURCE_DIR}/src/shaders/particles.vs"
+  "${HESP_SOURCE_DIR}/src/shaders/particles_color.fs"
+  "${HESP_SOURCE_DIR}/src/shaders/standard.vs"
+  "${HESP_SOURCE_DIR}/src/shaders/standard_color.fs"
+  "${HESP_SOURCE_DIR}/src/shaders/standard_copy.fs"
 )
 
 SET(SCENARIOS

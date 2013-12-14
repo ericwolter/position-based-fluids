@@ -1,7 +1,5 @@
 #version 120
 
-
-
 uniform mat4  projectionMatrix;
 uniform float pointSize;
 uniform int   colorMethod;
@@ -9,8 +7,21 @@ uniform int   colorMethod;
 varying float frag_color;
 varying vec3  frag_vsPosition; // View space position
 
-// const vec3 light_direction = vec3(1.0, 1.0, 1.0);
-// const vec4 light_intensity = vec4(1.0, 1.0, 1.0, 1.0);
+vec3 hsv2rgb(vec3 c)
+{
+    vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
+vec3 colorscale(float power)
+{
+    float H = power * 0.7; // Hue (note 0.4 = Green, see huge chart below)
+    float S = 0.9; // Saturation
+    float B = 0.9; // Brightness
+
+    return hsv2rgb(vec3(H,S,B));
+}
 
 void main()
 {
@@ -40,5 +51,11 @@ void main()
     gl_FragDepth = (abs(far - near) * ndcDepth + near + far) / 2.0;
 
     // Compute color
-    gl_FragData[0] = vec4(n, 1.0); 
+    const vec3 light_direction = vec3(1.0);
+    float cosAngIncidence = dot(n, light_direction);
+    cosAngIncidence = clamp(cosAngIncidence, 0.0, 1.0);
+
+    // Set color
+    vec3 dif_color = colorMethod == 0 ? vec3(frag_color, frag_color, 1.0) : colorscale(frag_color);
+    gl_FragColor = vec4(dif_color, 1.0) * cosAngIncidence;    
 }

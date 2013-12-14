@@ -3,30 +3,27 @@
 
 #define GL_GLEXT_PROTOTYPES // Necessary for vertex buffer
 
+#include "../Precomp_OpenGL.h"
+#include "../OGL_Utils.h"
+#include "../hesp.hpp"
+#include "../DataLoader.hpp"
+#include "../Simulation.hpp"
+
 #include <GLFW/glfw3.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wunneeded-internal-declaration"
-#include <glm/gtx/string_cast.hpp>
-#pragma GCC diagnostic pop
 
 #include <AntTweakBar.h>
 
-#include "../hesp.hpp"
-#include "../DataLoader.hpp"
-#include "../Simulation.hpp"
-
 #include <string>
+using std::string;
 
 
 // Macros
 static const unsigned int DIM = 3;
 
-
-using std::string;
 
 enum ParticleRenderType
 {
@@ -57,7 +54,7 @@ public:
 
     GLvoid initSystemVisual(Simulation &sim);
 
-    GLvoid visualizeParticles();
+    GLvoid renderParticles();
 
 	GLvoid presentToScreen();
 
@@ -77,7 +74,13 @@ private:
     int mWidth;
     int mHeight;
 
-    GLuint mParticleProgramID;
+	// Rendering
+	FBO* pTarget;
+	FBO* pFBO_Thickness;
+
+    GLuint mParticleProgID;
+	GLuint mStandardCopyProgID;
+	GLuint mStandardColorProgID;
 
 	// Projection related
 	float mWidthOfNearPlane;

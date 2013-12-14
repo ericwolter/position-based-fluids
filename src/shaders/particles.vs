@@ -16,7 +16,7 @@ varying vec3  frag_vsPosition; // View space position
 
 void main()
 {  
-    // Choose color
+    // Choose color method (0=speed, 1=index)
     frag_color = colorMethod == 0 ? position.w : float(gl_VertexID) / particleCount;
     
     // Model -> View space 

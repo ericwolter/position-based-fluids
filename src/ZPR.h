@@ -1,4 +1,5 @@
 #include <glm/glm.hpp>
+#include <GLFW/glfw3.h>
 
 extern glm::mat4x4 ZPR_ModelViewMatrix;
 extern glm::mat4x4 ZPR_InvModelViewMatrix;

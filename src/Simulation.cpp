@@ -1,3 +1,5 @@
+
+#include "Precomp_OpenGL.h"
 #include "Simulation.hpp"
 #include "DataLoader.hpp"
 #include "ParamUtils.hpp"
@@ -8,15 +10,6 @@
 #include <cmath>
 #include <sstream>
 #include <algorithm>
-
-#if defined(__APPLE__)
-#include <OpenGL/OpenGL.h>
-#elif defined(UNIX)
-#include <GL/glx.h>
-#else // _WINDOWS
-#include <Windows.h>
-#include <GL/gl.h>
-#endif
 
 using namespace std;
 
@@ -54,7 +47,7 @@ void Simulation::CreateParticles()
     // Build particles blcok
     float d = Params.h * Params.setupSpacing;
     float offsetX = (1.0f - ParticlesPerAxis * d) / 2.0f;
-    float offsetY = 0.3;
+    float offsetY = 0.3f;
     float offsetZ = (1.0f - ParticlesPerAxis * d) / 2.0f;
     for (cl_uint i = 0; i < Params.particleCount; i++)
     {
@@ -99,7 +92,7 @@ const std::string *Simulation::KernelFileList()
 bool Simulation::InitKernels()
 {
     // Setup OpenCL Ranges
-    const cl_uint globalSize = ceil(Params.particleCount / 32.0f) * 32;
+    const cl_uint globalSize = (cl_uint)ceil(Params.particleCount / 32.0f) * 32;
     mGlobalRange = cl::NDRange(globalSize);
     mLocalRange = cl::NullRange;
 

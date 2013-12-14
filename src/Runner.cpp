@@ -1,3 +1,4 @@
+#include "Precomp_OpenGL.h"
 #include "Runner.hpp"
 #include "ParamUtils.hpp"
 #include "UIManager.h"
@@ -152,7 +153,7 @@ void Runner::run(Simulation& simulation, CVisual& renderer)
 
             // Update the wave position
             float t = Params.waveGenFreq * waveTime;
-            wavePos = (1 - cos(2.0f * M_PI * pow(fmod(t, 1.0f), Params.waveGenDuty))) * wave_push_length / 2.0f;
+            wavePos = (float)(1 - cos(2.0f * M_PI * pow(fmod(t, 1.0f), Params.waveGenDuty))) * wave_push_length / 2.0f;
 
             // Update wave running time
             if (!renderer.UICmd_PauseSimulation)
@@ -180,7 +181,7 @@ void Runner::run(Simulation& simulation, CVisual& renderer)
         }
 
         // Visualize particles
-        renderer.visualizeParticles();
+        renderer.renderParticles();
 
 		// Draw UI
 		UIManager_Draw();

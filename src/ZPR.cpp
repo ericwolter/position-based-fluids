@@ -1,9 +1,8 @@
+
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
-
-#include <GLFW/glfw3.h>
 
 #include <cmath>
 #include "hesp.hpp"
@@ -145,10 +144,10 @@ void ZPR_EventMouseButtonGLFW(GLFWwindow* window, int button, int action, int mo
 void ZPR_EventMousePosGLFW(GLFWwindow* window, double x, double y)
 {
 	// get mouse delta
-	float dx = x - prevMouseX;
-	float dy = y - prevMouseY;
-	prevMouseX = x;
-	prevMouseY = y;
+	float dx = (float)x - prevMouseX;
+	float dy = (float)y - prevMouseY;
+	prevMouseX = (float)x;
+	prevMouseY = (float)y;
 
 	// Make sure there is an active drag
     if (!DragActive)
@@ -238,7 +237,7 @@ void ZPR_EventMouseWheelGLFW(GLFWwindow* window, double delta)
 	if (delta == 0)
 		return;
 
-    int nSteps   = abs(delta);
+    int nSteps   = (int)abs(delta);
 	float Factor = (powf(1.1f, (float)(int)nSteps) - 1.f) * sgn(delta);
 
     // Compute offset vector

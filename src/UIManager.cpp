@@ -90,11 +90,6 @@ void TW_CALL View_Reset(void *clientData)
 	ZPR_Reset();
 }
 
-void TW_CALL View_RollReset(void *clientData)
-{
-	ZPR_RollReset();
-}
-
 void UIManager_Init(GLFWwindow* window, CVisual* pRenderer, Simulation* pSim)
 {
 	// Save parameters
@@ -124,17 +119,16 @@ void UIManager_Init(GLFWwindow* window, CVisual* pRenderer, Simulation* pSim)
     TwAddButton(mTweakBar, "Play/Pause",        PlayPause,        mRenderer, " group=Controls ");
     TwAddButton(mTweakBar, "Reset",             Reset,            mRenderer, " group=Controls ");
     TwAddButton(mTweakBar, "Generate waves",    GenerateWaves,    mRenderer, " group=Controls ");
-    TwAddButton(mTweakBar, "Show velocity",     ShowVelocity,     mRenderer, " group=Controls ");
-    TwAddButton(mTweakBar, "Show sorting",      ShowSorting,      mRenderer, " group=Controls ");
 	TwAddButton(mTweakBar, "Firends Histogram", FriendsHistogram, mRenderer, " group=Controls ");
 
 	TwAddButton(mTweakBar, "View Reset",        View_Reset,       mRenderer, " group=View ");
-	TwAddButton(mTweakBar, "View Roll Reset",   View_RollReset,   mRenderer, " group=View ");
+    TwAddButton(mTweakBar, "Show velocity",     ShowVelocity,     mRenderer, " group=View ");
+    TwAddButton(mTweakBar, "Show sorting",      ShowSorting,      mRenderer, " group=View ");
 
     // Create bar
     TwAddVarRO(mTweakBar, "Total sim time", TW_TYPE_DOUBLE, &mTotalSimTime, "precision=2 group=Stats");
 
-	g_TwMgr->m_GraphAPI = TW_OPENGL_CORE;
+	g_TwMgr->m_GraphAPI = TW_OPENGL;
 	tw.Init();
 	TwGenerateDefaultFonts(1.0);
 	twFont = tw.NewTextObj();
@@ -147,7 +141,7 @@ void DrawPerformanceGraph()
 	const int ViewWidth    = 1280;
 	const int ViewHeight   = 720;
 	const int BarHeight    = 20;
-	const int BarWidth     = ViewWidth * 0.9;
+	const int BarWidth     = (int)(ViewWidth * 0.9);
 	const int BarTop       = ViewHeight - BarHeight * 2;
 	const int BarBottom    = BarTop + BarHeight;
 	const int BarLeft      = (ViewWidth - BarWidth) / 2;
@@ -156,7 +150,7 @@ void DrawPerformanceGraph()
 	tw.BeginDraw(ViewWidth, ViewHeight);
 
 	// Find total time
-	float totalTime = 0;
+	double totalTime = 0;
     for (size_t i = 0; i < mSim->PerfData.Trackers.size(); i++)
         totalTime += mSim->PerfData.Trackers[i]->total_time;
 
@@ -167,7 +161,7 @@ void DrawPerformanceGraph()
 	const color32 EndClr[]   = {0xA00000, 0x00A000, 0x0000A0};
 	const color32 Alpha      = 0x80000000;
 	int prevX = BarLeft;
-	float accTime = 0;
+	double accTime = 0;
     for (size_t i = 0; i < mSim->PerfData.Trackers.size(); i++)
     {
         PM_PERFORMANCE_TRACKER* pTracker = mSim->PerfData.Trackers[i];
@@ -176,7 +170,7 @@ void DrawPerformanceGraph()
 		accTime += pTracker->total_time;
 
 		// Compute screen position
-		int newX = BarLeft + (0.5f + accTime * BarWidth / totalTime);
+		int newX = BarLeft + (int)(0.5f + accTime * BarWidth / totalTime);
 
 		// draw bar
 		tw.DrawRect(prevX, BarTop, newX, BarBottom, Alpha | StartClr[i % 3], Alpha | EndClr[i % 3], Alpha | StartClr[i % 3], Alpha | EndClr[i % 3]);
@@ -236,7 +230,7 @@ void DrawFriendsHistogram()
 	const int HistHeight   = 100;
 	const int HistTop      = 10;
 	const int HistBottom   = HistTop + HistHeight;
-	const int HistLeft     = ViewWidth*0.95 - HistWidth;
+	const int HistLeft     = (int)(ViewWidth*0.95 - HistWidth);
 	const int HistRight    = HistLeft + HistWidth;
 	const int BarsWidth    = HistWidth / Params.friendsCircles;
 
@@ -251,7 +245,7 @@ void DrawFriendsHistogram()
 		float barHeight = (float)Histogram[iHist] / histTotal; 
 
 		// Compute screen pos
-		int   screenY1 = HistBottom - barHeight * HistHeight - 1;
+		int   screenY1 = HistBottom - (int)(barHeight * HistHeight) - 1;
 		int   screenX1 = 1 + HistLeft + BarsWidth * iHist;
 
 		// Draw
@@ -295,6 +289,7 @@ void UIManager_Draw()
 	processGLFWEvents();
 
     // Update AntTweekBar
+	mTotalSimTime = 0;
     for (size_t i = 0; i < mSim->PerfData.Trackers.size(); i++)
     {
         PM_PERFORMANCE_TRACKER *pTracker = mSim->PerfData.Trackers[i];
