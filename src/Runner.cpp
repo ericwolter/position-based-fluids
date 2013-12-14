@@ -18,14 +18,14 @@
 #include <fstream>
 using std::ifstream;
 
-bool Runner::DetectResourceChanges() 
+bool Runner::DetectResourceChanges()
 {
     // Assume nothing change
     bool bChanged = false;
 
     // Scan all file for change
     list<pair<string, time_t> >::iterator iter;
-    for(iter = mFilesTrack.begin(); iter != mFilesTrack.end(); iter++)
+    for (iter = mFilesTrack.begin(); iter != mFilesTrack.end(); iter++)
     {
         // Get file stat
         struct stat fileStat;
@@ -47,22 +47,22 @@ bool Runner::DetectResourceChanges()
     // ifstream ifs = ifstream(mFilesTrack.begin()->first.c_str());
 
     // change was detected: make sure that all files are openable (no one is holding the files open)
-    for(iter = mFilesTrack.begin(); iter != mFilesTrack.end(); iter++)
+    for (iter = mFilesTrack.begin(); iter != mFilesTrack.end(); iter++)
     {
         // Check if file can be open exclusivly
         bool ExclusiveOpen;
-        #ifdef _WINDOWS
-            int fd;
-            int openResult = _sopen_s(&fd, iter->first.c_str(), O_RDWR, _SH_DENYRW, 0);
-            if (openResult == 0) _close(fd);
-            ExclusiveOpen = openResult == 0;
-        #else
-            int openResult = open (iter->first.c_str(), O_RDWR);
-            int lockResult = openResult < 0 ? -1 : flock (openResult, LOCK_EX | LOCK_NB);
-            ExclusiveOpen = lockResult == 0;
-            if (lockResult == 0) flock (openResult, LOCK_UN);
-            if (openResult > 0) close(openResult);
-        #endif
+#ifdef _WINDOWS
+        int fd;
+        int openResult = _sopen_s(&fd, iter->first.c_str(), O_RDWR, _SH_DENYRW, 0);
+        if (openResult == 0) _close(fd);
+        ExclusiveOpen = openResult == 0;
+#else
+        int openResult = open (iter->first.c_str(), O_RDWR);
+        int lockResult = openResult < 0 ? -1 : flock (openResult, LOCK_EX | LOCK_NB);
+        ExclusiveOpen = lockResult == 0;
+        if (lockResult == 0) flock (openResult, LOCK_UN);
+        if (openResult > 0) close(openResult);
+#endif
 
         // If failed to open file exclusivly, exit (we will try again later)
         if (!ExclusiveOpen)
@@ -70,7 +70,7 @@ bool Runner::DetectResourceChanges()
     }
 
     // There was a change AND all files are openable (in exclusive mode, ie: no one else accessing them) we can report the change back
-    for(iter = mFilesTrack.begin(); iter != mFilesTrack.end(); iter++)
+    for (iter = mFilesTrack.begin(); iter != mFilesTrack.end(); iter++)
     {
         // Get file stat
         struct stat fileStat;
@@ -81,11 +81,11 @@ bool Runner::DetectResourceChanges()
     return true;
 }
 
-void Runner::run(Simulation& simulation, CVisual& renderer)
+void Runner::run(Simulation &simulation, CVisual &renderer)
 {
     // Create resource tracking file list (Kernels)
     time_t defaultTime = 0;
-    const string* pKernels = simulation.KernelFileList();
+    const string *pKernels = simulation.KernelFileList();
     for (int iSrc = 0; pKernels[iSrc] != ""; iSrc++)
         mFilesTrack.push_back(make_pair(getPathForKernel(pKernels[iSrc]), defaultTime));
 
@@ -96,8 +96,8 @@ void Runner::run(Simulation& simulation, CVisual& renderer)
     renderer.initSystemVisual(simulation);
     renderer.initParticlesVisual();
 
-	// Init UIManager
-	UIManager_Init(renderer.mWindow, &renderer, &simulation);
+    // Init UIManager
+    UIManager_Init(renderer.mWindow, &renderer, &simulation);
 
     // Main loop
     bool KernelBuildOk = false;
@@ -164,10 +164,10 @@ void Runner::run(Simulation& simulation, CVisual& renderer)
             waveTime = 0.0f;
         }
 
-		// Load simulation settings
-		simulation.bPauseSim        = renderer.UICmd_PauseSimulation;
-		simulation.bReadFriendsList = renderer.UICmd_FriendsHistogarm;
-		simulation.fWavePos         = wavePos;
+        // Load simulation settings
+        simulation.bPauseSim        = renderer.UICmd_PauseSimulation;
+        simulation.bReadFriendsList = renderer.UICmd_FriendsHistogarm;
+        simulation.fWavePos         = wavePos;
 
         // Sub frames
         for (cl_uint i = 0; i < Params.subSteps; i++)
@@ -183,15 +183,16 @@ void Runner::run(Simulation& simulation, CVisual& renderer)
         // Visualize particles
         renderer.renderParticles();
 
-		// Draw UI
-		UIManager_Draw();
+        // Draw UI
+        UIManager_Draw();
 
-		renderer.presentToScreen();
+
+        renderer.presentToScreen();
 
     }
     while (true);
 
-    #if defined(MAKE_VIDEO)
-        pclose(ffmpeg);
-    #endif
+#if defined(MAKE_VIDEO)
+    pclose(ffmpeg);
+#endif
 }

@@ -76,13 +76,13 @@ Mesh g_quadMesh;
 GLuint g_SelectedProgram;
 GLuint g_CurrentViewPort[4];
 
-GLuint UniformLoc(char* szName)
+GLuint UniformLoc(const char* szName)
 {
 	GLuint retVal = glGetUniformLocation(g_SelectedProgram, szName);
 	return retVal;
 }
 
-GLuint AttribLoc(char* szName)
+GLuint AttribLoc(const char* szName)
 {
 	return glGetAttribLocation(g_SelectedProgram, szName);
 }

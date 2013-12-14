@@ -6,7 +6,7 @@
 #include <vector>
 using namespace std;
 
-// Forward decleration
+#include <GLFW/glfw3.h>
 class Mesh;
 class FBO;
 
@@ -16,8 +16,8 @@ extern Mesh   g_quadMesh;
 extern FBO    g_ScreenFBO;
 
 // Uniform/Attribute indexing
-GLuint UniformLoc(char* szName);
-GLuint AttribLoc(char* szName);
+GLuint UniformLoc(const char* szName);
+GLuint AttribLoc(const char* szName);
 
 // General methods
 void OGLU_Init();
