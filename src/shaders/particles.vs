@@ -1,4 +1,4 @@
-#version 120
+#version 150
 
 uniform mat4 modelViewMatrix;
 uniform mat4 projectionMatrix;
@@ -8,10 +8,12 @@ uniform float pointSize;
 uniform int   particleCount;
 uniform int   colorMethod;
 
-attribute vec4 position;
+// attributes
+in vec4 position;
 
-varying float frag_color;
-varying vec3  frag_vsPosition; // View space position
+// Outputs to fragment shader
+out float frag_color;
+out vec3  frag_vsPosition; // View space position
 
 void main()
 {  

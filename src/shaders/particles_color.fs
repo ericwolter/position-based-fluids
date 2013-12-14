@@ -1,11 +1,15 @@
-#version 120
+#version 150
 
 uniform mat4  projectionMatrix;
 uniform float pointSize;
 uniform int   colorMethod;
 
-varying float frag_color;
-varying vec3  frag_vsPosition; // View space position
+// inputs from vertex shader
+in float frag_color;
+in vec3  frag_vsPosition; // View space position
+
+// outputs
+out vec4 colorOut;
 
 vec3 hsv2rgb(vec3 c)
 {
@@ -57,5 +61,5 @@ void main()
 
     // Set color
     vec3 dif_color = colorMethod == 0 ? vec3(frag_color, frag_color, 1.0) : colorscale(frag_color);
-    gl_FragColor = vec4(dif_color, 1.0) * cosAngIncidence;    
+    colorOut = vec4(dif_color, 1.0) * cosAngIncidence;    
 }

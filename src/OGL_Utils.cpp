@@ -150,12 +150,13 @@ GLuint OGLU_LoadShader(const char* szFilename, unsigned int type)
     glGetShaderiv(handle, GL_INFO_LOG_LENGTH, &errorLoglength);
 	
 	// Display message error/warning
-	bool ShowWarnings = false;
+	bool ShowWarnings = true;
 	if ((errorLoglength > 1) && (ShowWarnings || !result))
     {
 		// Report message
         char* errorMsg = new char[errorLoglength + 1];
         glGetShaderInfoLog(handle, errorLoglength, NULL, errorMsg);
+        cerr << "Shader compile error: " << szFilename << endl;
         cerr << errorMsg << endl;
         delete[] errorMsg;
     }
@@ -191,12 +192,13 @@ GLuint OGLU_LoadProgram(const char* vertexFilename, const char* fragmentFilename
     glGetProgramiv(programID, GL_INFO_LOG_LENGTH, &errorLoglength);
 	
 	// Display message error/warning
-	bool ShowWarnings = false;
+	bool ShowWarnings = true;
 	if ((errorLoglength > 1) && (ShowWarnings || !result))
     {
 		// Report message
         char* errorMsg = new char[errorLoglength + 1];
 		glGetProgramInfoLog(programID, errorLoglength, NULL, errorMsg);
+        cerr << "Shader compile error: " << vertexFilename << " and " << fragmentFilename << endl;
         cerr << errorMsg << endl;
         delete[] errorMsg;
     }

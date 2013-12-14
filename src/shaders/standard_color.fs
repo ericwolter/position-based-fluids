@@ -1,6 +1,9 @@
-#version 130
+#version 150
+
+// outputs
+out vec4 colorOut;
 
 void main()
 {
-    gl_FragData[0] = vec4(1,0,0,1);
+    colorOut = vec4(1,0,0,1);
 }

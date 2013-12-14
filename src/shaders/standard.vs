@@ -1,13 +1,15 @@
-#version 120
+#version 150
 
 uniform mat4 modelViewMatrix;
 uniform mat4 projectionMatrix;
 
-attribute vec4 position;
-attribute vec2 uv;
+// input attributes
+in vec4 position;
+in vec2 uv;
 
-varying vec2 frag_uv;
-varying vec3 frag_vsPosition; // View space position
+// Outputs to fragment shader
+out vec2 frag_uv;
+out vec3 frag_vsPosition; // View space position
 
 void main()
 {  
