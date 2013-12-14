@@ -125,6 +125,7 @@ if (APPLE)
     ${IOKIT_LIB}
     ${COREVIDEO_LIB}
     ${ANTTWEAKBAR_LIBRARY}
+    ${GLEW_LIB}
   )
 elseif(MSVC)
   target_link_libraries(hesp

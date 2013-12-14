@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Precomp_OpenGL.h"
-#include <glm\glm.hpp>
+#include <glm/glm.hpp>
 
 #include <vector>
 using namespace std;
@@ -26,7 +26,7 @@ GLuint OGLU_LoadShader(const char* szFilename, unsigned int type);
 GLuint OGLU_LoadProgram(const char* vertexFilename, const char* fragmentFilename);
 
 GLuint OGLU_GenerateTexture(int Width, int Height, GLint InternalFormat, GLenum Format, GLenum Type, void* pPixels);
-void OGLU_BindTextureToUniform(char* szUniform, GLuint nTextureUnit, GLuint nTextureID);
+void OGLU_BindTextureToUniform(const char* szUniform, GLuint nTextureUnit, GLuint nTextureID);
 
 // FrameBufferObject class
 class FBO
@@ -67,9 +67,9 @@ public:
 	GLuint VBO_vertices_handle;
 	GLuint VBO_elements_handle;
 	GLuint VBO_vertex_size;
-	GLuint VBO_offset_vertex;
-	GLuint VBO_offset_normal;
-	GLuint VBO_offset_uv;
+	GLint VBO_offset_vertex;
+	GLint VBO_offset_normal;
+	GLint VBO_offset_uv;
 
 	void CreateVBO();
 	void Draw(int nInstances);

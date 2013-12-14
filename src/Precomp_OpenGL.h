@@ -1,7 +1,8 @@
 #pragma once
 
 #if defined(__APPLE__)
-	#include <OpenGL/OpenGL.h>
+    #include <GL/glew.h>
+    #include <GLFW/glfw3.h>
 #elif defined(UNIX)
 	#include <GL/glx.h>
 #else // _WINDOWS

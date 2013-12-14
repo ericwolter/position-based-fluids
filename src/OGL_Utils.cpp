@@ -8,7 +8,7 @@
 #include <iostream>
 using namespace std;
 
-GLuint IntFmtToFmt[] = {GL_R8,           GL_RED,
+GLint IntFmtToFmt[] = {GL_R8,           GL_RED,
 						GL_R8_SNORM,     GL_RED,
 						GL_R16,          GL_RED,
 						GL_R16_SNORM,    GL_RED,
@@ -251,7 +251,7 @@ GLuint OGLU_GenerateTexture(int Width, int Height, GLint InternalFormat, GLenum 
 	return ret;
 }
 
-void OGLU_BindTextureToUniform(char* szUniform, GLuint nTextureUnit, GLuint nTextureID)
+void OGLU_BindTextureToUniform(const char* szUniform, GLuint nTextureUnit, GLuint nTextureID)
 {
 	glUniform1i(UniformLoc(szUniform), nTextureUnit);
 	glActiveTexture(GL_TEXTURE0 + nTextureUnit); 
@@ -386,25 +386,25 @@ void Mesh::Draw(int nInstances)
 	glBindBuffer(GL_ARRAY_BUFFER, VBO_vertices_handle);
 
 	// Setup buffer points
-	GLuint vertex_attrib = AttribLoc("position");
-	GLuint normal_attrib = AttribLoc("normal");
-	GLuint uv_attrib     = AttribLoc("uv");
+	GLint vertex_attrib = AttribLoc("position");
+	GLint normal_attrib = AttribLoc("normal");
+	GLint uv_attrib     = AttribLoc("uv");
 	if ((VBO_offset_vertex != -1) && (vertex_attrib != -1))
 	{
 		glEnableVertexAttribArray(vertex_attrib);
-		glVertexAttribPointer(vertex_attrib, 4, GL_FLOAT, GL_FALSE, VBO_vertex_size, (void*)VBO_offset_vertex);
+		glVertexAttribPointer(vertex_attrib, 4, GL_FLOAT, GL_FALSE, VBO_vertex_size, (void*) (intptr_t)VBO_offset_vertex);
 	}
 
 	if ((VBO_offset_normal != -1) && (normal_attrib != -1))
 	{
 		glEnableVertexAttribArray(normal_attrib);
-		glVertexAttribPointer(normal_attrib, 3, GL_FLOAT, GL_FALSE, VBO_vertex_size, (void*)VBO_offset_normal);
+		glVertexAttribPointer(normal_attrib, 3, GL_FLOAT, GL_FALSE, VBO_vertex_size, (void*) (intptr_t)VBO_offset_normal);
 	}
 
 	if ((VBO_offset_uv != -1) && (uv_attrib != -1))
 	{
 		glEnableVertexAttribArray(uv_attrib);
-		glVertexAttribPointer(uv_attrib, 2, GL_FLOAT, GL_FALSE, VBO_vertex_size, (void*)VBO_offset_uv);
+		glVertexAttribPointer(uv_attrib, 2, GL_FLOAT, GL_FALSE, VBO_vertex_size, (void*) (intptr_t)VBO_offset_uv);
 	}
 
 	// Draw things

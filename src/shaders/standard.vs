@@ -1,5 +1,4 @@
 #version 120
-#extension GL_EXT_gpu_shader4 : require
 
 uniform mat4 modelViewMatrix;
 uniform mat4 projectionMatrix;
