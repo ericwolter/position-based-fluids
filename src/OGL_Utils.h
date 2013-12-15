@@ -22,8 +22,8 @@ GLuint AttribLoc(const char* szName);
 // General methods
 void OGLU_Init();
 void OGLU_RenderQuad(float left, float top, float width, float height);
-GLuint OGLU_LoadShader(const char* szFilename, unsigned int type);
-GLuint OGLU_LoadProgram(const char* vertexFilename, const char* fragmentFilename);
+GLuint OGLU_LoadShader(const string szFilename, unsigned int type);
+GLuint OGLU_LoadProgram(const string vertexFilename, const string fragmentFilename);
 
 GLuint OGLU_GenerateTexture(int Width, int Height, GLint InternalFormat, GLenum Format, GLenum Type, void* pPixels);
 void OGLU_BindTextureToUniform(const char* szUniform, GLuint nTextureUnit, GLuint nTextureID);

@@ -6,7 +6,7 @@
 #include "../Precomp_OpenGL.h"
 #include "../OGL_Utils.h"
 #include "../hesp.hpp"
-#include "../DataLoader.hpp"
+#include "../Resources.hpp"
 #include "../Simulation.hpp"
 
 #include <GLFW/glfw3.h>
@@ -50,41 +50,45 @@ public:
 
     static GLuint loadShaders(const string &vertexFilename, const string &fragmentFilename);
 
-    GLvoid initParticlesVisual();
+    const string* ShaderFileList();
+
+    bool initShaders();
+
+    GLvoid setupProjection();
 
     GLvoid initSystemVisual(Simulation &sim);
 
     GLvoid renderParticles();
 
-	GLvoid presentToScreen();
+    GLvoid presentToScreen();
 
-	GLuint createSharingBuffer(const GLsizei size) const;
+    GLuint createSharingBuffer(const GLsizei size) const;
 
 public:
     GLFWwindow* mWindow;
 
-	bool UICmd_GenerateWaves;
+    bool UICmd_GenerateWaves;
     bool UICmd_ResetSimulation;
     bool UICmd_PauseSimulation;
-	bool UICmd_FriendsHistogarm;
-	bool UICmd_ColorMethod;
+    bool UICmd_FriendsHistogarm;
+    bool UICmd_ColorMethod;
 
 private:
     // Window stuff
     int mWidth;
     int mHeight;
 
-	// Rendering
-	FBO* pTarget;
-	FBO* pFBO_Thickness;
+    // Rendering
+    FBO* pTarget;
+    FBO* pFBO_Thickness;
 
     GLuint mParticleProgID;
-	GLuint mStandardCopyProgID;
-	GLuint mStandardColorProgID;
+    GLuint mStandardCopyProgID;
+    GLuint mStandardColorProgID;
 
-	// Projection related
-	float mWidthOfNearPlane;
-	glm::mat4 mProjectionMatrix;
+    // Projection related
+    float mWidthOfNearPlane;
+    glm::mat4 mProjectionMatrix;
 
     // System sizes
     GLuint mSystemBufferID;

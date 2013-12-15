@@ -114,7 +114,7 @@ void UIManager_Init(GLFWwindow *window, CVisual *pRenderer, Simulation *pSim)
     glfwSetKeyCallback(mWindow, KeyFunCB);
 
     // Get window size
-    TwInit(TW_OPENGL, NULL);
+    TwInit(TW_OPENGL_CORE, NULL);
     int fbwidth , fbheight;
     glfwGetFramebufferSize(mWindow, &fbwidth, &fbheight );
     TwWindowSize(fbwidth, fbheight);
@@ -136,7 +136,7 @@ void UIManager_Init(GLFWwindow *window, CVisual *pRenderer, Simulation *pSim)
     TwAddVarRO(mTweakBar, "Total sim time", TW_TYPE_DOUBLE, &mTotalSimTime, "precision=2 group=Stats");
 
 
-	g_TwMgr->m_GraphAPI = TW_OPENGL;
+    g_TwMgr->m_GraphAPI = TW_OPENGL_CORE;
     tw.Init();
     TwGenerateDefaultFonts(1.0);
     twFont = tw.NewTextObj();

@@ -1,7 +1,7 @@
 
 #include "Precomp_OpenGL.h"
 #include "Simulation.hpp"
-#include "DataLoader.hpp"
+#include "Resources.hpp"
 #include "ParamUtils.hpp"
 #include "ocl/OCLUtils.hpp"
 
@@ -74,7 +74,7 @@ const std::string *Simulation::KernelFileList()
         "reset_part_list.cl",
         "update_cells.cl",
         "compute_scaling.cl",
-		"pack_data.cl",
+        "pack_data.cl",
         "compute_delta.cl",
         "update_predicted.cl",
         "update_velocities.cl",

@@ -1,101 +1,87 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
-
 #include <cstdlib>
 #include <vector>
 #include <string>
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
-
+using namespace std;
 
 #include "Precomp_OpenGL.h"
-
 #include "hesp.hpp"
 #include "ocl/OCLUtils.hpp"
 #include "visual/visual.hpp"
 #include "Simulation.hpp"
 #include "Runner.hpp"
-#include "DataLoader.hpp"
+#include "Resources.hpp"
 
 static const int WINDOW_WIDTH = 1280;
 static const int WINDOW_HEIGHT = 720;
 
-
-using std::ofstream;
-using std::vector;
-using std::cout;
-using std::cerr;
-using std::cin;
-using std::endl;
-using std::string;
-using std::exception;
-using std::runtime_error;
-
-
 void SelectOpenCLDevice(cl::Platform& platform, cl::Device& device)
-{						
-		// Scan platforms/devices for most sutable option
-		cl_int      BestOption        = -1;
-		cl_int      BestOption_Clocks = 0;
-		vector<pair<cl::Platform, cl::Device> > deviceOptions;
-		vector<cl::Platform> platforms;
-		cl::Platform::get(&platforms);
-	    for (vector<cl::Platform>::const_iterator cit = platforms.begin(); cit != platforms.end(); cit++)
-		{
-			// Print platform name
-			cout << "  Platform [" << cit->getInfo<CL_PLATFORM_NAME>() << "] (" << cit->getInfo<CL_PLATFORM_VERSION>() << ")" << endl; 
+{
+    // Scan platforms/devices for most sutable option
+    cl_int      BestOption        = -1;
+    cl_int      BestOption_Clocks = 0;
+    vector<pair<cl::Platform, cl::Device> > deviceOptions;
+    vector<cl::Platform> platforms;
+    cl::Platform::get(&platforms);
+    for (vector<cl::Platform>::const_iterator cit = platforms.begin(); cit != platforms.end(); cit++)
+    {
+        // Print platform name
+        cout << "  Platform [" << cit->getInfo<CL_PLATFORM_NAME>() << "] (" << cit->getInfo<CL_PLATFORM_VERSION>() << ")" << endl; 
 
-			// Get platform devices
-			vector<cl::Device> devices;
-			cit->getDevices(CL_DEVICE_TYPE_ALL, &devices);
-			for (vector<cl::Device>::const_iterator dit = devices.begin(); dit != devices.end(); dit++)
-			{
-				// Add to options
-				deviceOptions.push_back(make_pair(*cit, *dit));
+        // Get platform devices
+        vector<cl::Device> devices;
+        cit->getDevices(CL_DEVICE_TYPE_ALL, &devices);
+        for (vector<cl::Device>::const_iterator dit = devices.begin(); dit != devices.end(); dit++)
+        {
+            // Add to options
+            deviceOptions.push_back(make_pair(*cit, *dit));
 
-				// Check if device support the required expenstions
-				string extenstions = " " + dit->getInfo<CL_DEVICE_EXTENSIONS>() + " ";
-                #if defined(__APPLE__)
-                bool support_gl_sharing = extenstions.find(" cl_APPLE_gl_sharing ") != string::npos;
-                #else
-				bool support_gl_sharing = extenstions.find(" cl_khr_gl_sharing ") != string::npos;
-                #endif
+            // Check if device support the required expenstions
+            string extenstions = " " + dit->getInfo<CL_DEVICE_EXTENSIONS>() + " ";
+            #if defined(__APPLE__)
+            bool support_gl_sharing = extenstions.find(" cl_APPLE_gl_sharing ") != string::npos;
+            #else
+            bool support_gl_sharing = extenstions.find(" cl_khr_gl_sharing ") != string::npos;
+            #endif
 
-				// Check clock
-				cl_int clockFreq    = dit->getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>();
-				cl_int computeUnits = dit->getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
-				cl_int TotalClock   = clockFreq * computeUnits;
+            // Check clock
+            cl_int clockFreq    = dit->getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>();
+            cl_int computeUnits = dit->getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
+            cl_int TotalClock   = clockFreq * computeUnits;
 
-				// Check agaist "best" option
-				if (support_gl_sharing && (BestOption_Clocks < TotalClock))
-				{
-					BestOption = deviceOptions.size() - 1;
-					BestOption_Clocks = TotalClock;
-				}
+            // Check agaist "best" option
+            if (support_gl_sharing && (BestOption_Clocks < TotalClock))
+            {
+                BestOption = deviceOptions.size() - 1;
+                BestOption_Clocks = TotalClock;
+            }
 
-				// Print details
-				cout << "    #" << deviceOptions.size() << " => " << dit->getInfo<CL_DEVICE_NAME>() << ":" << endl;
-				cout << "          Support OpenGL sharing: " << support_gl_sharing << endl;
-				cout << "          TotalClocks=" << TotalClock << " (Clock=" << clockFreq << " Units=" << computeUnits << ")" << endl;
-				//cout << "          EXT: " << dit->getInfo<CL_DEVICE_EXTENSIONS>() << endl;
-			}
+            // Print details
+            cout << "    #" << deviceOptions.size() << " => " << dit->getInfo<CL_DEVICE_NAME>() << ":" << endl;
+            cout << "          Support OpenGL sharing: " << support_gl_sharing << endl;
+            cout << "          TotalClocks=" << TotalClock << " (Clock=" << clockFreq << " Units=" << computeUnits << ")" << endl;
+            //cout << "          EXT: " << dit->getInfo<CL_DEVICE_EXTENSIONS>() << endl;
+        }
 
-			cout << endl;
-		}
+        cout << endl;
+    }
 
-		// CUSTOM CHANGE "BestOption" HERE... (but don't commit it)
-		// BestOption = ...;
-		// BestOption = 0;
+    // CUSTOM CHANGE "BestOption" HERE... (but don't commit it)
+    // BestOption = ...;
+    // BestOption = 0;
 
-		// Check if found atleast one device
-		if (BestOption == -1)
-			 throw runtime_error("No devices were found.");
+    // Check if found atleast one device
+    if (BestOption == -1)
+            throw runtime_error("No devices were found.");
 
-		// Assign selection
-		platform = deviceOptions[BestOption].first;
-		device   = deviceOptions[BestOption].second;
-		cout << "Selected device is #" << BestOption << " => " << device.getInfo<CL_DEVICE_NAME>() << endl;
+    // Assign selection
+    platform = deviceOptions[BestOption].first;
+    device   = deviceOptions[BestOption].second;
+    cout << "Selected device is #" << BestOption << " => " << device.getInfo<CL_DEVICE_NAME>() << endl;
 }
 
 int main()
@@ -106,10 +92,10 @@ int main()
         CVisual renderer(WINDOW_WIDTH, WINDOW_HEIGHT);
         renderer.initWindow("PBF Project");
 
-		// Select OpenCL device
-		cl::Platform ocl_platform;
-		cl::Device   ocl_device;
-		SelectOpenCLDevice(ocl_platform, ocl_device);
+        // Select OpenCL device
+        cl::Platform ocl_platform;
+        cl::Device   ocl_device;
+        SelectOpenCLDevice(ocl_platform, ocl_device);
 
 
 #if defined(__APPLE__)
@@ -149,17 +135,14 @@ int main()
 #endif // __APPLE__
 
         // Get context for device
-		cl::Context context = cl::Context(ocl_device, properties);
+        cl::Context context = cl::Context(ocl_device, properties);
 
         // Create simulation object
-		Simulation simulation(context, ocl_device);
+        Simulation simulation(context, ocl_device);
 
         // Create runner object
         Runner runner;
         runner.run(simulation, renderer);
-
-
-
     }
     catch (const cl::Error &ecl)
     { 

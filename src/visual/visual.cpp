@@ -78,38 +78,9 @@ void CVisual::initWindow(const string windowname)
     glDepthFunc(GL_LEQUAL);
 }
 
-GLvoid CVisual::initSystemVisual(Simulation &sim)
+
+GLvoid CVisual::setupProjection()
 {
-    // Store simulation object
-    mSimulation = &sim;
-
-    OGLU_Init();
-
-    ZPR_Reset();
-
-    /*
-    // Generate test texture
-    byte* map = new byte[1280*720*3];
-    for (int x = 0; x < 1280; x++)
-    {
-        for (int y = 0; y < 720; y++)
-        {
-            map[(y * 1280 + x) * 3 + 0] = x ^ y;
-            map[(y * 1280 + x) * 3 + 1] = x ^ y;
-            map[(y * 1280 + x) * 3 + 2] = x ^ y;
-        }
-    }
-
-    tex = OGLU_GenerateTexture(1280, 720, GL_RGB8, GL_RGB, GL_UNSIGNED_BYTE, map);*/
-}
-
-GLvoid CVisual::initParticlesVisual()
-{
-    // Load Shaders
-    mParticleProgID      =  OGLU_LoadProgram(getPathForShader("particles.vs").c_str(), getPathForShader("particles_color.fs").c_str());
-    mStandardCopyProgID  =  OGLU_LoadProgram(getPathForShader("standard.vs").c_str(), getPathForShader("standard_copy.fs").c_str());
-    mStandardColorProgID =  OGLU_LoadProgram(getPathForShader("standard.vs").c_str(), getPathForShader("standard_color.fs").c_str());
-
     // Compute projection matrix
     float FOV = 45.0f;
     mProjectionMatrix = glm::perspective(FOV, mWidth / (GLfloat) mHeight, 0.1f, 10.0f);
@@ -121,6 +92,42 @@ GLvoid CVisual::initParticlesVisual()
 
     // Update ZPR
     ZPR_SetupView(mProjectionMatrix, NULL);
+    ZPR_Reset();
+}
+
+GLvoid CVisual::initSystemVisual(Simulation &sim)
+{
+    mSimulation = &sim;
+
+    OGLU_Init();
+
+    setupProjection();
+}
+
+const string* CVisual::ShaderFileList()
+{
+    static const string shaders[] =
+    {
+        "particles.vs",
+        "particles_color.fs",
+        "standard.vs",
+        "standard_copy.fs",
+        "standard_color.fs",
+        ""
+    };
+
+    return shaders;
+}
+
+bool CVisual::initShaders()
+{
+    // Load Shaders
+    bool bLoadOK = true;
+    bLoadOK &= mParticleProgID      = OGLU_LoadProgram(getPathForShader("particles.vs"), getPathForShader("particles_color.fs"));
+    bLoadOK &= mStandardCopyProgID  = OGLU_LoadProgram(getPathForShader("standard.vs"),  getPathForShader("standard_copy.fs"));
+    bLoadOK &= mStandardColorProgID = OGLU_LoadProgram(getPathForShader("standard.vs"),  getPathForShader("standard_color.fs"));
+
+    return bLoadOK;
 }
 
 GLuint CVisual::createSharingBuffer(const GLsizei size) const
@@ -139,13 +146,15 @@ GLuint CVisual::createSharingBuffer(const GLsizei size) const
 GLvoid CVisual::renderParticles()
 {
     // Clear target
-    pTarget->SetAsDrawTarget();
+    //pTarget->SetAsDrawTarget();
+    
     glClearColor(0, 0, 0, 0);
     glClearDepth(1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Setup Particle drawing
     glUseProgram(g_SelectedProgram = mParticleProgID);
+
     // Setup uniforms
     glUniformMatrix4fv(UniformLoc("projectionMatrix"), 1, GL_FALSE, glm::value_ptr(mProjectionMatrix));
     glUniformMatrix4fv(UniformLoc("modelViewMatrix"),  1, GL_FALSE, glm::value_ptr(ZPR_ModelViewMatrix));
@@ -159,6 +168,8 @@ GLvoid CVisual::renderParticles()
     glEnableVertexAttribArray(AttribLoc("position"));
     glVertexAttribPointer(AttribLoc("position"), 4, GL_FLOAT, GL_FALSE, 0, 0);
 
+    glBindFragDataLocation(g_SelectedProgram, 0, "colorOut");
+
     // Draw particles
     glDrawArrays(GL_POINTS, 0, Params.particleCount);
 
@@ -166,11 +177,13 @@ GLvoid CVisual::renderParticles()
     glDisableVertexAttribArray(AttribLoc("position"));
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    glUseProgram(0);
+    /*glUseProgram(0);
     glUseProgram(g_SelectedProgram = mStandardCopyProgID);
     OGLU_BindTextureToUniform("SourceImg", 0, pTarget->pColorTextureId[0]);
     g_ScreenFBO.SetAsDrawTarget();
-    OGLU_RenderQuad(0, 0, 1.0, 1.0);
+    OGLU_RenderQuad(0, 0, 1.0, 1.0);*/
+
+    glUseProgram(0);
 }
 
 GLvoid CVisual::presentToScreen()

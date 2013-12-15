@@ -1,9 +1,12 @@
 #pragma once
 
+#include <list>
 #include <string>
-using std::string;
+using namespace std;
 
 const string getPathForScenario(const string scenario);
 const string getPathForKernel  (const string kernel);
 const string getPathForShader  (const string shader);
 const string getPathForTexture (const string texture);
+
+bool DetectResourceChanges(list<pair<string, time_t>>& fileList);
