@@ -31,12 +31,12 @@ private:
     Simulation &operator=(const Simulation &other);
     Simulation (const Simulation &other);
 
-	// Init particles positions
-	void CreateParticles();
+    // Init particles positions
+    void CreateParticles();
 
     // Copy current positions and velocities
     void dumpData( cl_float4 * (&positions), cl_float4 * (&velocities) );
-    
+
 public:
 
     // OpenCL objects supplied by OpenCL setup
@@ -53,7 +53,7 @@ public:
     cl::NDRange mGlobalRange;
     cl::NDRange mLocalRange;
 
-	// OCL buffer sizes
+    // OCL buffer sizes
     size_t mBufferSizeParticles;
     size_t mBufferSizeCells;
     size_t mBufferSizeParticlesList;
@@ -61,17 +61,17 @@ public:
     // The device memory buffers holding the simulation data
     cl::Buffer mCellsBuffer;
     cl::Buffer mParticlesListBuffer;
-	cl::Buffer mFriendsListBuffer;
+    cl::Buffer mFriendsListBuffer;
     cl::BufferGL mPositionsYinBuffer;
     cl::BufferGL mPositionsYangBuffer;
     cl::Buffer mPredictedBuffer;
     cl::Buffer mVelocitiesYinBuffer;
     cl::Buffer mVelocitiesYangBuffer;
-	cl::Buffer mDensityBuffer;
+    cl::Buffer mDensityBuffer;
     cl::Buffer mDeltaBuffer;
     cl::Buffer mDeltaVelocityBuffer;
     cl::Buffer mOmegaBuffer;
-	cl::Buffer mParameters;
+    cl::Buffer mParameters;
 
     // Radix buffers
     cl::Buffer mInKeysBuffer;
@@ -96,12 +96,12 @@ public:
     void applyViscosity();
     void applyVorticity();
     void predictPositions();
-	void buildFriendsList();
+    void buildFriendsList();
     void updatePredicted(int iterationIndex);
     void computeScaling(int iterationIndex);
     void computeDelta(int iterationIndex);
     void radixsort();
-	void packData(cl::Buffer packTarget, cl::Buffer packSource, int iterationIndex);
+    void packData(cl::Buffer packTarget, cl::Buffer packSource, int iterationIndex);
 
 public:
     // Default constructor.
@@ -111,7 +111,7 @@ public:
     ~Simulation ();
 
     // Create all buffer and particles
-	void InitBuffers();
+    void InitBuffers();
 
     // Init Grid
     void InitCells();
@@ -123,28 +123,28 @@ public:
     void Step();
 
     // Get a list of kernel files
-	const std::string* KernelFileList();
+    const std::string *KernelFileList();
 
 public:
 
-	// Open GL Sharing buffers
+    // Open GL Sharing buffers
     GLuint mSharingYinBufferID;
     GLuint mSharingYangBufferID;
 
-	// Performance measurement
-	OCLPerfMon PerfData;
+    // Performance measurement
+    OCLPerfMon PerfData;
 
-	// Rendering state
-	bool      bPauseSim;
-	bool      bReadFriendsList;
-	cl_float  fWavePos;
-	
+    // Rendering state
+    bool      bPauseSim;
+    bool      bReadFriendsList;
+    cl_float  fWavePos;
+
     // debug buffers (placed in host memory)
-    cl_float4* mPositions;
-    cl_float4* mVelocities;
-    cl_float4* mPredictions;
-    cl_float4* mDeltas;
-	cl_uint*   mFriendsList;
+    cl_float4 *mPositions;
+    cl_float4 *mVelocities;
+    cl_float4 *mPredictions;
+    cl_float4 *mDeltas;
+    cl_uint   *mFriendsList;
 };
 
 #endif // __SIMULATION_HPP

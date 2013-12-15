@@ -19,7 +19,7 @@ using namespace std;
 static const int WINDOW_WIDTH = 1280;
 static const int WINDOW_HEIGHT = 720;
 
-void SelectOpenCLDevice(cl::Platform& platform, cl::Device& device)
+void SelectOpenCLDevice(cl::Platform &platform, cl::Device &device)
 {
     // Scan platforms/devices for most sutable option
     cl_int      BestOption        = -1;
@@ -30,7 +30,7 @@ void SelectOpenCLDevice(cl::Platform& platform, cl::Device& device)
     for (vector<cl::Platform>::const_iterator cit = platforms.begin(); cit != platforms.end(); cit++)
     {
         // Print platform name
-        cout << "  Platform [" << cit->getInfo<CL_PLATFORM_NAME>() << "] (" << cit->getInfo<CL_PLATFORM_VERSION>() << ")" << endl; 
+        cout << "  Platform [" << cit->getInfo<CL_PLATFORM_NAME>() << "] (" << cit->getInfo<CL_PLATFORM_VERSION>() << ")" << endl;
 
         // Get platform devices
         vector<cl::Device> devices;
@@ -42,11 +42,11 @@ void SelectOpenCLDevice(cl::Platform& platform, cl::Device& device)
 
             // Check if device support the required expenstions
             string extenstions = " " + dit->getInfo<CL_DEVICE_EXTENSIONS>() + " ";
-            #if defined(__APPLE__)
+#if defined(__APPLE__)
             bool support_gl_sharing = extenstions.find(" cl_APPLE_gl_sharing ") != string::npos;
-            #else
+#else
             bool support_gl_sharing = extenstions.find(" cl_khr_gl_sharing ") != string::npos;
-            #endif
+#endif
 
             // Check clock
             cl_int clockFreq    = dit->getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>();
@@ -76,7 +76,7 @@ void SelectOpenCLDevice(cl::Platform& platform, cl::Device& device)
 
     // Check if found atleast one device
     if (BestOption == -1)
-            throw runtime_error("No devices were found.");
+        throw runtime_error("No devices were found.");
 
     // Assign selection
     platform = deviceOptions[BestOption].first;
@@ -145,7 +145,7 @@ int main()
         runner.run(simulation, renderer);
     }
     catch (const cl::Error &ecl)
-    { 
+    {
         cerr << "OpenCL Error caught: " << ecl.what() << "(" << ecl.err() << ")" << endl;
         exit(-1);
     }

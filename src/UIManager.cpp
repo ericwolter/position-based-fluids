@@ -141,10 +141,10 @@ void UIManager_Init(GLFWwindow *window, CVisual *pRenderer, Simulation *pSim)
 void DrawPerformanceGraph()
 {
     // Compute sizes
-    const int ViewWidth    = 1280*mDisplayscale;
-    const int ViewHeight   = 720*mDisplayscale;
-    const int BarHeight    = 20*mDisplayscale;
-	const int BarWidth     = (int)(ViewWidth * 0.9);
+    const int ViewWidth    = 1280 * mDisplayscale;
+    const int ViewHeight   = 720 * mDisplayscale;
+    const int BarHeight    = 20 * mDisplayscale;
+    const int BarWidth     = (int)(ViewWidth * 0.9);
     const int BarTop       = ViewHeight - BarHeight * 2;
     const int BarBottom    = BarTop + BarHeight;
     const int BarLeft      = (ViewWidth - BarWidth) / 2;
@@ -153,7 +153,7 @@ void DrawPerformanceGraph()
     tw.BeginDraw(ViewWidth, ViewHeight);
 
     // Find total time
-	double totalTime = 0;
+    double totalTime = 0;
     for (size_t i = 0; i < mSim->PerfData.Trackers.size(); i++)
         totalTime += mSim->PerfData.Trackers[i]->total_time;
 
@@ -164,7 +164,7 @@ void DrawPerformanceGraph()
     const color32 EndClr[]   = {0xA00000, 0x00A000, 0x0000A0};
     const color32 Alpha      = 0x80000000;
     int prevX = BarLeft;
-	double accTime = 0;
+    double accTime = 0;
     for (size_t i = 0; i < mSim->PerfData.Trackers.size(); i++)
     {
         PM_PERFORMANCE_TRACKER *pTracker = mSim->PerfData.Trackers[i];
@@ -173,7 +173,7 @@ void DrawPerformanceGraph()
         accTime += pTracker->total_time;
 
         // Compute screen position
-		int newX = BarLeft + (int)(0.5f + accTime * BarWidth / totalTime);
+        int newX = BarLeft + (int)(0.5f + accTime * BarWidth / totalTime);
 
         // draw bar
         tw.DrawRect(prevX, BarTop, newX, BarBottom, Alpha | StartClr[i % 3], Alpha | EndClr[i % 3], Alpha | StartClr[i % 3], Alpha | EndClr[i % 3]);
@@ -233,7 +233,7 @@ void DrawFriendsHistogram()
     const int HistHeight   = 100;
     const int HistTop      = 10;
     const int HistBottom   = HistTop + HistHeight;
-	const int HistLeft     = (int)(ViewWidth*0.95 - HistWidth);
+    const int HistLeft     = (int)(ViewWidth * 0.95 - HistWidth);
     const int HistRight    = HistLeft + HistWidth;
     const int BarsWidth    = HistWidth / Params.friendsCircles;
 
@@ -248,7 +248,7 @@ void DrawFriendsHistogram()
         float barHeight = (float)Histogram[iHist] / histTotal;
 
         // Compute screen pos
-		int   screenY1 = HistBottom - (int)(barHeight * HistHeight) - 1;
+        int   screenY1 = HistBottom - (int)(barHeight * HistHeight) - 1;
         int   screenX1 = 1 + HistLeft + BarsWidth * iHist;
 
         // Draw
@@ -292,7 +292,7 @@ void UIManager_Draw()
     processGLFWEvents();
 
     // Update AntTweekBar
-	mTotalSimTime = 0;
+    mTotalSimTime = 0;
     for (size_t i = 0; i < mSim->PerfData.Trackers.size(); i++)
     {
         PM_PERFORMANCE_TRACKER *pTracker = mSim->PerfData.Trackers[i];
@@ -325,6 +325,6 @@ void UIManager_Draw()
 
     // Draw Friends histogram
     if (mRenderer->UICmd_FriendsHistogarm)
-     DrawFriendsHistogram();
+        DrawFriendsHistogram();
 }
 

@@ -109,7 +109,7 @@ GLvoid CVisual::initSystemVisual(Simulation &sim)
     setupProjection();
 }
 
-const string* CVisual::ShaderFileList()
+const string *CVisual::ShaderFileList()
 {
     static const string shaders[] =
     {
@@ -152,7 +152,7 @@ GLvoid CVisual::renderParticles()
 {
     // Clear target
     //pTarget->SetAsDrawTarget();
-    
+
     glClearColor(0, 0, 0, 0);
     glClearDepth(1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);

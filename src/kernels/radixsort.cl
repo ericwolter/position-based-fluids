@@ -37,18 +37,21 @@ int mortonNumber(int3 gridPos)
     return expandBits(gridPos.x) | (expandBits(gridPos.y) << 1) | (expandBits(gridPos.z) << 2);
 }
 
-__kernel void computeKeys(__constant struct Parameters* Params, 
-                         const __global float4 *positions,
-                         __global int *keys,
-                         __global int *permutation,
-                         const uint numParticles)
+__kernel void computeKeys(__constant struct Parameters *Params,
+                          const __global float4 *positions,
+                          __global int *keys,
+                          __global int *permutation,
+                          const uint numParticles)
 {
     const uint i = get_global_id(0);
 
-    if(i < numParticles) {
+    if (i < numParticles)
+    {
         int3 current_cell = convert_int3(positions[i].xyz / Params->h);
         keys[i] = mortonNumber(current_cell);
-    } else {
+    }
+    else
+    {
         keys[i] = 2147483647 - 1; //max_int
     }
     permutation[i] = i;
@@ -56,9 +59,9 @@ __kernel void computeKeys(__constant struct Parameters* Params,
 
 __kernel void sortParticles(const __global int *permutation,
                             const __global float4 *positionsYin,
-                                  __global float4 *positionsYang,
+                            __global float4 *positionsYang,
                             const __global float4 *velocitiesYin,
-                                  __global float4 *velocitiesYang,
+                            __global float4 *velocitiesYang,
                             const uint N)
 {
     const uint i = get_global_id(0);

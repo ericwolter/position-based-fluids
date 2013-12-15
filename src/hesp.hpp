@@ -32,22 +32,22 @@
     #define CL_USE_DEPRECATED_OPENCL_1_1_APIS
     #define __CL_ENABLE_EXCEPTIONS
 
-	#if defined(_WINDOWS) 
-		#include "ocl/cl.hpp"
-	#else
-		#pragma GCC diagnostic push
-		#pragma GCC diagnostic ignored "-Wall"
-		#pragma GCC diagnostic ignored "-Wextra"
-		#pragma GCC diagnostic ignored "-Wc++11-extra-semi"
-		#pragma GCC diagnostic ignored "-Wnewline-eof"
-		#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-		#if defined(__APPLE__) || defined(__MACOSX)
-			#include "ocl/cl.hpp"
-		#else
-			#include <CL/cl.hpp>
-		#endif // __APPLE__
-		#pragma GCC diagnostic pop
-	#endif
+    #if defined(_WINDOWS) 
+        #include "ocl/cl.hpp"
+    #else
+        #pragma GCC diagnostic push
+        #pragma GCC diagnostic ignored "-Wall"
+        #pragma GCC diagnostic ignored "-Wextra"
+        #pragma GCC diagnostic ignored "-Wc++11-extra-semi"
+        #pragma GCC diagnostic ignored "-Wnewline-eof"
+        #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+        #if defined(__APPLE__) || defined(__MACOSX)
+            #include "ocl/cl.hpp"
+        #else
+            #include <CL/cl.hpp>
+        #endif // __APPLE__
+        #pragma GCC diagnostic pop
+    #endif
 
 #endif // __OPENCL_VERSION__
 

@@ -149,10 +149,10 @@ void ZPR_EventMouseButtonGLFW(GLFWwindow *window, int button, int action, int mo
 void ZPR_EventMousePosGLFW(GLFWwindow *window, double x, double y)
 {
     // get mouse delta
-	float dx = (float)x - prevMouseX;
-	float dy = (float)y - prevMouseY;
-	prevMouseX = (float)x;
-	prevMouseY = (float)y;
+    float dx = (float)x - prevMouseX;
+    float dy = (float)y - prevMouseY;
+    prevMouseX = (float)x;
+    prevMouseY = (float)y;
 
     // Make sure there is an active drag
     if (!DragActive)

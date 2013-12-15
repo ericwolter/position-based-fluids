@@ -50,7 +50,7 @@ public:
 
     static GLuint loadShaders(const string &vertexFilename, const string &fragmentFilename);
 
-    const string* ShaderFileList();
+    const string *ShaderFileList();
 
     bool initShaders();
 
@@ -65,7 +65,7 @@ public:
     GLuint createSharingBuffer(const GLsizei size) const;
 
 public:
-    GLFWwindow* mWindow;
+    GLFWwindow *mWindow;
 
     bool UICmd_GenerateWaves;
     bool UICmd_ResetSimulation;
@@ -79,8 +79,8 @@ private:
     int mHeight;
 
     // Rendering
-    FBO* pTarget;
-    FBO* pFBO_Thickness;
+    FBO *pTarget;
+    FBO *pFBO_Thickness;
 
     GLuint mParticleProgID;
     GLuint mStandardCopyProgID;

@@ -137,7 +137,7 @@ bool Simulation::InitKernels()
     clflags << "-DMAX_PARTICLES_IN_CIRCLE="     << (int)(Params.particlesPerCircle) << " ";  // Defines the max number of particles per cycle
     clflags << "-DPARTICLE_FRIENDS_BLOCK_SIZE=" << (int)(Params.friendsCircles + Params.friendsCircles * Params.particlesPerCircle) << " ";  // FRIENDS_CIRCLES + FRIENDS_CIRCLES * MAX_PARTICLES_IN_CIRCLE
 
-	clflags << "-DGRID_BUG_SIZE="     << (int)(Params.gridBufSize) << " ";
+    clflags << "-DGRID_BUG_SIZE="     << (int)(Params.gridBufSize) << " ";
 
     clflags << "-DPOLY6_FACTOR="      << 315.0f / (64.0f * M_PI * pow(Params.h, 9)) << "f ";
     clflags << "-DGRAD_SPIKY_FACTOR=" << 45.0f / (M_PI * pow(Params.h, 6)) << "f ";
@@ -169,7 +169,7 @@ void Simulation::InitBuffers()
     delete[] mVelocities;  mVelocities  = new cl_float4[Params.particleCount];
     delete[] mPredictions; mPredictions = new cl_float4[Params.particleCount]; // (used for debugging)
     delete[] mDeltas;      mDeltas      = new cl_float4[Params.particleCount]; // (used for debugging)
-	delete[] mFriendsList; mFriendsList = new cl_uint  [Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle)]; // (used for debugging)
+    delete[] mFriendsList; mFriendsList = new cl_uint  [Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle)]; // (used for debugging)
 
     // Position particles
     CreateParticles();
@@ -192,7 +192,7 @@ void Simulation::InitBuffers()
     mDeltaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mDeltaVelocityBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mOmegaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
-	mDensityBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.particleCount * sizeof(cl_float));
+    mDensityBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.particleCount * sizeof(cl_float));
     mParameters            = cl::Buffer(mCLContext, CL_MEM_READ_ONLY,  sizeof(Params));
 
     // Radix buffers
@@ -236,7 +236,7 @@ void Simulation::InitCells()
     delete[] mParticlesList; mParticlesList = new cl_int[Params.particleCount];
 
     // Init cells
-	for (cl_uint i = 0; i < Params.gridBufSize; ++i)
+    for (cl_uint i = 0; i < Params.gridBufSize; ++i)
         mCells[i] = END_OF_CELL_LIST;
 
     // Init particles
@@ -365,7 +365,7 @@ void Simulation::computeDelta(int iterationIndex)
     mKernels["computeDelta"].setArg(param++, Params.particleCount);
 
     //mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
-	mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, cl::NDRange(((Params.particleCount+127)/128)*128), cl::NDRange(128), NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
+    mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, cl::NDRange(((Params.particleCount + 127) / 128) * 128), cl::NDRange(128), NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
 }
 
 void Simulation::computeScaling(int iterationIndex)
@@ -384,11 +384,11 @@ void Simulation::updateCells()
 {
     int param = 0;
     mKernels["resetGrid"].setArg(param++, mCellsBuffer);
-	mQueue.enqueueNDRangeKernel(mKernels["resetGrid"], 0, cl::NDRange(Params.gridBufSize), mLocalRange, NULL, PerfData.GetTrackerEvent("resetGrid"));
+    mQueue.enqueueNDRangeKernel(mKernels["resetGrid"], 0, cl::NDRange(Params.gridBufSize), mLocalRange, NULL, PerfData.GetTrackerEvent("resetGrid"));
 
-	param = 0;
-	mKernels["resetPartList"].setArg(param++, mParticlesListBuffer);
-	mQueue.enqueueNDRangeKernel(mKernels["resetPartList"], 0, cl::NDRange(Params.particleCount), mLocalRange, NULL, PerfData.GetTrackerEvent("resetPartList"));
+    param = 0;
+    mKernels["resetPartList"].setArg(param++, mParticlesListBuffer);
+    mQueue.enqueueNDRangeKernel(mKernels["resetPartList"], 0, cl::NDRange(Params.particleCount), mLocalRange, NULL, PerfData.GetTrackerEvent("resetPartList"));
 
     param = 0;
     mKernels["updateCells"].setArg(param++, mParameters);
@@ -509,12 +509,12 @@ void Simulation::radixsort()
     // delete[] keys;
     // delete[] permutation;
 
-	// Lock Yang buffer (Yin is already locked)
+    // Lock Yang buffer (Yin is already locked)
     //vector<cl::Memory> sharedBuffers;
     //sharedBuffers.push_back(mPositionsYangBuffer);
     //mQueue.enqueueAcquireGLObjects(&sharedBuffers);
 
-	// Execute particle reposition
+    // Execute particle reposition
     param = 0;
     mKernels["sortParticles"].setArg(param++, mInPermutationBuffer);
     mKernels["sortParticles"].setArg(param++, mPositionsYinBuffer);
@@ -524,10 +524,10 @@ void Simulation::radixsort()
     mKernels["sortParticles"].setArg(param++, Params.particleCount);
     mQueue.enqueueNDRangeKernel(mKernels["sortParticles"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("sortParticles"));
 
-	// UnLock Yang buffer 
+    // UnLock Yang buffer
     //mQueue.enqueueReleaseGLObjects(&sharedBuffers);
 
-	// Double buffering of positions and velocity buffers
+    // Double buffering of positions and velocity buffers
     cl::BufferGL tmp1 = mPositionsYinBuffer;
     mPositionsYinBuffer = mPositionsYangBuffer;
     mPositionsYangBuffer = tmp1;
@@ -549,10 +549,10 @@ void Simulation::Step()
     // Enqueue GL buffer acquire
     vector<cl::Memory> sharedBuffers;
     sharedBuffers.push_back(mPositionsYinBuffer);
-	sharedBuffers.push_back(mPositionsYangBuffer);
+    sharedBuffers.push_back(mPositionsYangBuffer);
     mQueue.enqueueAcquireGLObjects(&sharedBuffers);
 
-	// Predicit positions
+    // Predicit positions
     this->predictPositions();
 
     // Update cells
@@ -574,15 +574,15 @@ void Simulation::Step()
         /*mQueue.enqueueReadBuffer(mDeltaBuffer, CL_TRUE, 0, mBufferSizeParticles, mDeltas);
         if (mQueue.finish() != CL_SUCCESS)
             _asm nop;*/
-	
-		// Update predicted position
+
+        // Update predicted position
         this->updatePredicted(i);
     }
 
-	// Place density in "mPredictedBuffer[x].w"
-	this->packData(mPredictedBuffer, mDensityBuffer, -1);
+    // Place density in "mPredictedBuffer[x].w"
+    this->packData(mPredictedBuffer, mDensityBuffer, -1);
 
-	// Recompute velocities
+    // Recompute velocities
     this->updateVelocities();
 
     // Update vorticity and Viscosity
@@ -593,12 +593,12 @@ void Simulation::Step()
     if (!bPauseSim)
         this->updatePositions();
 
-	// sort particles buffer
+    // sort particles buffer
     this->radixsort();
 
     if (bReadFriendsList)
         mQueue.enqueueReadBuffer(mFriendsListBuffer, CL_TRUE, 0, sizeof(cl_uint) * Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle), mFriendsList);
-    
+
     // Release OpenGL shared object, allowing openGL do to it's thing...
     mQueue.enqueueReleaseGLObjects(&sharedBuffers);
     mQueue.finish();

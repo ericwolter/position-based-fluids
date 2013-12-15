@@ -1,4 +1,4 @@
-__kernel void predictPositions(__constant struct Parameters* Params, 
+__kernel void predictPositions(__constant struct Parameters *Params,
                                const __global float4 *positions,
                                __global float4 *predicted,
                                __global float4 *velocities,

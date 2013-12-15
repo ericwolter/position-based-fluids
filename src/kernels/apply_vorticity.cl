@@ -1,10 +1,10 @@
 __kernel void applyVorticity(
-        __constant struct Parameters* Params, 
-        const __global float4 *predicted,
-        __global float4 *deltaVelocities,
-        const __global float4 *omegas,
-        const __global int *friends_list,
-        const int N)
+    __constant struct Parameters *Params,
+    const __global float4 *predicted,
+    __global float4 *deltaVelocities,
+    const __global float4 *omegas,
+    const __global int *friends_list,
+    const int N)
 {
     const int i = get_global_id(0);
     if (i >= N) return;
@@ -15,7 +15,7 @@ __kernel void applyVorticity(
     int totalFriends = 0;
     int circleParticles[FRIENDS_CIRCLES];
     for (int j = 0; j < FRIENDS_CIRCLES; j++)
-        totalFriends += circleParticles[j] = friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + j];    
+        totalFriends += circleParticles[j] = friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + j];
 
     int proccedFriends = 0;
     for (int iCircle = 0; iCircle < FRIENDS_CIRCLES; iCircle++)
@@ -23,18 +23,18 @@ __kernel void applyVorticity(
         // Check if we want to process/skip next friends circle
         if (((float)proccedFriends) / totalFriends > 0.5)
             continue;
-        
+
         // Add next circle to process count
         proccedFriends += circleParticles[iCircle];
-    
+
         // Process friends in circle
         for (int iFriend = 0; iFriend < circleParticles[iCircle]; iFriend++)
         {
             // Read friend index from friends_list
             const int j_index = friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + FRIENDS_CIRCLES +   // Offset to first circle -> "circle[0]"
-                                       iCircle * MAX_PARTICLES_IN_CIRCLE +                   // Offset to iCircle      -> "circle[iCircle]"
-                                       iFriend];                                             // Offset to iFriend      -> "circle[iCircle][iFriend]"
-        
+                                             iCircle * MAX_PARTICLES_IN_CIRCLE +                   // Offset to iCircle      -> "circle[iCircle]"
+                                             iFriend];                                             // Offset to iFriend      -> "circle[iCircle][iFriend]"
+
             const float3 r = predicted[i].xyz - predicted[j_index].xyz;
             const float r_length_2 = (r.x * r.x + r.y * r.y + r.z * r.z);
 
@@ -45,12 +45,12 @@ __kernel void applyVorticity(
                 // with estimating the density by sampling the neighborhood
                 // In this case the standard SPH gradient operator brakes
                 // because of the division by zero.
-                if(fabs(predicted[j_index].w) > 1e-8)
+                if (fabs(predicted[j_index].w) > 1e-8)
                 {
                     const float r_length = sqrt(r_length_2);
                     const float3 gradient_spiky = -1.0f * r / (r_length)
-                                        * (Params->h - r_length)
-                                        * (Params->h - r_length);
+                                                  * (Params->h - r_length)
+                                                  * (Params->h - r_length);
 
                     const float omega_length = fast_length(omegas[j_index].xyz);
                     eta += (omega_length / predicted[j_index].w) * gradient_spiky;

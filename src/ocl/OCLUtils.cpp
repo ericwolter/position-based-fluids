@@ -73,7 +73,7 @@ vector<cl::Platform> OCLUtils::getPlatforms(void) const
 
     for (vector<cl::Platform>::const_iterator cit = platforms.begin(); cit != platforms.end(); cit++)
     {
-		// Print platform details
+        // Print platform details
         cout << "Platform number #" << platformNumber << ":" << endl;
         this->printPlatformInfo(*cit);
 
@@ -311,7 +311,7 @@ cl::Program OCLUtils::createProgram(const string &source, const cl::Context &con
 }
 
 cl::Kernel OCLUtils::createKernel(const string &programName,
-                       const cl::Program &program) const
+                                  const cl::Program &program) const
 {
     return cl::Kernel( program, programName.c_str() );
 }

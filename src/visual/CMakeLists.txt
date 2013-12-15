@@ -1,11 +1,11 @@
 set(SOURCE
-	${SOURCE}
-	${CMAKE_CURRENT_SOURCE_DIR}/visual.cpp
-	PARENT_SCOPE
+    ${SOURCE}
+    ${CMAKE_CURRENT_SOURCE_DIR}/visual.cpp
+    PARENT_SCOPE
 )
 
 set(HEADER
-  ${HEADER}
-  ${CMAKE_CURRENT_SOURCE_DIR}/visual.hpp
-  PARENT_SCOPE
+    ${HEADER}
+    ${CMAKE_CURRENT_SOURCE_DIR}/visual.hpp
+    PARENT_SCOPE
 )

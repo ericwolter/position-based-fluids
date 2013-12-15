@@ -13,7 +13,7 @@ private:
     list<pair<string, time_t> > mShaderFilesTracker;
 
 public:
-    void run(Simulation &simulation, CVisual &renderer); 
+    void run(Simulation &simulation, CVisual &renderer);
 
 };
 
