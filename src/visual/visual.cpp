@@ -66,8 +66,13 @@ void CVisual::initWindow(const string windowname)
 #endif
     glewInit();
 
-    pTarget        = new FBO(1, true, mWidth, mHeight, GL_RGBA32F);
-    pFBO_Thickness = new FBO(1, true, mWidth, mHeight, GL_R16);
+    int fbwidth , fbheight;
+    glfwGetFramebufferSize(mWindow, &fbwidth, &fbheight );
+
+    float displayScale = (float)fbwidth / mWidth;
+
+    pTarget        = new FBO(1, true, mWidth, mHeight, displayScale, GL_RGBA32F);
+    pFBO_Thickness = new FBO(1, true, mWidth, mHeight, displayScale, GL_R16);
 
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     glEnable(GL_POINT_SPRITE);

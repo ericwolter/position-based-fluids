@@ -262,20 +262,22 @@ void OGLU_BindTextureToUniform(const char* szUniform, GLuint nTextureUnit, GLuin
 
 FBO::FBO()
 {
-    Width           = 0;
-    Height          = 0;
-    ColorFormat     = 0;
-    ColorTargets    = 0;
-    ID              = 0;
-    pDepthTextureId = 0;
-    memset(pColorTextureId, 0, sizeof(pColorTextureId));
+	Width           = 0;
+	Height          = 0;
+	DisplayScale    = 0;
+	ColorFormat     = 0;
+	ColorTargets    = 0;
+	ID              = 0;
+	pDepthTextureId = 0;
+	memset(pColorTextureId, 0, sizeof(pColorTextureId));
 }
 
-FBO::FBO(int numOfTargets, bool createDepth, int width, int height, int internalFormat)
+FBO::FBO(int numOfTargets, bool createDepth, int width, int height, float displayScale, int internalFormat)
 {
     // Setup FBOInfo
-    Width        = width;
-    Height       = height;
+    Width        = width * displayScale;
+    Height       = height * displayScale;
+    DisplayScale = displayScale;
     ColorFormat  = internalFormat;
     ColorTargets = numOfTargets;
 

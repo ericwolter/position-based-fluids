@@ -7,21 +7,13 @@
 #include "../../lib/AntTweakBar/src/TwPrecomp.h"
 #include "../../lib/AntTweakBar/src/TwMgr.h"
 
-#ifdef _WINDOWS
 #include "../../lib/AntTweakBar/src/TwOpenGLCore.h"
-#else
-#include "../../lib/AntTweakBar/src/TwOpenGL.h"
-#endif
 
-#ifdef _WINDOWS
 CTwGraphOpenGLCore tw;
 void *twFont;
-#else
-CTwGraphOpenGL tw;
-void *twFont;
-#endif
 
 float       mDisplayscale = 1.0f;
+CTexFont    *mDisplayFont = g_DefaultSmallFont;
 
 GLFWwindow *mWindow;
 CVisual    *mRenderer;
@@ -117,10 +109,13 @@ void UIManager_Init(GLFWwindow *window, CVisual *pRenderer, Simulation *pSim)
     TwInit(TW_OPENGL_CORE, NULL);
     int fbwidth , fbheight;
     glfwGetFramebufferSize(mWindow, &fbwidth, &fbheight );
+    int width, height;
+    glfwGetWindowSize(mWindow, &width, &height);
     TwWindowSize(fbwidth, fbheight);
 
     // Compute ratio...
-    mDisplayscale = (float)fbwidth / (float)1280;
+    mDisplayscale = (float)fbwidth / width;
+    mDisplayFont = mDisplayscale >= 2.0f ? g_DefaultNormalFont : g_DefaultSmallFont;
 
     mTweakBar = TwNewBar("PBFTweak");
     TwAddButton(mTweakBar, "Play/Pause",        PlayPause,        mRenderer, " group=Controls ");
@@ -146,9 +141,9 @@ void UIManager_Init(GLFWwindow *window, CVisual *pRenderer, Simulation *pSim)
 void DrawPerformanceGraph()
 {
     // Compute sizes
-    const int ViewWidth    = 1280;
-    const int ViewHeight   = 720;
-    const int BarHeight    = 20;
+    const int ViewWidth    = 1280*mDisplayscale;
+    const int ViewHeight   = 720*mDisplayscale;
+    const int BarHeight    = 20*mDisplayscale;
 	const int BarWidth     = (int)(ViewWidth * 0.9);
     const int BarTop       = ViewHeight - BarHeight * 2;
     const int BarBottom    = BarTop + BarHeight;
@@ -189,7 +184,7 @@ void DrawPerformanceGraph()
             // Draw name text
             const int NameVertOffset = -2;
 
-            tw.BuildText(twFont, &pTracker->eventName, NULL, NULL, 1, g_DefaultSmallFont, 0, 0);
+            tw.BuildText(twFont, &pTracker->eventName, NULL, NULL, 1, mDisplayFont, 0, 0);
             tw.SetScissor(prevX + 2, BarTop + NameVertOffset, newX - prevX, BarHeight);
             tw.DrawText(twFont, prevX + 2, BarTop + NameVertOffset, 0xffffffffu, 0);
 
@@ -200,7 +195,7 @@ void DrawPerformanceGraph()
 
             // Draw time text
             const int MSVertOffset = 9;
-            tw.BuildText(twFont, &str, NULL, NULL, 1, g_DefaultSmallFont, 0, 0);
+            tw.BuildText(twFont, &str, NULL, NULL, 1, mDisplayFont, 0, 0);
             tw.SetScissor(prevX + 2, BarTop + MSVertOffset, newX - prevX, BarHeight);
             tw.DrawText(twFont, prevX + 2, BarTop + MSVertOffset, 0xffffffffu, 0);
 
@@ -265,7 +260,7 @@ void DrawFriendsHistogram()
         string str(tmp);
 
         // Draw time text
-        tw.BuildText(twFont, &str, NULL, NULL, 1, g_DefaultSmallFont, 0, 0);
+        tw.BuildText(twFont, &str, NULL, NULL, 1, mDisplayFont, 0, 0);
         tw.DrawText(twFont, screenX1, screenY1 - 10, 0xffffffffu, 0);
 
         // friends text
@@ -273,7 +268,7 @@ void DrawFriendsHistogram()
         str = tmp;
 
         // Draw time text
-        tw.BuildText(twFont, &str, NULL, NULL, 1, g_DefaultSmallFont, 0, 0);
+        tw.BuildText(twFont, &str, NULL, NULL, 1, mDisplayFont, 0, 0);
         tw.DrawText(twFont, screenX1 + 2, HistBottom - 12, 0xffff0000u, 0);
     }
 

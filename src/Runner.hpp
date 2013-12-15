@@ -9,8 +9,8 @@ class Runner
 {
 private:
     // A list of files to track for changes
-    list<pair<string, time_t>> mKernelFilesTracker;
-    list<pair<string, time_t>> mShaderFilesTracker;
+    list<pair<string, time_t> > mKernelFilesTracker;
+    list<pair<string, time_t> > mShaderFilesTracker;
 
 public:
     void run(Simulation &simulation, CVisual &renderer); 

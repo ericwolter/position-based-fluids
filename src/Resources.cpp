@@ -20,6 +20,7 @@ using namespace std;
 #include <stdlib.h>
 #include <mach-o/dyld.h>
 #include <libgen.h>
+#include <unistd.h>
 #endif
 
 string rootDirectory;
@@ -75,7 +76,7 @@ const string getPathForTexture(const string texture)
     return rootDirectory + "/data/textures/" + texture;
 }
 
-bool DetectResourceChanges(list<pair<string, time_t>>& fileList)
+bool DetectResourceChanges(list<pair<string, time_t> >& fileList)
 {
     // Assume nothing change
     bool bChanged = false;
