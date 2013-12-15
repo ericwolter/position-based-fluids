@@ -22,7 +22,7 @@ set(SOURCE
     main.cpp
     Runner.cpp
     Simulation.cpp
-    DataLoader.cpp
+    Resources.cpp
     ParamUtils.cpp
     OCLPerfMon.cpp
     UIManager.cpp    
@@ -35,7 +35,7 @@ set(HEADER
     Particle.hpp
     Runner.hpp
     Simulation.hpp
-    DataLoader.hpp
+    Resources.hpp
     Parameters.hpp  
     ParamUtils.hpp
     OCLPerfMon.h
