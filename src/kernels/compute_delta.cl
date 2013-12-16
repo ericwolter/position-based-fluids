@@ -10,14 +10,14 @@ __kernel void computeDelta(__constant struct Parameters *Params,
 
     uint2 randSeed = (uint2)(1 + get_global_id(0), 1);
 
-    // equation (13)
-    const float q_2 = pow(Params->surfaceTenstionDist * Params->h, 2);
-    const float poly6_q = pow(Params->h_2 - q_2, 3);
-
     // Sum of lambdas
     float3 sum = (float3)0.0f;
     const float h_2_cache = Params->h_2;
     const float h_cache = Params->h;
+
+    // equation (13)
+    const float q_2 = pow(Params->surfaceTenstionDist * h_cache, 2);
+    const float poly6_q = pow(h_2_cache - q_2, 3);
 
     // read number of friends
     int totalFriends = 0;
@@ -29,7 +29,7 @@ __kernel void computeDelta(__constant struct Parameters *Params,
     for (int iCircle = 0; iCircle < FRIENDS_CIRCLES; iCircle++)
     {
         // Check if we want to process/skip next friends circle
-        if (((float)proccedFriends) / totalFriends > 0.5)
+        if (((float)proccedFriends) / totalFriends > 0.5f)
             continue;
 
         // Add next circle to process count
@@ -49,14 +49,14 @@ __kernel void computeDelta(__constant struct Parameters *Params,
             const float3 r         = predicted[i].xyz - predicted[j_index].xyz;
             const float r_length_2 = dot(r, r);
 
-            if (r_length_2 > 0.0f && r_length_2 < Params->h_2)
+            if (r_length_2 > 0.0f && r_length_2 < h_2_cache)
             {
                 const float r_length   = sqrt(r_length_2);
 
                 const float3 gradient_spiky = -1.0f * GRAD_SPIKY_FACTOR *
                                               r / (r_length) *
-                                              (Params->h - r_length) *
-                                              (Params->h - r_length);
+                                              (h_cache - r_length) *
+                                              (h_cache - r_length);
 
                 const float r_2_diff = h_2_cache - r_length_2;
                 const float poly6_r = r_2_diff * r_2_diff * r_2_diff;

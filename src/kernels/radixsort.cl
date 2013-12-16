@@ -32,8 +32,11 @@ __kernel void sortParticles(const __global int *permutation,
     velocitiesYang[i] = velocitiesYin[permutation[i]];
 }
 
+// fixes compiler warning: no previous prototype for function
+int indexTranspose(int i, int n);
+
 // change of index for the transposition
-int index(int i, int n)
+int indexTranspose(int i, int n)
 {
     int ip;
     if (TRANSPOSE)
@@ -84,7 +87,7 @@ __kernel void histogram(const __global int *d_Keys,
 
     for (int i = start; i < start + size; i++)
     {
-        key = d_Keys[index(i, n)];
+        key = d_Keys[indexTranspose(i, n)];
 
         // extract the group of _BITS bits of the pass
         // the result is in the range 0.._RADIX-1
@@ -185,20 +188,20 @@ __kernel void reorder(const __global int *d_inKeys,
     barrier(CLK_LOCAL_MEM_FENCE);
 
 
-    int newpos, ik, key, shortkey;
+    int newpos, /*ik,*/ key, shortkey;
 
     for (int i = start; i < start + size; i++)
     {
-        key = d_inKeys[index(i, n)];
+        key = d_inKeys[indexTranspose(i, n)];
         shortkey = ((key >> (pass * _BITS)) & (_RADIX - 1));
         //ik= shortkey * groups * items + items * gr + it;
         //newpos=d_Histograms[ik];
         newpos = loc_histo[shortkey * items + it];
-        d_outKeys[index(newpos, n)] = key; // killing line !!!
-        //d_outKeys[index(i)]= key;
+        d_outKeys[indexTranspose(newpos, n)] = key; // killing line !!!
+        //d_outKeys[indexTranspose(i)]= key;
         if (PERMUT)
         {
-            d_outPermut[index(newpos, n)] = d_inPermut[index(i, n)];
+            d_outPermut[indexTranspose(newpos, n)] = d_inPermut[indexTranspose(i, n)];
         }
         newpos++;
         loc_histo[shortkey * items + it] = newpos;

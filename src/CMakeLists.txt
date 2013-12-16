@@ -55,19 +55,18 @@ set(KERNELS
     "${HESP_SOURCE_DIR}/src/parameters.hpp"
     "${HESP_SOURCE_DIR}/src/kernels/utilities.cl"
     "${HESP_SOURCE_DIR}/src/kernels/apply_viscosity.cl"
-    "${HESP_SOURCE_DIR}/src/kernels/build_friends_list.cl"
     "${HESP_SOURCE_DIR}/src/kernels/apply_vorticity.cl"
+    "${HESP_SOURCE_DIR}/src/kernels/build_friends_list.cl"
     "${HESP_SOURCE_DIR}/src/kernels/compute_delta.cl"
     "${HESP_SOURCE_DIR}/src/kernels/compute_scaling.cl"
-    "${HESP_SOURCE_DIR}/src/kernels/reset_grid.cl"
-    "${HESP_SOURCE_DIR}/src/kernels/reset_part_list.cl"
     "${HESP_SOURCE_DIR}/src/kernels/pack_data.cl"
     "${HESP_SOURCE_DIR}/src/kernels/predict_positions.cl"
+    "${HESP_SOURCE_DIR}/src/kernels/radixsort.cl"
+    "${HESP_SOURCE_DIR}/src/kernels/reset_grid.cl"
     "${HESP_SOURCE_DIR}/src/kernels/update_cells.cl"
     "${HESP_SOURCE_DIR}/src/kernels/update_positions.cl"
     "${HESP_SOURCE_DIR}/src/kernels/update_predicted.cl"
     "${HESP_SOURCE_DIR}/src/kernels/update_velocities.cl"
-    "${HESP_SOURCE_DIR}/src/kernels/radixsort.cl"
 )
 
 SET(SHADERS

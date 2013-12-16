@@ -1,3 +1,12 @@
+// fixes compiler warning: no previous prototype for function
+uint rand(uint2 *state);
+float frand(uint2 *state);
+float frand3(float3 co);
+float rand_3d(float3 pos);
+int expandBits(int x);
+int mortonNumber(int3 gridPos);
+uint calcGridHash(int3 gridPos);
+
 uint rand(uint2 *state)
 {
     enum { A = 4294883355U};
@@ -18,7 +27,7 @@ float frand(uint2 *state)
 float frand3(float3 co)
 {
     float ipr;
-    return fract(sin(dot(co.xy, (float2)(12.9898, 78.233))) * (43758.5453 + co.z), &ipr);
+    return fract(sin(dot(co.xy, (float2)(12.9898f, 78.233f))) * (43758.5453f + co.z), &ipr);
 }
 
 float rand_3d(float3 pos)

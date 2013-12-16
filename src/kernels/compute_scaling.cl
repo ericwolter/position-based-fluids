@@ -25,7 +25,7 @@ __kernel void computeScaling(__constant struct Parameters *Params,
     for (int iCircle = 0; iCircle < FRIENDS_CIRCLES; iCircle++)
     {
         // Check if we want to process/skip next friends circle
-        if (((float)proccedFriends) / totalFriends > 0.6)
+        if (((float)proccedFriends) / totalFriends > 0.6f)
             continue;
 
         // Add next circle to process count

@@ -21,7 +21,7 @@ __kernel void applyVorticity(
     for (int iCircle = 0; iCircle < FRIENDS_CIRCLES; iCircle++)
     {
         // Check if we want to process/skip next friends circle
-        if (((float)proccedFriends) / totalFriends > 0.5)
+        if (((float)proccedFriends) / totalFriends > 0.5f)
             continue;
 
         // Add next circle to process count
@@ -45,7 +45,7 @@ __kernel void applyVorticity(
                 // with estimating the density by sampling the neighborhood
                 // In this case the standard SPH gradient operator brakes
                 // because of the division by zero.
-                if (fabs(predicted[j_index].w) > 1e-8)
+                if (fabs(predicted[j_index].w) > 1e-8f)
                 {
                     const float r_length = sqrt(r_length_2);
                     const float3 gradient_spiky = -1.0f * r / (r_length)
