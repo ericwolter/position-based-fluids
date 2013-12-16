@@ -83,5 +83,5 @@ int mortonNumber(int3 gridPos)
 
 uint calcGridHash(int3 gridPos)
 {
-    return mortonNumber(gridPos) % GRID_BUG_SIZE;
+    return mortonNumber(gridPos) % GRID_BUF_SIZE;
 }
