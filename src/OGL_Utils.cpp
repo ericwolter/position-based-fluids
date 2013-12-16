@@ -199,7 +199,7 @@ GLuint OGLU_LoadProgram(const string vertexFilename, const string fragmentFilena
         // Report message
         char *errorMsg = new char[errorLoglength + 1];
         glGetProgramInfoLog(programID, errorLoglength, NULL, errorMsg);
-        cerr << "Shader compile error: " << vertexFilename.c_str() << " and " << fragmentFilename.c_str() << endl;
+        cerr << "Shader compile " << (result ? "warning(s)" : "error(s)") << ": " << vertexFilename.c_str() << " and " << fragmentFilename.c_str() << endl;
         cerr << errorMsg << endl;
         delete[] errorMsg;
     }
