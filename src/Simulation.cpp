@@ -68,20 +68,21 @@ const std::string *Simulation::KernelFileList()
 {
     static const std::string kernels[] =
     {
+        "hesp.hpp",
         "parameters.hpp",
+        "utilities.cl",
         "predict_positions.cl",
-        "reset_grid.cl",
-        "reset_part_list.cl",
         "update_cells.cl",
+        "build_friends_list.cl",
+        "reset_part_list.cl",
         "compute_scaling.cl",
-        "pack_data.cl",
         "compute_delta.cl",
         "update_predicted.cl",
+        "pack_data.cl",
         "update_velocities.cl",
         "apply_viscosity.cl",
         "apply_vorticity.cl",
         "update_positions.cl",
-        "build_friends_list.cl",
         "radixsort.cl",
         ""
     };
@@ -99,14 +100,13 @@ bool Simulation::InitKernels()
     // setup kernel sources
     OCLUtils clSetup;
     vector<string> kernelSources;
-    string header = clSetup.readSource(getPathForKernel("hesp.hpp"));
 
     // Load kernel sources
     const std::string *pKernels = KernelFileList();
     for (int iSrc = 0; pKernels[iSrc]  != ""; iSrc++)
     {
         string source = clSetup.readSource(getPathForKernel(pKernels[iSrc]));
-        kernelSources.push_back(header + source);
+        kernelSources.push_back(source);
     }
 
     // Setup kernel compiler flags
@@ -331,8 +331,15 @@ void Simulation::buildFriendsList()
     mKernels["buildFriendsList"].setArg(param++, mParticlesListBuffer);
     mKernels["buildFriendsList"].setArg(param++, mFriendsListBuffer);
     mKernels["buildFriendsList"].setArg(param++, Params.particleCount);
-
     mQueue.enqueueNDRangeKernel(mKernels["buildFriendsList"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("buildFriendsList"));
+
+    param = 0;
+    mKernels["resetPartList"].setArg(param++, mParameters);
+    mKernels["resetPartList"].setArg(param++, mPredictedBuffer);
+    mKernels["resetPartList"].setArg(param++, mParticlesListBuffer);
+    mKernels["resetPartList"].setArg(param++, mCellsBuffer);
+    mKernels["resetPartList"].setArg(param++, Params.particleCount);
+    mQueue.enqueueNDRangeKernel(mKernels["resetPartList"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("resetPartList"));
 }
 
 void Simulation::updatePredicted(int iterationIndex)
@@ -382,15 +389,11 @@ void Simulation::computeScaling(int iterationIndex)
 
 void Simulation::updateCells()
 {
+    // int param = 0;
+    // mKernels["resetGrid"].setArg(param++, mCellsBuffer);
+    // mQueue.enqueueNDRangeKernel(mKernels["resetGrid"], 0, cl::NDRange(Params.gridBufSize), mLocalRange, NULL, PerfData.GetTrackerEvent("resetGrid"));
+
     int param = 0;
-    mKernels["resetGrid"].setArg(param++, mCellsBuffer);
-    mQueue.enqueueNDRangeKernel(mKernels["resetGrid"], 0, cl::NDRange(Params.gridBufSize), mLocalRange, NULL, PerfData.GetTrackerEvent("resetGrid"));
-
-    param = 0;
-    mKernels["resetPartList"].setArg(param++, mParticlesListBuffer);
-    mQueue.enqueueNDRangeKernel(mKernels["resetPartList"], 0, cl::NDRange(Params.particleCount), mLocalRange, NULL, PerfData.GetTrackerEvent("resetPartList"));
-
-    param = 0;
     mKernels["updateCells"].setArg(param++, mParameters);
     mKernels["updateCells"].setArg(param++, mPredictedBuffer);
     mKernels["updateCells"].setArg(param++, mCellsBuffer);

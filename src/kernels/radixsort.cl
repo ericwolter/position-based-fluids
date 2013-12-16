@@ -1,42 +1,3 @@
-// OpenCL kernel sources for the CLRadixSort class
-// the precompilateur does not exist in OpenCL
-// thus we simulate the #include "CLRadixSortParam.hpp" by
-// string manipulations
-
-
-// change of index for the transposition
-int index(int i, int n)
-{
-    int ip;
-    if (TRANSPOSE)
-    {
-        int k, l;
-        k = i / (n / _GROUPS / _ITEMS);
-        l = i % (n / _GROUPS / _ITEMS);
-        ip = l * (_GROUPS * _ITEMS) + k;
-    }
-    else
-    {
-        ip = i;
-    }
-    return ip;
-}
-
-int expandBits(int x)
-{
-    x = (x | (x << 16)) & 0x030000FF;
-    x = (x | (x <<  8)) & 0x0300F00F;
-    x = (x | (x <<  4)) & 0x030C30C3;
-    x = (x | (x <<  2)) & 0x09249249;
-
-    return x;
-}
-
-int mortonNumber(int3 gridPos)
-{
-    return expandBits(gridPos.x) | (expandBits(gridPos.y) << 1) | (expandBits(gridPos.z) << 2);
-}
-
 __kernel void computeKeys(__constant struct Parameters *Params,
                           const __global float4 *positions,
                           __global int *keys,
@@ -69,6 +30,24 @@ __kernel void sortParticles(const __global int *permutation,
 
     positionsYang[i] = positionsYin[permutation[i]];
     velocitiesYang[i] = velocitiesYin[permutation[i]];
+}
+
+// change of index for the transposition
+int index(int i, int n)
+{
+    int ip;
+    if (TRANSPOSE)
+    {
+        int k, l;
+        k = i / (n / _GROUPS / _ITEMS);
+        l = i % (n / _GROUPS / _ITEMS);
+        ip = l * (_GROUPS * _ITEMS) + k;
+    }
+    else
+    {
+        ip = i;
+    }
+    return ip;
 }
 
 // compute the histogram for each radix and each virtual processor for the pass

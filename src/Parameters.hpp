@@ -1,4 +1,6 @@
-#pragma once
+#ifndef __OPENCL_VERSION__
+    #pragma once
+#endif
 
 struct Parameters
 {

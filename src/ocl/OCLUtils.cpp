@@ -272,10 +272,15 @@ cl::Program OCLUtils::createProgram(const vector<string> &sources, const cl::Con
     }
     catch (const cl::Error &e)
     {
-        cerr << e.what() << " (" << e.err() << ")" << endl
-             << "Buildlog: " << this->getBuildLog(program, devices) << endl;
+        cerr << this->getBuildLog(program, devices) << endl;
 
-        return 0;
+        throw e;
+    }
+
+    string log = this->getBuildLog(program, devices);
+    
+    if(log.length() > 0) {
+        std::cout << log << std::endl;
     }
 
     return program;
