@@ -77,3 +77,8 @@ a:hover {
     background: #fff !important;
     border-radius: 6px !important;
 }
+
+#disclaimer {
+    text-align: center;
+    font-size: 12px;
+}
