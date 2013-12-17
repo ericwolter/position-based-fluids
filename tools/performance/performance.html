@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang=en>
+<head>
+<meta charset=utf-8>
+<title>Performance</title>
+<link rel="stylesheet" type="text/css" href="css/normalize.css">
+<link rel="stylesheet" type="text/css" href="css/style.css">
+</head>
+<body>
+    <div id="wrapper">
+        <div id="chart"></div>
+        <table id="performance-data" class="table">
+            <caption>Performance Data</caption>
+            <thead>
+                <tr>
+                    <th># Particles</th>
+                    <th>msec / frame</th>
+                    <th>Hardware Efficiency<br>(particles per second)</th>
+                    <th>Algorithm Efficiency<br>(pps per SPH score)</th>
+                </tr>
+           </thead>
+           <tbody>
+              <tr><th colspan="4">Fluids v.3 (NVIDIA Geforce GTX 460M)</th></tr>
+              <tr><td>4096</td><td>0.68</td><td>6023529</td><td>3758</td></tr>
+              <tr><td>8192</td><td>1.30</td><td>6301538</td><td>3931</td></tr>
+              <tr><td>16384</td><td>2.30</td><td>7123478</td><td>4444</td></tr>
+              <tr><td>32767</td><td>4.20</td><td>7801667</td><td>4867</td></tr>
+              <tr><td>65536</td><td>8.80</td><td>7447273</td><td>4646</td></tr>
+              <tr><td>131072</td><td>18.21</td><td>7197803</td><td>4490</td></tr>
+              <tr><td>262144</td><td>42.30</td><td>6197258</td><td>3866</td></tr>
+              <tr><td>524288</td><td>98.00</td><td>5349878</td><td>3337</td></tr>
+              <tr><td>1048576</td><td>234.00</td><td>4481094</td><td>2795</td></tr>
+              <tr><td>2900800</td><td>1085.00</td><td>2673548</td><td>1668</td></tr>
+              <tr><td>8388608</td><td>4433.00</td><td>1892309</td><td>1180</td></tr>
+           </tbody>
+           <tbody>
+              <tr><th colspan="4">Fluid Sandbox NVIDIA PhysX (NVIDIA Geforce GTX 460M)</th></tr>
+              <tr><td>26000</td><td>41.67</td><td>623950</td><td>389</td></tr>
+              <tr><td>74140</td><td>60.75</td><td>1220412</td><td>761</td></tr>
+              <tr><td>102440</td><td>68.92</td><td>1486361</td><td>927</td></tr>
+              <tr><td>200000</td><td>104.17</td><td>1919939</td><td>1198</td></tr>
+           </tbody>
+           <tbody>
+              <tr><th colspan="4">Fang Chao (NVIDIA Geforce GTX 460M)</th></tr>
+              <tr><td>16384</td><td>7.69</td><td>2130559</td><td>1329</td></tr>
+              <tr><td>65536</td><td>28.57</td><td>2293875</td><td>1431</td></tr>
+           </tbody>
+           <tbody>
+              <tr><th colspan="4">Pajarola 2010 (NVIDIA Geforce GTX 460M)</th></tr>
+              <tr><td>16128</td><td>8.13</td><td>1983764</td><td>1238</td></tr>
+              <tr><td>75200</td><td>38.46</td><td>1955278</td><td>1220</td></tr>
+              <tr><td>129024</td><td>58.82</td><td>2193540</td><td>1368</td></tr>
+              <tr><td>255600</td><td>100.00</td><td>2556000</td><td>1595</td></tr>
+           </tbody>
+           <tbody>
+              <tr><th colspan="4">#50e9465d84 (Intel Iris Pro Graphics 5200)</th></tr>
+              <tr><td>10000</td><td>5.00</td><td>2000000</td><td>510</td></tr>
+              <tr><td>20000</td><td>8.00</td><td>2500000</td><td>638</td></tr>
+              <tr><td>40000</td><td>17.00</td><td>2352941</td><td>600</td></tr>
+              <tr><td>80000</td><td>36.00</td><td>2222222</td><td>576</td></tr>
+              <tr><td>100000</td><td>47.00</td><td>2127660</td><td>543</td></tr>
+              <tr><td>200000</td><td>102.00</td><td>1960784</td><td>500</td></tr>
+           </tbody>
+        </table>
+        <table id="hardware-data" class="table">
+           <caption>Hardware Data</caption>
+           <thead>
+              <tr>
+                 <th>GPU</th>
+                 <th>Compubench Physics:<br>SPH Fluid Simulation Score</th>
+              </tr>
+           </thead>
+           <tbody>
+              <tr>
+                 <td><a href="http://compubench.com/device-info.jsp?config=16059202">Intel Iris Pro Graphics 5200</a></td>
+                 <td>3920</td>
+              </tr>
+              <tr>
+                 <td><a href="http://compubench.com/device-info.jsp?config=12573486">NVIDIA Geforce GTX 460M</a></td>
+                 <td>1603</td>
+              </tr>
+              <tr>
+                 <td><a href="http://compubench.com/device-info.jsp?config=11984994">NVIDIA Geforce GTX 560</a></td>
+                 <td>3009</td>
+              </tr>
+           </tbody>
+        </table>
+    </div>
+<script type="text/javascript" src="js/jquery.min.js"></script>
+<script type="text/javascript" src="js/jquery.flot.min.js"></script>
+<script>
+function numberWithCommas(n) {
+    var parts=n.toString().split(".");
+    return parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",") + (parts[1] ? "." + parts[1] : "");
+}
+$(document).ready(function() {
+    $("#performance-data td").each(function() {
+        var self = $(this);
+        var number = parseFloat(self.text());
+        self.data("number", number);
+        self.text(numberWithCommas(number));
+    });
+
+    var all_data = [];
+    $("#performance-data tbody").each(function() {
+        var project_data = [];
+        var label = $(this).find("tr th").first().text();
+        // remove gpu information
+        label = label.substring(0,label.indexOf("(")-1)
+        $(this).find('tr').not(":first-child").each(function() {
+            var numParticles = $(this).find("td:nth-child(1)").data("number");
+            var algorithmEfficiency = $(this).find("td:nth-child(4)").data("number");
+
+            project_data.push([numParticles, algorithmEfficiency]);
+        });
+        all_data.push({
+            label: label,
+            data: project_data
+        });
+    });
+
+    $.plot($("#chart"), all_data, {
+            series: {
+                lines: { show: true },
+                points: { show: true }
+            },
+            xaxis: {
+                ticks: function piTickGenerator(axis) {
+                    var res = [];
+                    var min_log = Math.floor(Math.log(axis.min)/ Math.LN10);
+                    var max_log = Math.ceil(Math.log(axis.max)/ Math.LN10);
+
+                    for (var i = min_log; i <= max_log; i++) {
+                        var v = Math.pow(10,i);
+                        res.push(v,v);
+                    };
+                    return res;
+                },
+                min: 1000,
+                transform: function (v) { return Math.log(v) / Math.LN10; },
+                inverseTransform: function (v) { return Math.pow(10,v); }
+            },
+            grid: {
+                color: "#F0F1F1",
+                borderWidth: 1
+            },
+            legend: {
+                backgroundColor: "#00000000"
+            },
+        });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+body {
+    color: #F0F1F1;
+    background: #4A4D4E;
+    padding: 20px;
+}
+
+a {
+    color: #288edf;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+.table {
+    text-align: left;
+    margin: 20px auto;
+    width: 80%;
+}
+
+.table caption {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.table thead {
+    border-bottom: 2px solid #58595A;
+    text-align: right
+}
+
+.table th {
+    padding: 10px 8px;
+}
+
+.table tbody th {
+    border-bottom: 1px solid #58595A;
+}
+
+.table td {
+    padding: 9px 8px 0;
+    text-align: right;
+}
+
+#wrapper {
+    width: 960px;
+    margin: 0 auto;
+}
+
+#chart {
+    width: 900px;
+    height: 562px;
+    margin: 0 auto;
+}
+
+#hardware-data thead {
+    text-align: left;
+}
+
+#hardware-data td {
+    text-align: left;
+}
+
+.tickLabel, .legendLabel {
+    color: #F0F1F1;
+}
+
+.legendColorBox > div {
+    border: 0 !important;
+    padding: 0 !important;
+}
+
+.legendColorBox > div > div {
+    border-width: 3px !important;
+    width: 4px !important;
+    height: 4px !important;
+    background: #fff !important;
+    border-radius: 6px !important;
+}
