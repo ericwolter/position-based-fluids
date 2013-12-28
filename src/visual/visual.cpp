@@ -169,7 +169,7 @@ GLvoid CVisual::renderParticles()
     glUniform1f(UniformLoc("pointSize"),        Params.particleRenderSize);
 
     // Bind positions buffer
-    glBindBuffer(GL_ARRAY_BUFFER, mSimulation->mSharingYinBufferID);
+    glBindBuffer(GL_ARRAY_BUFFER, mSimulation->mSharingPingBufferID);
     glEnableVertexAttribArray(AttribLoc("position"));
     glVertexAttribPointer(AttribLoc("position"), 4, GL_FLOAT, GL_FALSE, 0, 0);
 

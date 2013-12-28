@@ -52,8 +52,8 @@ void Runner::run(Simulation &simulation, CVisual &renderer)
                 prevParticleCount = Params.particleCount;
 
                 // Generate shared buffer
-                simulation.mSharingYinBufferID = renderer.createSharingBuffer(Params.particleCount * sizeof(cl_float4));
-                simulation.mSharingYangBufferID = renderer.createSharingBuffer(Params.particleCount * sizeof(cl_float4));
+                simulation.mSharingPingBufferID = renderer.createSharingBuffer(Params.particleCount * sizeof(cl_float4));
+                simulation.mSharingPongBufferID = renderer.createSharingBuffer(Params.particleCount * sizeof(cl_float4));
 
                 // Init buffers
                 simulation.InitBuffers();

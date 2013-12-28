@@ -184,11 +184,11 @@ void Simulation::InitBuffers()
     }
 
     // Create buffers
-    mPositionsYinBuffer    = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharingYinBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
-    mPositionsYangBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharingYangBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
+    mPositionsPingBuffer    = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharingPingBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
+    mPositionsPongBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharingPongBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
     mPredictedBuffer       = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
-    mVelocitiesYinBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
-    mVelocitiesYangBuffer  = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
+    mVelocitiesPingBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
+    mVelocitiesPongBuffer  = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mDeltaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mDeltaVelocityBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mOmegaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
@@ -215,17 +215,17 @@ void Simulation::InitBuffers()
     if (mQueue() != 0)
         mQueue.flush();
 
-    // Copy mPositions (Host) => mPositionsYinBuffer (GPU) (we have to lock the shared buffer)
+    // Copy mPositions (Host) => mPositionsPingBuffer (GPU) (we have to lock the shared buffer)
     vector<cl::Memory> sharedBuffers;
-    sharedBuffers.push_back(mPositionsYinBuffer);
+    sharedBuffers.push_back(mPositionsPingBuffer);
     mQueue = cl::CommandQueue(mCLContext, mCLDevice);
     mQueue.enqueueAcquireGLObjects(&sharedBuffers);
-    mQueue.enqueueWriteBuffer(mPositionsYinBuffer, CL_TRUE, 0, mBufferSizeParticles, mPositions);
+    mQueue.enqueueWriteBuffer(mPositionsPingBuffer, CL_TRUE, 0, mBufferSizeParticles, mPositions);
     mQueue.enqueueReleaseGLObjects(&sharedBuffers);
     mQueue.finish();
 
-    // Copy mVelocities (Host) => mVelocitiesYinBuffer (GPU)
-    mQueue.enqueueWriteBuffer(mVelocitiesYinBuffer, CL_TRUE, 0, mBufferSizeParticles, mVelocities);
+    // Copy mVelocities (Host) => mVelocitiesPingBuffer (GPU)
+    mQueue.enqueueWriteBuffer(mVelocitiesPingBuffer, CL_TRUE, 0, mBufferSizeParticles, mVelocities);
     mQueue.finish();
 }
 
@@ -262,9 +262,9 @@ void Simulation::InitCells()
 void Simulation::updatePositions()
 {
     int param = 0;
-    mKernels["updatePositions"].setArg(param++, mPositionsYinBuffer);
+    mKernels["updatePositions"].setArg(param++, mPositionsPingBuffer);
     mKernels["updatePositions"].setArg(param++, mPredictedBuffer);
-    mKernels["updatePositions"].setArg(param++, mVelocitiesYinBuffer);
+    mKernels["updatePositions"].setArg(param++, mVelocitiesPingBuffer);
     mKernels["updatePositions"].setArg(param++, mDeltaVelocityBuffer);
     mKernels["updatePositions"].setArg(param++, Params.particleCount);
 
@@ -275,9 +275,9 @@ void Simulation::updateVelocities()
 {
     int param = 0;
     mKernels["updateVelocities"].setArg(param++, mParameters);
-    mKernels["updateVelocities"].setArg(param++, mPositionsYinBuffer);
+    mKernels["updateVelocities"].setArg(param++, mPositionsPingBuffer);
     mKernels["updateVelocities"].setArg(param++, mPredictedBuffer);
-    mKernels["updateVelocities"].setArg(param++, mVelocitiesYinBuffer);
+    mKernels["updateVelocities"].setArg(param++, mVelocitiesPingBuffer);
     mKernels["updateVelocities"].setArg(param++, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["updateVelocities"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updateVelocities"));
@@ -288,7 +288,7 @@ void Simulation::applyViscosity()
     int param = 0;
     mKernels["applyViscosity"].setArg(param++, mParameters);
     mKernels["applyViscosity"].setArg(param++, mPredictedBuffer);
-    mKernels["applyViscosity"].setArg(param++, mVelocitiesYinBuffer);
+    mKernels["applyViscosity"].setArg(param++, mVelocitiesPingBuffer);
     mKernels["applyViscosity"].setArg(param++, mDeltaVelocityBuffer);
     mKernels["applyViscosity"].setArg(param++, mOmegaBuffer);
     mKernels["applyViscosity"].setArg(param++, mFriendsListBuffer);
@@ -314,9 +314,9 @@ void Simulation::predictPositions()
 {
     int param = 0;
     mKernels["predictPositions"].setArg(param++, mParameters);
-    mKernels["predictPositions"].setArg(param++, mPositionsYinBuffer);
+    mKernels["predictPositions"].setArg(param++, mPositionsPingBuffer);
     mKernels["predictPositions"].setArg(param++, mPredictedBuffer);
-    mKernels["predictPositions"].setArg(param++, mVelocitiesYinBuffer);
+    mKernels["predictPositions"].setArg(param++, mVelocitiesPingBuffer);
     mKernels["predictPositions"].setArg(param++, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["predictPositions"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("predictPositions"));
@@ -402,7 +402,7 @@ void Simulation::radixsort()
 {
     int param = 0;
     mKernels["computeKeys"].setArg(param++, mParameters);
-    mKernels["computeKeys"].setArg(param++, mPositionsYinBuffer);
+    mKernels["computeKeys"].setArg(param++, mPositionsPingBuffer);
     mKernels["computeKeys"].setArg(param++, mInKeysBuffer);
     mKernels["computeKeys"].setArg(param++, mInPermutationBuffer);
     mKernels["computeKeys"].setArg(param++, Params.particleCount);
@@ -516,10 +516,10 @@ void Simulation::radixsort()
     // Execute particle reposition
     param = 0;
     mKernels["sortParticles"].setArg(param++, mInPermutationBuffer);
-    mKernels["sortParticles"].setArg(param++, mPositionsYinBuffer);
-    mKernels["sortParticles"].setArg(param++, mPositionsYangBuffer);
-    mKernels["sortParticles"].setArg(param++, mVelocitiesYinBuffer);
-    mKernels["sortParticles"].setArg(param++, mVelocitiesYangBuffer);
+    mKernels["sortParticles"].setArg(param++, mPositionsPingBuffer);
+    mKernels["sortParticles"].setArg(param++, mPositionsPongBuffer);
+    mKernels["sortParticles"].setArg(param++, mVelocitiesPingBuffer);
+    mKernels["sortParticles"].setArg(param++, mVelocitiesPongBuffer);
     mKernels["sortParticles"].setArg(param++, Params.particleCount);
     mQueue.enqueueNDRangeKernel(mKernels["sortParticles"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("sortParticles"));
 
@@ -527,17 +527,17 @@ void Simulation::radixsort()
     //mQueue.enqueueReleaseGLObjects(&sharedBuffers);
 
     // Double buffering of positions and velocity buffers
-    cl::BufferGL tmp1 = mPositionsYinBuffer;
-    mPositionsYinBuffer = mPositionsYangBuffer;
-    mPositionsYangBuffer = tmp1;
+    cl::BufferGL tmp1 = mPositionsPingBuffer;
+    mPositionsPingBuffer = mPositionsPongBuffer;
+    mPositionsPongBuffer = tmp1;
 
-    cl::Buffer tmp2 = mVelocitiesYinBuffer;
-    mVelocitiesYinBuffer = mVelocitiesYangBuffer;
-    mVelocitiesYangBuffer = tmp2;
+    cl::Buffer tmp2 = mVelocitiesPingBuffer;
+    mVelocitiesPingBuffer = mVelocitiesPongBuffer;
+    mVelocitiesPongBuffer = tmp2;
 
-    GLuint tmp3 = mSharingYinBufferID;
-    mSharingYinBufferID = mSharingYangBufferID;
-    mSharingYangBufferID = tmp3;
+    GLuint tmp3 = mSharingPingBufferID;
+    mSharingPingBufferID = mSharingPongBufferID;
+    mSharingPongBufferID = tmp3;
 }
 
 void Simulation::Step()
@@ -547,8 +547,8 @@ void Simulation::Step()
 
     // Enqueue GL buffer acquire
     vector<cl::Memory> sharedBuffers;
-    sharedBuffers.push_back(mPositionsYinBuffer);
-    sharedBuffers.push_back(mPositionsYangBuffer);
+    sharedBuffers.push_back(mPositionsPingBuffer);
+    sharedBuffers.push_back(mPositionsPongBuffer);
     mQueue.enqueueAcquireGLObjects(&sharedBuffers);
 
     // Predicit positions
@@ -608,8 +608,8 @@ void Simulation::Step()
 
 void Simulation::dumpData( cl_float4 * (&positions), cl_float4 * (&velocities) )
 {
-    mQueue.enqueueReadBuffer(mPositionsYinBuffer, CL_TRUE, 0, mBufferSizeParticles, mPositions);
-    mQueue.enqueueReadBuffer(mVelocitiesYinBuffer, CL_TRUE, 0, mBufferSizeParticles, mVelocities);
+    mQueue.enqueueReadBuffer(mPositionsPingBuffer, CL_TRUE, 0, mBufferSizeParticles, mPositions);
+    mQueue.enqueueReadBuffer(mVelocitiesPongBuffer, CL_TRUE, 0, mBufferSizeParticles, mVelocities);
 
     // just a safety measure to be absolutely sure everything is transferred
     // from device to host

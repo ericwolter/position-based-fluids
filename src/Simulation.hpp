@@ -62,11 +62,11 @@ public:
     cl::Buffer mCellsBuffer;
     cl::Buffer mParticlesListBuffer;
     cl::Buffer mFriendsListBuffer;
-    cl::BufferGL mPositionsYinBuffer;
-    cl::BufferGL mPositionsYangBuffer;
+    cl::BufferGL mPositionsPingBuffer;
+    cl::BufferGL mPositionsPongBuffer;
     cl::Buffer mPredictedBuffer;
-    cl::Buffer mVelocitiesYinBuffer;
-    cl::Buffer mVelocitiesYangBuffer;
+    cl::Buffer mVelocitiesPingBuffer;
+    cl::Buffer mVelocitiesPongBuffer;
     cl::Buffer mDensityBuffer;
     cl::Buffer mDeltaBuffer;
     cl::Buffer mDeltaVelocityBuffer;
@@ -128,8 +128,8 @@ public:
 public:
 
     // Open GL Sharing buffers
-    GLuint mSharingYinBufferID;
-    GLuint mSharingYangBufferID;
+    GLuint mSharingPingBufferID;
+    GLuint mSharingPongBufferID;
 
     // Performance measurement
     OCLPerfMon PerfData;
