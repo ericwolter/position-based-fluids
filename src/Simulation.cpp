@@ -357,6 +357,7 @@ void Simulation::packData(cl::Buffer packTarget, cl::Buffer packSource,  int ite
     int param = 0;
     mKernels["packData"].setArg(param++, packTarget);
     mKernels["packData"].setArg(param++, packSource);
+    mKernels["packData"].setArg(param++, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["packData"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("packData", iterationIndex));
 }

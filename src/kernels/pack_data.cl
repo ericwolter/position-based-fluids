@@ -1,5 +1,9 @@
 __kernel void packData(const __global float4 *packTarget,
-                       __global float *packSource)
+                       __global float *packSource,
+                       const uint N)
 {
-    packTarget[get_global_id(0)].w = packSource[get_global_id(0)];
+    const uint i = get_global_id(0);
+    if (i >= N) return;
+
+    packTarget[i].w = packSource[i];
 }
