@@ -19,17 +19,17 @@ __kernel void computeKeys(__constant struct Parameters *Params,
 }
 
 __kernel void sortParticles(const __global int *permutation,
-                            const __global float4 *positionsYin,
-                            __global float4 *positionsYang,
-                            const __global float4 *velocitiesYin,
-                            __global float4 *velocitiesYang,
+                            const __global float4 *positionsPing,
+                            __global float4 *positionsPong,
+                            const __global float4 *velocitiesPing,
+                            __global float4 *velocitiesPong,
                             const uint N)
 {
     const uint i = get_global_id(0);
     if (i >= N) return;
 
-    positionsYang[i] = positionsYin[permutation[i]];
-    velocitiesYang[i] = velocitiesYin[permutation[i]];
+    positionsPong[i] = positionsPing[permutation[i]];
+    velocitiesPong[i] = velocitiesPing[permutation[i]];
 }
 
 // fixes compiler warning: no previous prototype for function
