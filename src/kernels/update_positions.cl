@@ -8,7 +8,16 @@ __kernel void updatePositions(__global float4 *positions,
     if (i >= N) return;
 
     positions[i].xyz = predicted[i].xyz;
-    velocities[i].xyz += deltaVelocities[i].xyz;
+    //velocities[i].xyz += deltaVelocities[i].xyz;
+
+    // Ugly hack to cirumvent particles resetting if sorting is done in the beginning
+    float3 dV = deltaVelocities[i].xyz;
+    float l_dV = fast_length(dV);
+    if(l_dV > 1.0f) {
+        dV = normalize(dV);
+    }
+    
+    velocities[i].xyz += dV;
 
     positions[i].w = length(velocities[i].xyz);
 
