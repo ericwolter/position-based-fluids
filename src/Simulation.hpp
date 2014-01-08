@@ -66,8 +66,7 @@ public:
     cl::BufferGL mPositionsPongBuffer;
     cl::Buffer mPredictedPingBuffer;
     cl::Buffer mPredictedPongBuffer;
-    cl::Buffer mVelocitiesPingBuffer;
-    cl::Buffer mVelocitiesPongBuffer;
+    cl::Buffer mVelocitiesBuffer;
     cl::Buffer mDensityBuffer;
     cl::Buffer mDeltaBuffer;
     cl::Buffer mDeltaVelocityBuffer;

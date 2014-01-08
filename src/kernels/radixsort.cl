@@ -21,8 +21,6 @@ __kernel void computeKeys(__constant struct Parameters *Params,
 __kernel void sortParticles(const __global int *permutation,
                             const __global float4 *positionsPing,
                             __global float4 *positionsPong,
-                            const __global float4 *velocitiesPing,
-                            __global float4 *velocitiesPong,
                             const __global float4 *predictedPing,
                             __global float4 *predictedPong,
                             const uint N)
@@ -31,7 +29,6 @@ __kernel void sortParticles(const __global int *permutation,
     if (i >= N) return;
 
     positionsPong[i] = positionsPing[permutation[i]];
-    velocitiesPong[i] = velocitiesPing[permutation[i]];
     predictedPong[i] = predictedPing[permutation[i]];
 }
 
