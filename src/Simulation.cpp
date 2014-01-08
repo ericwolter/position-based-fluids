@@ -186,7 +186,8 @@ void Simulation::InitBuffers()
     // Create buffers
     mPositionsPingBuffer    = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharingPingBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
     mPositionsPongBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharingPongBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
-    mPredictedBuffer       = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
+    mPredictedPingBuffer       = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
+    mPredictedPongBuffer       = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mVelocitiesPingBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mVelocitiesPongBuffer  = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mDeltaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
@@ -263,7 +264,7 @@ void Simulation::updatePositions()
 {
     int param = 0;
     mKernels["updatePositions"].setArg(param++, mPositionsPingBuffer);
-    mKernels["updatePositions"].setArg(param++, mPredictedBuffer);
+    mKernels["updatePositions"].setArg(param++, mPredictedPingBuffer);
     mKernels["updatePositions"].setArg(param++, mVelocitiesPingBuffer);
     mKernels["updatePositions"].setArg(param++, mDeltaVelocityBuffer);
     mKernels["updatePositions"].setArg(param++, Params.particleCount);
@@ -276,7 +277,7 @@ void Simulation::updateVelocities()
     int param = 0;
     mKernels["updateVelocities"].setArg(param++, mParameters);
     mKernels["updateVelocities"].setArg(param++, mPositionsPingBuffer);
-    mKernels["updateVelocities"].setArg(param++, mPredictedBuffer);
+    mKernels["updateVelocities"].setArg(param++, mPredictedPingBuffer);
     mKernels["updateVelocities"].setArg(param++, mVelocitiesPingBuffer);
     mKernels["updateVelocities"].setArg(param++, Params.particleCount);
 
@@ -287,7 +288,7 @@ void Simulation::applyViscosity()
 {
     int param = 0;
     mKernels["applyViscosity"].setArg(param++, mParameters);
-    mKernels["applyViscosity"].setArg(param++, mPredictedBuffer);
+    mKernels["applyViscosity"].setArg(param++, mPredictedPingBuffer);
     mKernels["applyViscosity"].setArg(param++, mVelocitiesPingBuffer);
     mKernels["applyViscosity"].setArg(param++, mDeltaVelocityBuffer);
     mKernels["applyViscosity"].setArg(param++, mOmegaBuffer);
@@ -301,7 +302,7 @@ void Simulation::applyVorticity()
 {
     int param = 0;
     mKernels["applyVorticity"].setArg(param++, mParameters);
-    mKernels["applyVorticity"].setArg(param++, mPredictedBuffer);
+    mKernels["applyVorticity"].setArg(param++, mPredictedPingBuffer);
     mKernels["applyVorticity"].setArg(param++, mDeltaVelocityBuffer);
     mKernels["applyVorticity"].setArg(param++, mOmegaBuffer);
     mKernels["applyVorticity"].setArg(param++, mFriendsListBuffer);
@@ -315,7 +316,7 @@ void Simulation::predictPositions()
     int param = 0;
     mKernels["predictPositions"].setArg(param++, mParameters);
     mKernels["predictPositions"].setArg(param++, mPositionsPingBuffer);
-    mKernels["predictPositions"].setArg(param++, mPredictedBuffer);
+    mKernels["predictPositions"].setArg(param++, mPredictedPingBuffer);
     mKernels["predictPositions"].setArg(param++, mVelocitiesPingBuffer);
     mKernels["predictPositions"].setArg(param++, Params.particleCount);
 
@@ -326,7 +327,7 @@ void Simulation::buildFriendsList()
 {
     int param = 0;
     mKernels["buildFriendsList"].setArg(param++, mParameters);
-    mKernels["buildFriendsList"].setArg(param++, mPredictedBuffer);
+    mKernels["buildFriendsList"].setArg(param++, mPredictedPingBuffer);
     mKernels["buildFriendsList"].setArg(param++, mCellsBuffer);
     mKernels["buildFriendsList"].setArg(param++, mParticlesListBuffer);
     mKernels["buildFriendsList"].setArg(param++, mFriendsListBuffer);
@@ -335,7 +336,7 @@ void Simulation::buildFriendsList()
 
     param = 0;
     mKernels["resetGrid"].setArg(param++, mParameters);
-    mKernels["resetGrid"].setArg(param++, mPredictedBuffer);
+    mKernels["resetGrid"].setArg(param++, mPredictedPingBuffer);
     mKernels["resetGrid"].setArg(param++, mParticlesListBuffer);
     mKernels["resetGrid"].setArg(param++, mCellsBuffer);
     mKernels["resetGrid"].setArg(param++, Params.particleCount);
@@ -345,7 +346,7 @@ void Simulation::buildFriendsList()
 void Simulation::updatePredicted(int iterationIndex)
 {
     int param = 0;
-    mKernels["updatePredicted"].setArg(param++, mPredictedBuffer);
+    mKernels["updatePredicted"].setArg(param++, mPredictedPingBuffer);
     mKernels["updatePredicted"].setArg(param++, mDeltaBuffer);
     mKernels["updatePredicted"].setArg(param++, Params.particleCount);
 
@@ -367,7 +368,7 @@ void Simulation::computeDelta(int iterationIndex)
     int param = 0;
     mKernels["computeDelta"].setArg(param++, mParameters);
     mKernels["computeDelta"].setArg(param++, mDeltaBuffer);
-    mKernels["computeDelta"].setArg(param++, mPredictedBuffer); // xyz=Predicted z=Scaling
+    mKernels["computeDelta"].setArg(param++, mPredictedPingBuffer); // xyz=Predicted z=Scaling
     mKernels["computeDelta"].setArg(param++, mFriendsListBuffer);
     mKernels["computeDelta"].setArg(param++, fWavePos);
     mKernels["computeDelta"].setArg(param++, Params.particleCount);
@@ -380,7 +381,7 @@ void Simulation::computeScaling(int iterationIndex)
 {
     int param = 0;
     mKernels["computeScaling"].setArg(param++, mParameters);
-    mKernels["computeScaling"].setArg(param++, mPredictedBuffer);
+    mKernels["computeScaling"].setArg(param++, mPredictedPingBuffer);
     mKernels["computeScaling"].setArg(param++, mDensityBuffer);
     mKernels["computeScaling"].setArg(param++, mFriendsListBuffer);
     mKernels["computeScaling"].setArg(param++, Params.particleCount);
@@ -392,7 +393,7 @@ void Simulation::updateCells()
 {
     int param = 0;
     mKernels["updateCells"].setArg(param++, mParameters);
-    mKernels["updateCells"].setArg(param++, mPredictedBuffer);
+    mKernels["updateCells"].setArg(param++, mPredictedPingBuffer);
     mKernels["updateCells"].setArg(param++, mCellsBuffer);
     mKernels["updateCells"].setArg(param++, mParticlesListBuffer);
     mKernels["updateCells"].setArg(param++, Params.particleCount);
@@ -403,7 +404,7 @@ void Simulation::radixsort()
 {
     int param = 0;
     mKernels["computeKeys"].setArg(param++, mParameters);
-    mKernels["computeKeys"].setArg(param++, mPositionsPingBuffer);
+    mKernels["computeKeys"].setArg(param++, mPredictedPingBuffer);
     mKernels["computeKeys"].setArg(param++, mInKeysBuffer);
     mKernels["computeKeys"].setArg(param++, mInPermutationBuffer);
     mKernels["computeKeys"].setArg(param++, Params.particleCount);
@@ -521,6 +522,8 @@ void Simulation::radixsort()
     mKernels["sortParticles"].setArg(param++, mPositionsPongBuffer);
     mKernels["sortParticles"].setArg(param++, mVelocitiesPingBuffer);
     mKernels["sortParticles"].setArg(param++, mVelocitiesPongBuffer);
+    mKernels["sortParticles"].setArg(param++, mPredictedPingBuffer);
+    mKernels["sortParticles"].setArg(param++, mPredictedPongBuffer);
     mKernels["sortParticles"].setArg(param++, Params.particleCount);
     mQueue.enqueueNDRangeKernel(mKernels["sortParticles"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("sortParticles"));
 
@@ -536,9 +539,13 @@ void Simulation::radixsort()
     mVelocitiesPingBuffer = mVelocitiesPongBuffer;
     mVelocitiesPongBuffer = tmp2;
 
-    GLuint tmp3 = mSharingPingBufferID;
+    cl::Buffer tmp3 = mPredictedPingBuffer;
+    mPredictedPingBuffer = mPredictedPongBuffer;
+    mPredictedPongBuffer = tmp3;
+
+    GLuint tmp4 = mSharingPingBufferID;
     mSharingPingBufferID = mSharingPongBufferID;
-    mSharingPongBufferID = tmp3;
+    mSharingPongBufferID = tmp4;
 }
 
 void Simulation::Step()
@@ -552,11 +559,11 @@ void Simulation::Step()
     sharedBuffers.push_back(mPositionsPongBuffer);
     mQueue.enqueueAcquireGLObjects(&sharedBuffers);
 
-    // sort particles buffer
-    this->radixsort();
-
     // Predicit positions
     this->predictPositions();
+
+    // sort particles buffer
+    this->radixsort();
 
     // Update cells
     this->updateCells();
@@ -568,7 +575,7 @@ void Simulation::Step()
     {
         // Compute scaling value
         this->computeScaling(i);
-        /*mQueue.enqueueReadBuffer(mPredictedBuffer, CL_TRUE, 0, mBufferSizeParticles, mPredictions);
+        /*mQueue.enqueueReadBuffer(mPredictedPingBuffer, CL_TRUE, 0, mBufferSizeParticles, mPredictions);
         if (mQueue.finish() != CL_SUCCESS)
             _asm nop;*/
 
@@ -582,8 +589,8 @@ void Simulation::Step()
         this->updatePredicted(i);
     }
 
-    // Place density in "mPredictedBuffer[x].w"
-    this->packData(mPredictedBuffer, mDensityBuffer, -1);
+    // Place density in "mPredictedPingBuffer[x].w"
+    this->packData(mPredictedPingBuffer, mDensityBuffer, -1);
 
     // Recompute velocities
     this->updateVelocities();

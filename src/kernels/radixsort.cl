@@ -23,6 +23,8 @@ __kernel void sortParticles(const __global int *permutation,
                             __global float4 *positionsPong,
                             const __global float4 *velocitiesPing,
                             __global float4 *velocitiesPong,
+                            const __global float4 *predictedPing,
+                            __global float4 *predictedPong,
                             const uint N)
 {
     const uint i = get_global_id(0);
@@ -30,6 +32,7 @@ __kernel void sortParticles(const __global int *permutation,
 
     positionsPong[i] = positionsPing[permutation[i]];
     velocitiesPong[i] = velocitiesPing[permutation[i]];
+    predictedPong[i] = predictedPing[permutation[i]];
 }
 
 // fixes compiler warning: no previous prototype for function

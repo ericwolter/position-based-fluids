@@ -64,7 +64,8 @@ public:
     cl::Buffer mFriendsListBuffer;
     cl::BufferGL mPositionsPingBuffer;
     cl::BufferGL mPositionsPongBuffer;
-    cl::Buffer mPredictedBuffer;
+    cl::Buffer mPredictedPingBuffer;
+    cl::Buffer mPredictedPongBuffer;
     cl::Buffer mVelocitiesPingBuffer;
     cl::Buffer mVelocitiesPongBuffer;
     cl::Buffer mDensityBuffer;
