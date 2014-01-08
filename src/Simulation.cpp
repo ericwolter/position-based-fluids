@@ -552,6 +552,9 @@ void Simulation::Step()
     sharedBuffers.push_back(mPositionsPongBuffer);
     mQueue.enqueueAcquireGLObjects(&sharedBuffers);
 
+    // sort particles buffer
+    this->radixsort();
+
     // Predicit positions
     this->predictPositions();
 
@@ -592,9 +595,6 @@ void Simulation::Step()
     // Update particle buffers
     if (!bPauseSim)
         this->updatePositions();
-
-    // sort particles buffer
-    this->radixsort();
 
     if (bReadFriendsList)
         mQueue.enqueueReadBuffer(mFriendsListBuffer, CL_TRUE, 0, sizeof(cl_uint) * Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle), mFriendsList);
