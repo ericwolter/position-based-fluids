@@ -1,16 +1,6 @@
 #include "OCLUtils.hpp"
 
-using std::string;
-using std::vector;
-using std::ifstream;
-using std::runtime_error;
-using std::make_pair;
-using std::cout;
-using std::cerr;
-using std::cin;
-using std::istreambuf_iterator;
-using std::ostream;
-using std::endl;
+using namespace std;
 
 ostream &operator<<(ostream &os, const cl::Platform &platform)
 {
@@ -59,102 +49,6 @@ ostream &operator<<(ostream &os, const cl::Device &device)
     return os;
 }
 
-
-vector<cl::Platform> OCLUtils::getPlatforms(void) const
-{
-    vector<cl::Platform> platforms;
-    unsigned int platformNumber = 0;
-
-    // Get platforms available
-    cl::Platform::get(&platforms);
-
-    // Print info about found platforms
-    cout << "Available platforms: " << endl;
-
-    for (vector<cl::Platform>::const_iterator cit = platforms.begin(); cit != platforms.end(); cit++)
-    {
-        // Print platform details
-        cout << "Platform number #" << platformNumber << ":" << endl;
-        this->printPlatformInfo(*cit);
-
-        platformNumber++;
-    }
-
-    if (platforms.size() == 0)
-    {
-        throw runtime_error("No platforms found.");
-    }
-
-    return platforms;
-}
-
-cl::Platform OCLUtils::selectPlatform(void) const
-{
-    vector<cl::Platform> platforms;
-    size_t platformID = 0;
-
-    platforms = this->getPlatforms();
-
-    // Select platform
-    if (platforms.size() > 1)
-    {
-        platformID = platforms.size();
-
-        while ( platformID >= platforms.size() )
-        {
-            cout << "Select a valid platform: " << endl;
-            cin >> platformID;
-        }
-    }
-
-    return platforms.at(platformID);
-}
-
-cl::Context OCLUtils::createContext(cl_context_properties properties[], const cl_device_type deviceType) const
-{
-    return cl::Context(deviceType, properties);
-}
-
-cl::Context OCLUtils::createContext(const cl::Platform &platform, const cl_device_type deviceType) const
-{
-    // Create context
-    cl_context_properties properties[] =
-    {
-        CL_CONTEXT_PLATFORM,
-        (cl_context_properties) (platform)(),
-        0
-    };
-
-    return cl::Context(deviceType, properties);
-}
-
-vector<cl::Device> OCLUtils::getDevices(const cl::Context &context) const
-{
-    unsigned int numberDevices = 0;
-    vector<cl::Device> devices;
-
-    // Get a vector of devices on this platform
-    devices = context.getInfo<CL_CONTEXT_DEVICES>();
-
-    if (devices.size() == 0)
-    {
-        throw runtime_error("No devices found!");
-    }
-
-    // Print info about found devices
-    cout << "Found devices: " << endl;
-
-    for (vector<cl::Device>::const_iterator cit = devices.begin(); cit != devices.end(); cit++)
-    {
-        cout << "Device number #" << numberDevices << " :" << endl;
-        this->printDeviceInfo(*cit);
-
-        numberDevices++;
-    }
-
-    return devices;
-}
-
 vector<cl::Device> OCLUtils::getDevices(const cl::Platform &platform, const cl_device_type deviceType) const
 {
     unsigned int numberDevices = 0;
@@ -175,7 +69,9 @@ vector<cl::Device> OCLUtils::getDevices(const cl::Platform &platform, const cl_d
             cit != devices.end(); ++cit)
     {
         cout << "Device number #" << numberDevices << " :" << endl;
-        this->printDeviceInfo(*cit);
+
+        // print device info
+        cout << *cit << endl;
 
         ++numberDevices;
     }
@@ -183,68 +79,18 @@ vector<cl::Device> OCLUtils::getDevices(const cl::Platform &platform, const cl_d
     return devices;
 }
 
-cl::Device OCLUtils::selectDevice(const cl::Context &context) const
-{
-    size_t deviceID = 0;
-    vector<cl::Device> devices;
-
-    devices = this->getDevices(context);
-
-    if (devices.size() > 1)
-    {
-        deviceID = devices.size();
-
-        while ( deviceID >= devices.size() )
-        {
-            cout << "Select valid device to use: " << endl;
-            cin >> deviceID;
-        }
-    }
-    else if (devices.size() == 0)
-    {
-        throw runtime_error("No devices found!");
-    }
-
-    return devices.at(deviceID);
-}
-
-cl::Device OCLUtils::selectDevice(const cl::Platform &platform, const cl_device_type deviceType) const
-{
-    size_t deviceID = 0;
-    vector<cl::Device> devices;
-
-    devices = this->getDevices(platform, deviceType);
-
-    if (devices.size() > 1)
-    {
-        deviceID = devices.size();
-
-        while ( deviceID >= devices.size() )
-        {
-            cout << "Select valid device to use: " << endl;
-            cin >> deviceID;
-        }
-    }
-    else if (devices.size() == 0)
-    {
-        throw runtime_error("No devices found!");
-    }
-
-    return devices.at(deviceID);
-}
-
 string OCLUtils::readSource(const string &filename) const
 {
+    // Open file
     ifstream ifs( filename.c_str() );
     string source;
 
+    // Make sure that file was opened
     if ( !ifs.is_open() )
-    {
         throw runtime_error("Could not open File!");
-    }
 
-    source = string( istreambuf_iterator<char>(ifs),
-                     istreambuf_iterator<char>() );
+    // read content
+    source = string( istreambuf_iterator<char>(ifs), istreambuf_iterator<char>() );
 
     return source;
 }
@@ -254,12 +100,9 @@ cl::Program OCLUtils::createProgram(const vector<string> &sources, const cl::Con
     cl::Program program;
     cl::Program::Sources programSource;
 
-    for (vector<string>::const_iterator cit = sources.begin();
-            cit != sources.end(); ++cit)
-    {
-        programSource.push_back( std::make_pair( cit->c_str(),
-                                 cit->length() ) );
-    }
+    // Append sources to program list
+    for (vector<string>::const_iterator cit = sources.begin(); cit != sources.end(); ++cit)
+        programSource.push_back( std::make_pair( cit->c_str(), cit->length() ) );
 
     // Make program of the source code in the context
     program = cl::Program(context, programSource);
@@ -279,7 +122,8 @@ cl::Program OCLUtils::createProgram(const vector<string> &sources, const cl::Con
 
     string log = this->getBuildLog(program, devices);
     
-    if(log.length() > 0) {
+    if(log.length() > 0) 
+    {
         std::cout << log << std::endl;
     }
 
@@ -293,41 +137,6 @@ cl::Program OCLUtils::createProgram(const vector<string> &sources, const cl::Con
     devices.push_back(device);
 
     return this->createProgram(sources, context, devices, compileOptions);
-}
-
-cl::Program OCLUtils::createProgram(const string &source, const cl::Context &context, const vector<cl::Device> &devices, const string compileOptions) const
-{
-    vector<string> sources;
-
-    sources.push_back(source);
-
-    return this->createProgram(sources, context, devices, compileOptions);
-}
-
-cl::Program OCLUtils::createProgram(const string &source, const cl::Context &context, const cl::Device &device, const string compileOptions) const
-{
-    vector<cl::Device> devices;
-    vector<string> sources;
-
-    devices.push_back(device);
-    sources.push_back(source);
-
-    return this->createProgram(sources, context, devices, compileOptions);
-}
-
-cl::Kernel OCLUtils::createKernel(const string &programName,
-                                  const cl::Program &program) const
-{
-    return cl::Kernel( program, programName.c_str() );
-}
-
-vector<cl::Kernel> OCLUtils::createKernels(cl::Program &program) const
-{
-    vector<cl::Kernel> kernels;
-
-    program.createKernels(&kernels);
-
-    return kernels;
 }
 
 map<string, cl::Kernel> OCLUtils::createKernelsMap(cl::Program &program) const
@@ -362,21 +171,9 @@ string OCLUtils::getBuildLog(const cl::Program &program, const vector<cl::Device
     string ret;
     string tmp;
 
-    for (vector<cl::Device>::const_iterator cit = devices.begin();
-            cit != devices.end(); ++cit)
-    {
+    for (vector<cl::Device>::const_iterator cit = devices.begin(); cit != devices.end(); ++cit)
         ret += this->getBuildLog(program, *cit);
-    }
 
     return ret;
 }
 
-void OCLUtils::printPlatformInfo(const cl::Platform &platform) const
-{
-    cout << platform << endl;
-}
-
-void OCLUtils::printDeviceInfo(const cl::Device &device) const
-{
-    cout << device << endl;
-}
