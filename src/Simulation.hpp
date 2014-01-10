@@ -14,6 +14,7 @@
 #include "Parameters.hpp"
 #include "Particle.hpp"
 #include "OCLPerfMon.h"
+#include "OCL_Logger.h"
 
 #include <GLFW/glfw3.h>
 
@@ -133,6 +134,9 @@ public:
 
     // Performance measurement
     OCLPerfMon PerfData;
+
+    // OCL Logging
+    OCL_Logger oclLog;
 
     // Rendering state
     bool      bPauseSim;

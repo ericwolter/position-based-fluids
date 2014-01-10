@@ -1,4 +1,5 @@
 __kernel void computeDelta(__constant struct Parameters *Params,
+                           volatile __global int *debugBuf,
                            __global float4 *delta,
                            const __global float4 *predicted, // xyz=predicted, w=scaling
                            const __global int *friends_list,
@@ -49,6 +50,11 @@ __kernel void computeDelta(__constant struct Parameters *Params,
             const float3 r         = predicted[i].xyz - predicted[j_index].xyz;
             const float r_length_2 = dot(r, r);
 
+            if (r_length_2 <= 0.0f)
+            {
+                logPrintf2(debugBuf, TextToID(r_length_2 <= 0.0 {i} {r_length_2}), i, r_length_2);
+            }
+            
             if (r_length_2 > 0.0f && r_length_2 < h_2_cache)
             {
                 const float r_length   = sqrt(r_length_2);

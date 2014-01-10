@@ -70,6 +70,7 @@ const std::string *Simulation::KernelFileList()
     {
         "hesp.hpp",
         "parameters.hpp",
+        "logging.cl",
         "utilities.cl",
         "predict_positions.cl",
         "update_cells.cl",
@@ -97,6 +98,9 @@ bool Simulation::InitKernels()
     mGlobalRange = cl::NDRange(globalSize);
     mLocalRange = cl::NullRange;
 
+    // Notify OCL logging that we're about to start new kernel processing
+    oclLog.StartKernelProcessing(mCLContext, mCLDevice, 4096);
+
     // setup kernel sources
     OCLUtils clSetup;
     vector<string> kernelSources;
@@ -105,7 +109,14 @@ bool Simulation::InitKernels()
     const std::string *pKernels = KernelFileList();
     for (int iSrc = 0; pKernels[iSrc]  != ""; iSrc++)
     {
+        // Read source from disk
         string source = clSetup.readSource(getPathForKernel(pKernels[iSrc]));
+
+        // Patch kernel for logging
+        if (pKernels[iSrc] != "logging.cl")
+            source = oclLog.PatchKernel(source);
+
+        // Load into compile list
         kernelSources.push_back(source);
     }
 
@@ -131,6 +142,7 @@ bool Simulation::InitKernels()
     //clflags << "-DPBF_H_2="           << Params.h_2 << "f ";
     //clflags << "-DEPSILON="           << Params.epsilon << "f ";
 
+    clflags << "-DLOG_SIZE="                    << (int)1024 << " ";
     clflags << "-DEND_OF_CELL_LIST="            << (int)(-1)         << " ";
 
     clflags << "-DFRIENDS_CIRCLES="             << (int)(Params.friendsCircles)     << " ";  // Defines how many friends circle are we going to scan for
@@ -141,6 +153,7 @@ bool Simulation::InitKernels()
 
     clflags << "-DPOLY6_FACTOR="      << 315.0f / (64.0f * M_PI * pow(Params.h, 9)) << "f ";
     clflags << "-DGRAD_SPIKY_FACTOR=" << 45.0f / (M_PI * pow(Params.h, 6)) << "f ";
+
 
     // Compile kernels
     cl::Program program = clSetup.createProgram(kernelSources, mCLContext, mCLDevice, clflags.str());
@@ -171,6 +184,7 @@ void Simulation::InitBuffers()
     delete[] mDeltas;      mDeltas      = new cl_float4[Params.particleCount]; // (used for debugging)
     delete[] mFriendsList; mFriendsList = new cl_uint  [Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle)]; // (used for debugging)
 
+
     // Position particles
     CreateParticles();
 
@@ -184,11 +198,11 @@ void Simulation::InitBuffers()
     }
 
     // Create buffers
-    mPositionsPingBuffer    = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharingPingBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
+    mPositionsPingBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharingPingBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
     mPositionsPongBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharingPongBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
-    mPredictedPingBuffer       = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
-    mPredictedPongBuffer       = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
-    mVelocitiesBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
+    mPredictedPingBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
+    mPredictedPongBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
+    mVelocitiesBuffer      = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mDeltaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mDeltaVelocityBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mOmegaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
@@ -366,6 +380,7 @@ void Simulation::computeDelta(int iterationIndex)
 {
     int param = 0;
     mKernels["computeDelta"].setArg(param++, mParameters);
+    mKernels["computeDelta"].setArg(param++, oclLog.GetDebugBuffer());
     mKernels["computeDelta"].setArg(param++, mDeltaBuffer);
     mKernels["computeDelta"].setArg(param++, mPredictedPingBuffer); // xyz=Predicted z=Scaling
     mKernels["computeDelta"].setArg(param++, mFriendsListBuffer);
@@ -605,6 +620,9 @@ void Simulation::Step()
 
     // Collect performance data
     PerfData.UpdateTimings();
+
+    // Allow OpenCL logger to process
+    oclLog.CycleExecute(mQueue);
 }
 
 void Simulation::dumpData( cl_float4 * (&positions), cl_float4 * (&velocities) )
