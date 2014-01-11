@@ -24,7 +24,8 @@ Simulation::Simulation(const cl::Context &clContext, const cl::Device &clDevice)
       mVelocities(NULL),
       mPredictions(NULL),
       mDeltas(NULL),
-      mFriendsList(NULL)
+      mFriendsList(NULL),
+      bDumpParticlesData(false)
 {
 }
 
@@ -183,7 +184,6 @@ void Simulation::InitBuffers()
     delete[] mPredictions; mPredictions = new cl_float4[Params.particleCount]; // (used for debugging)
     delete[] mDeltas;      mDeltas      = new cl_float4[Params.particleCount]; // (used for debugging)
     delete[] mFriendsList; mFriendsList = new cl_uint  [Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle)]; // (used for debugging)
-
 
     // Position particles
     CreateParticles();
@@ -611,9 +611,26 @@ void Simulation::Step()
     if (!bPauseSim)
         this->updatePositions();
 
-    if (bReadFriendsList)
+    // [DEBUG] Read back friends information (if needed)
+    if (bReadFriendsList || bDumpParticlesData)
         mQueue.enqueueReadBuffer(mFriendsListBuffer, CL_TRUE, 0, sizeof(cl_uint) * Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle), mFriendsList);
 
+    // [DEBUG] Do we need to dump particle data
+    if (bDumpParticlesData)
+    {
+        // Turn off flag
+        bDumpParticlesData = false;
+
+        // Read data
+        mQueue.enqueueReadBuffer(mPositionsPingBuffer, CL_TRUE, 0, mBufferSizeParticles, mPositions);
+        mQueue.finish();
+
+        // Save to disk
+        ofstream f("particles_pos.bin", ios::out | ios::trunc | ios::binary);
+        f.seekp(0);
+        f.write((const char*)mPositions, mBufferSizeParticles);
+        f.close();
+    }
     // Release OpenGL shared object, allowing openGL do to it's thing...
     mQueue.enqueueReleaseGLObjects(&sharedBuffers);
     mQueue.finish();

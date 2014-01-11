@@ -125,7 +125,10 @@ bool DetectResourceChanges(list<pair<string, time_t> >& fileList)
 
         // If failed to open file exclusivly, exit (we will try again later)
         if (!ExclusiveOpen)
+        {
+            cerr << "File is exclusivly open [" << iter->first.c_str() << "]" << endl;
             return false;
+        }
     }
 
     // There was a change AND all files are openable (in exclusive mode, ie: no one else accessing them) we can report the change back

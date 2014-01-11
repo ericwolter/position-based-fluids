@@ -2,11 +2,11 @@
 #include "UIManager.h"
 #include "ParamUtils.hpp"
 #include "ZPR.h"
+#include "OGL_RenderStageInspector.h"
 
 #include <AntTweakBar.h>
 #include "../../lib/AntTweakBar/src/TwPrecomp.h"
 #include "../../lib/AntTweakBar/src/TwMgr.h"
-
 #include "../../lib/AntTweakBar/src/TwOpenGLCore.h"
 
 CTwGraphOpenGLCore tw;
@@ -20,6 +20,11 @@ CVisual    *mRenderer;
 Simulation *mSim;
 TwBar      *mTweakBar;
 double      mTotalSimTime;
+
+int  UIM_SelectedInspectionStage;
+bool UIM_SaveInspectionStage = false;
+
+bool mIsFirstCycle = true;
 
 
 void MouseButtonCB(GLFWwindow *window, int button, int action, int mods)
@@ -62,6 +67,11 @@ void TW_CALL Reset(void *clientData)
     ((CVisual *)clientData)->UICmd_ResetSimulation = true;
 }
 
+void TW_CALL DumpParticlesData(void *clientData)
+{
+    ((Simulation*)clientData)->bDumpParticlesData = true;
+}
+
 void TW_CALL GenerateWaves(void *clientData)
 {
     ((CVisual *)clientData)->UICmd_GenerateWaves = !((CVisual *)clientData)->UICmd_GenerateWaves;
@@ -75,6 +85,11 @@ void TW_CALL ShowVelocity(void *clientData)
 void TW_CALL ShowSorting(void *clientData)
 {
     ((CVisual *)clientData)->UICmd_ColorMethod = 1;
+}
+
+void TW_CALL SaveInspection(void *clientData)
+{
+    UIM_SaveInspectionStage = true;
 }
 
 void TW_CALL FriendsHistogram(void *clientData)
@@ -126,10 +141,13 @@ void UIManager_Init(GLFWwindow *window, CVisual *pRenderer, Simulation *pSim)
     TwAddButton(mTweakBar, "View Reset",        View_Reset,       mRenderer, " group=View ");
     TwAddButton(mTweakBar, "Show velocity",     ShowVelocity,     mRenderer, " group=View ");
     TwAddButton(mTweakBar, "Show sorting",      ShowSorting,      mRenderer, " group=View ");
+    TwAddButton(mTweakBar, "Save Inspection",   SaveInspection,   mRenderer, " group=View ");
 
     // Create bar
-    TwAddVarRO(mTweakBar, "Total sim time", TW_TYPE_DOUBLE, &mTotalSimTime, "precision=2 group=Stats");
+    TwAddButton(mTweakBar, "Dump Part. Data", DumpParticlesData, mSim, " group=Debug ");
 
+    // Timing
+    TwAddVarRO(mTweakBar, "Total sim time", TW_TYPE_DOUBLE, &mTotalSimTime, "precision=2 group=Stats");
 
     g_TwMgr->m_GraphAPI = TW_OPENGL_CORE;
     tw.Init();
@@ -275,6 +293,54 @@ void DrawFriendsHistogram()
     tw.EndDraw();
 }
 
+void DrawAntTweakBar()
+{
+    if (mIsFirstCycle)
+    {
+        // Create performance rows
+        for (size_t i = 0; i < mSim->PerfData.Trackers.size(); i++)
+        {
+            // create row
+            string title = "  " + mSim->PerfData.Trackers[i]->eventName;
+            void* pValue = &mSim->PerfData.Trackers[i]->total_time;
+            TwAddVarRO(mTweakBar, title.c_str(),  TW_TYPE_DOUBLE,  pValue, "precision=2 group=Stats");
+        }
+
+        // Make sure Stats group is folded
+        TwDefine(" PBFTweak/Stats opened=false ");
+
+        // Create StageInspection combo options string
+        std::ostringstream comboOptions; 
+        comboOptions << " enum='0 {Off},";
+        for (size_t i = 1; i <= OGSI_Stages_Count; i++)
+            comboOptions << i << " " << " {" << OGSI_Stages[i-1] << "}" << (i != OGSI_Stages_Count ? "," : "");
+        
+        // Replace last "," with "'"
+        string comboOptionsStr = comboOptions.str();
+        comboOptionsStr[comboOptionsStr.length()] = '\'';
+
+        // Add Combo to ATB
+        TwType instStageEnum = TwDefineEnum("InspectionStages", NULL, 0);
+        TwAddVarRW(mTweakBar, "Inspection Stage", instStageEnum, &UIM_SelectedInspectionStage, comboOptionsStr.c_str());
+    }
+
+    // Accumulate execution time
+    mTotalSimTime = 0;
+    for (size_t i = 0; i < mSim->PerfData.Trackers.size(); i++)
+        mTotalSimTime += mSim->PerfData.Trackers[i]->total_time;
+
+    // Make sure bar refresh it's values
+    TwRefreshBar(mTweakBar);
+
+    // Actual draw
+    glActiveTexture(GL_TEXTURE0);
+    TwDraw();
+
+    // Update stage inspection index
+    OGSI_SetVisualizeStage(UIM_SelectedInspectionStage == 0 ? MAXINT : UIM_SelectedInspectionStage - 1, UIM_SaveInspectionStage);
+    UIM_SaveInspectionStage = false;
+}
+
 void processGLFWEvents()
 {
     glfwPollEvents();
@@ -291,40 +357,13 @@ void UIManager_Draw()
 {
     processGLFWEvents();
 
-    // Update AntTweekBar
-    mTotalSimTime = 0;
-    for (size_t i = 0; i < mSim->PerfData.Trackers.size(); i++)
-    {
-        PM_PERFORMANCE_TRACKER *pTracker = mSim->PerfData.Trackers[i];
-
-        // Check if we need to create Bar
-        if (pTracker->Tag == 0)
-        {
-            // Remember that bar was created
-            pTracker->Tag = 1;
-
-            // Create bar
-            TwAddVarRO(mTweakBar, ("  " + pTracker->eventName).c_str(), TW_TYPE_DOUBLE, &pTracker->total_time, "precision=2 group=Stats");
-
-            // Make sure Stats group is folded
-            TwDefine(" PBFTweak/Stats opened=false ");
-        }
-
-        // Accumulate execution time
-        mTotalSimTime += pTracker->total_time;
-    }
-
-    // Make sure bar refresh it's values
-    TwRefreshBar(mTweakBar);
-
-    // Actual draw
-    glActiveTexture(GL_TEXTURE0);
-    TwDraw();
+    DrawAntTweakBar();
 
     DrawPerformanceGraph();
 
-    // Draw Friends histogram
     if (mRenderer->UICmd_FriendsHistogarm)
         DrawFriendsHistogram();
+
+    mIsFirstCycle = false;
 }
 

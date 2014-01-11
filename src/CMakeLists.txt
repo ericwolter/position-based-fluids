@@ -28,6 +28,7 @@ set(SOURCE
     ZPR.cpp
     OGL_Utils.cpp
     OCL_Logger.cpp
+    OGL_RenderStageInspector.cpp
 )
 
 set(HEADER
@@ -43,6 +44,7 @@ set(HEADER
     ZPR.h
     OGL_Utils.h
     OCL_Logger.h
+    OGL_RenderStageInspector.h
     Precomp_OpenGL.h
 )
 

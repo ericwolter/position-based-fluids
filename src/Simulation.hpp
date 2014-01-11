@@ -141,6 +141,7 @@ public:
     // Rendering state
     bool      bPauseSim;
     bool      bReadFriendsList;
+    bool      bDumpParticlesData;
     cl_float  fWavePos;
 
     // debug buffers (placed in host memory)

@@ -261,6 +261,33 @@ void OGLU_BindTextureToUniform(const char *szUniform, GLuint nTextureUnit, GLuin
     glBindTexture(GL_TEXTURE_2D, nTextureID);
 }
 
+void OGLU_SaveTextureToFile(GLuint nTextureID, string filename)
+{
+    // Get texture size
+    GLint texWidth = 0;
+    GLint texHeight = 0;
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, nTextureID); 
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &texWidth);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &texHeight);
+
+    // Compute size
+    int byteSize = texWidth * texHeight * 4 * sizeof(float);
+
+    // Read texture
+    char* pBuf = new char[byteSize];
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, pBuf);
+
+    // Write to file
+    ofstream f(filename.c_str(), ios::out | ios::trunc | ios::binary);
+    f.seekp(0);
+    f.write((char*)pBuf, byteSize);
+    f.close();
+
+    delete[] pBuf;
+}
+
 FBO::FBO()
 {
     Width           = 0;

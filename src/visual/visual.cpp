@@ -2,6 +2,7 @@
 #include "../OGL_Utils.h"
 #include "../ParamUtils.hpp"
 #include "../ZPR.h"
+#include "../OGL_RenderStageInspector.h"
 
 #include "SOIL.h"
 
@@ -89,6 +90,7 @@ GLvoid CVisual::setupProjection()
     // Compute projection matrix
     float FOV = 45.0f;
     mProjectionMatrix = glm::perspective(FOV, mWidth / (GLfloat) mHeight, 0.1f, 10.0f);
+    mInvProjectionMatrix = glm::inverse(mProjectionMatrix);
 
     // compute mWidthOfNearPlane
     int viewport[4];
@@ -118,6 +120,7 @@ const string *CVisual::ShaderFileList()
         "standard.vs",
         "standard_copy.fs",
         "standard_color.fs",
+        "fluid_final_render.fs",
         ""
     };
 
@@ -128,9 +131,13 @@ bool CVisual::initShaders()
 {
     // Load Shaders
     bool bLoadOK = true;
-    bLoadOK &= mParticleProgID      = OGLU_LoadProgram(getPathForShader("particles.vs"), getPathForShader("particles_color.fs"));
-    bLoadOK &= mStandardCopyProgID  = OGLU_LoadProgram(getPathForShader("standard.vs"),  getPathForShader("standard_copy.fs"));
-    bLoadOK &= mStandardColorProgID = OGLU_LoadProgram(getPathForShader("standard.vs"),  getPathForShader("standard_color.fs"));
+    bLoadOK = bLoadOK && (mParticleProgID         = OGLU_LoadProgram(getPathForShader("particles.vs"), getPathForShader("particles_color.fs")));
+    bLoadOK = bLoadOK && (mFluidFinalRenderProgID = OGLU_LoadProgram(getPathForShader("standard.vs"),  getPathForShader("fluid_final_render.fs")));
+    bLoadOK = bLoadOK && (mStandardCopyProgID     = OGLU_LoadProgram(getPathForShader("standard.vs"),  getPathForShader("standard_copy.fs")));
+    bLoadOK = bLoadOK && (mStandardColorProgID    = OGLU_LoadProgram(getPathForShader("standard.vs"),  getPathForShader("standard_color.fs")));
+
+    // Set-up Render-Stange-Inspector
+    OGSI_Setup(mStandardCopyProgID);
 
     return bLoadOK;
 }
@@ -150,8 +157,11 @@ GLuint CVisual::createSharingBuffer(const GLsizei size) const
 
 GLvoid CVisual::renderParticles()
 {
+    // start buffer inspection
+    OGSI_StartCycle();
+
     // Clear target
-    //pTarget->SetAsDrawTarget();
+    pTarget->SetAsDrawTarget();
 
     glClearColor(0, 0, 0, 0);
     glClearDepth(1.0f);
@@ -169,8 +179,8 @@ GLvoid CVisual::renderParticles()
     glUniform1f(UniformLoc("pointSize"),        Params.particleRenderSize);
 
     // Bind positions buffer
-    glBindBuffer(GL_ARRAY_BUFFER, mSimulation->mSharingPingBufferID);
     glEnableVertexAttribArray(AttribLoc("position"));
+    glBindBuffer(GL_ARRAY_BUFFER, mSimulation->mSharingPingBufferID);
     glVertexAttribPointer(AttribLoc("position"), 4, GL_FLOAT, GL_FALSE, 0, 0);
 
     glBindFragDataLocation(g_SelectedProgram, 0, "colorOut");
@@ -182,11 +192,22 @@ GLvoid CVisual::renderParticles()
     glDisableVertexAttribArray(AttribLoc("position"));
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    /*glUseProgram(0);
-    glUseProgram(g_SelectedProgram = mStandardCopyProgID);
-    OGLU_BindTextureToUniform("SourceImg", 0, pTarget->pColorTextureId[0]);
+    // Inspect
+    if (OGSI_InspectTexture(pTarget->pColorTextureId[0], "Draw Particles [texture]", 1, 0)) return;
+    if (OGSI_InspectTexture(pTarget->pDepthTextureId,    "Draw Particles [depth]",   4, -3)) return;
+
+    //
+    // TODO: Depth Smoothing goes here !
+    //
+
+    // Copy Result to screen buffer
     g_ScreenFBO.SetAsDrawTarget();
-    OGLU_RenderQuad(0, 0, 1.0, 1.0);*/
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glUseProgram(g_SelectedProgram = mFluidFinalRenderProgID);
+    OGLU_BindTextureToUniform("depthTexture", 0, pTarget->pDepthTextureId);
+    glUniformMatrix4fv(UniformLoc("invProjectionMatrix"), 1, GL_FALSE, glm::value_ptr(mInvProjectionMatrix));
+    OGLU_RenderQuad(0, 0, 1.0, 1.0);
 
     glUseProgram(0);
 }

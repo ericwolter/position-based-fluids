@@ -83,12 +83,14 @@ private:
     FBO *pFBO_Thickness;
 
     GLuint mParticleProgID;
+    GLuint mFluidFinalRenderProgID;
     GLuint mStandardCopyProgID;
     GLuint mStandardColorProgID;
 
     // Projection related
     float mWidthOfNearPlane;
     glm::mat4 mProjectionMatrix;
+    glm::mat4 mInvProjectionMatrix;
 
     // System sizes
     GLuint mSystemBufferID;

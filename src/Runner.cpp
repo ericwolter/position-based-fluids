@@ -122,8 +122,7 @@ void Runner::run(Simulation &simulation, CVisual &renderer)
 
         // Draw UI
         UIManager_Draw();
-
-
+        
         renderer.presentToScreen();
 
     }
