@@ -15,7 +15,6 @@ endif()
 
 set(GLOBAL PROPERTY USE_FOLDERS ON)
 
-add_definitions(-DUSE_LINKEDCELL)
 add_definitions(-DTW_EXPORTS)
 
 set(SOURCE
@@ -28,6 +27,7 @@ set(SOURCE
     UIManager.cpp    
     ZPR.cpp
     OGL_Utils.cpp
+    OCL_Logger.cpp
 )
 
 set(HEADER
@@ -42,6 +42,7 @@ set(HEADER
     UIManager.h
     ZPR.h
     OGL_Utils.h
+    OCL_Logger.h
     Precomp_OpenGL.h
 )
 

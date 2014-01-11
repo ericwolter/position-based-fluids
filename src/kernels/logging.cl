@@ -3,7 +3,6 @@ typedef struct tag_log_writer
     volatile __global int* pDebugBuffer; 
     int  valuesToWrite; // Stores how many report values are still expected
     int  WriteIdx;      // Stores where should the next value be written
-    volatile __global int* dataTypePtr; // Stores the position of the dataType storage
 } log_writer;
 
 // debug buffer structure:
