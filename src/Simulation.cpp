@@ -130,18 +130,8 @@ bool Simulation::InitKernels()
 #endif // USE_DEBUG
 
     clflags << std::showpoint;
-    //clflags << "-DSYSTEM_MIN_X="      << Params.xMin << "f ";
-    //clflags << "-DSYSTEM_MAX_X="      << Params.xMax << "f ";
-    //clflags << "-DSYSTEM_MIN_Y="      << Params.yMin << "f ";
-    //clflags << "-DSYSTEM_MAX_Y="      << Params.yMax << "f ";
-    //clflags << "-DSYSTEM_MIN_Z="      << Params.zMin << "f ";
-    //clflags << "-DSYSTEM_MAX_Z="      << Params.zMax << "f ";
-    //clflags << "-DGRID_RES="          << (int)Params.gridRes << " ";
-    //clflags << "-DTIMESTEP="          << Params.timeStepLength << "f ";
-    //clflags << "-DREST_DENSITY="      << Params.restDensity << "f ";
-    //clflags << "-DPBF_H="             << Params.h << "f ";
-    //clflags << "-DPBF_H_2="           << Params.h_2 << "f ";
-    //clflags << "-DEPSILON="           << Params.epsilon << "f ";
+
+    clflags << "-DCANCEL_RANDOMNESS ";
 
     clflags << "-DLOG_SIZE="                    << (int)1024 << " ";
     clflags << "-DEND_OF_CELL_LIST="            << (int)(-1)         << " ";
@@ -273,6 +263,38 @@ void Simulation::InitCells()
     mQueue.enqueueWriteBuffer(mFriendsListBuffer, CL_TRUE, 0, BufSize, mFriendsList);
 }
 
+int dumpSession = 0;
+int dumpCounter = 0;
+int cycleCounter = 0;
+
+void SaveFile(cl::CommandQueue queue, cl::Buffer buffer, char* szFilename)
+{
+    // Exit if dump session is disabled
+    if (dumpSession == 0)
+        return;
+
+     // Get buffer size
+    int bufSize = buffer.getInfo<CL_MEM_SIZE>();
+
+    // Read data from GPU
+    char* buf = new char[bufSize];
+    queue.enqueueReadBuffer(buffer, CL_TRUE, 0, bufSize, buf);
+    queue.finish();
+
+    // Compose file name
+    dumpCounter++;
+    char szTarget[256];
+    sprintf(szTarget, "%s/dump%d/%d_%d_%s.bin", getRootPath().c_str(), dumpSession, dumpCounter, cycleCounter, szFilename);
+    
+    // Save to disk
+    ofstream f(szTarget, ios::out | ios::trunc | ios::binary);
+    f.seekp(0);
+    f.write((const char*)buf, bufSize);
+    f.close();
+
+    delete[] buf;
+}
+
 void Simulation::updatePositions()
 {
     int param = 0;
@@ -283,6 +305,9 @@ void Simulation::updatePositions()
     mKernels["updatePositions"].setArg(param++, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["updatePositions"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updatePositions"));
+
+    //SaveFile(mQueue, mVelocitiesBuffer, "Velo3");
+    SaveFile(mQueue, mPositionsPingBuffer, "pos1");
 }
 
 void Simulation::updateVelocities()
@@ -295,6 +320,8 @@ void Simulation::updateVelocities()
     mKernels["updateVelocities"].setArg(param++, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["updateVelocities"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updateVelocities"));
+
+    //SaveFile(mQueue, mVelocitiesBuffer, "Velo2");
 }
 
 void Simulation::applyViscosity()
@@ -309,6 +336,9 @@ void Simulation::applyViscosity()
     mKernels["applyViscosity"].setArg(param++, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["applyViscosity"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("applyViscosity"));
+
+    //SaveFile(mQueue, mOmegaBuffer, "Omega");
+    //SaveFile(mQueue, mDeltaVelocityBuffer, "DeltaVel");
 }
 
 void Simulation::applyVorticity()
@@ -322,6 +352,8 @@ void Simulation::applyVorticity()
     mKernels["applyVorticity"].setArg(param++, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["applyVorticity"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("applyVorticity"));
+
+    //SaveFile(mQueue, mDeltaVelocityBuffer, "Omega");
 }
 
 void Simulation::predictPositions()
@@ -334,6 +366,10 @@ void Simulation::predictPositions()
     mKernels["predictPositions"].setArg(param++, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["predictPositions"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("predictPositions"));
+
+    //SaveFile(mQueue, mPositionsPingBuffer, "PosPing");
+    //SaveFile(mQueue, mVelocitiesBuffer,    "Velocity");
+    //SaveFile(mQueue, mPredictedPingBuffer, "PredPosPing");
 }
 
 void Simulation::buildFriendsList()
@@ -346,6 +382,8 @@ void Simulation::buildFriendsList()
     mKernels["buildFriendsList"].setArg(param++, mFriendsListBuffer);
     mKernels["buildFriendsList"].setArg(param++, Params.particleCount);
     mQueue.enqueueNDRangeKernel(mKernels["buildFriendsList"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("buildFriendsList"));
+
+    //SaveFile(mQueue, mFriendsListBuffer, "FriendList");
 
     param = 0;
     mKernels["resetGrid"].setArg(param++, mParameters);
@@ -389,6 +427,8 @@ void Simulation::computeDelta(int iterationIndex)
 
     //mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
     mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, cl::NDRange(((Params.particleCount + 127) / 128) * 128), cl::NDRange(128), NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
+
+    //SaveFile(mQueue, mDeltaBuffer, "delta2");
 }
 
 void Simulation::computeScaling(int iterationIndex)
@@ -401,10 +441,15 @@ void Simulation::computeScaling(int iterationIndex)
     mKernels["computeScaling"].setArg(param++, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["computeScaling"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeScaling", iterationIndex));
+
+    //SaveFile(mQueue, mPredictedPingBuffer, "pred2");
+    //SaveFile(mQueue, mDensityBuffer,       "dens2");
 }
 
 void Simulation::updateCells()
 {
+    //SaveFile(mQueue, mCellsBuffer, "cells_before");
+
     int param = 0;
     mKernels["updateCells"].setArg(param++, mParameters);
     mKernels["updateCells"].setArg(param++, mPredictedPingBuffer);
@@ -412,6 +457,9 @@ void Simulation::updateCells()
     mKernels["updateCells"].setArg(param++, mParticlesListBuffer);
     mKernels["updateCells"].setArg(param++, Params.particleCount);
     mQueue.enqueueNDRangeKernel(mKernels["updateCells"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updateCells"));
+
+    //SaveFile(mQueue, mCellsBuffer, "cells");
+    //SaveFile(mQueue, mParticlesListBuffer, "friendlist2");
 }
 
 void Simulation::radixsort()
@@ -558,6 +606,8 @@ void Simulation::radixsort()
 
 void Simulation::Step()
 {
+    cycleCounter++;
+
     // Why is this here?
     glFinish();
 
@@ -583,16 +633,10 @@ void Simulation::Step()
     {
         // Compute scaling value
         this->computeScaling(i);
-        /*mQueue.enqueueReadBuffer(mPredictedPingBuffer, CL_TRUE, 0, mBufferSizeParticles, mPredictions);
-        if (mQueue.finish() != CL_SUCCESS)
-            _asm nop;*/
 
         // Compute position delta
         this->computeDelta(i);
-        /*mQueue.enqueueReadBuffer(mDeltaBuffer, CL_TRUE, 0, mBufferSizeParticles, mDeltas);
-        if (mQueue.finish() != CL_SUCCESS)
-            _asm nop;*/
-
+        
         // Update predicted position
         this->updatePredicted(i);
     }

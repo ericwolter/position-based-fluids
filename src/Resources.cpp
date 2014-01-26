@@ -46,34 +46,30 @@ void FindRootDirectory()
 
 const string getPathForScenario(const string scenario)
 {
-    if (rootDirectory == "")
-        FindRootDirectory();
-
-    return rootDirectory + "/data/scenarios/" + scenario;
+    return getRootPath() + "/data/scenarios/" + scenario;
 }
 
 const string getPathForKernel(const string kernel)
 {
-    if (rootDirectory == "")
-        FindRootDirectory();
-
-    return rootDirectory + "/data/kernels/" + kernel;
+    return getRootPath() + "/data/kernels/" + kernel;
 }
 
 const string getPathForShader(const string shader)
 {
-    if (rootDirectory == "")
-        FindRootDirectory();
-
-    return rootDirectory + "/data/shaders/" + shader;
+    return getRootPath() + "/data/shaders/" + shader;
 }
 
 const string getPathForTexture(const string texture)
 {
+    return getRootPath() + "/data/textures/" + texture;
+}
+
+const string getRootPath()
+{
     if (rootDirectory == "")
         FindRootDirectory();
 
-    return rootDirectory + "/data/textures/" + texture;
+    return rootDirectory;
 }
 
 bool DetectResourceChanges(list<pair<string, time_t> >& fileList)

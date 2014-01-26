@@ -63,6 +63,21 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
             }
         }
     }
+    
+    #ifdef CANCEL_RANDOMNESS
+        // Sort list
+        for (int iCircle = 0; iCircle < FRIENDS_CIRCLES; iCircle++)
+        {
+            for (int iter_i = 0; iter_i < circleParticles[iCircle] - 1; iter_i++)
+                for (int iter_j = 0; iter_j < circleParticles[iCircle] - iter_i - 1; iter_j++)
+                {
+                    int value0 = friends_list[Circle0_offset + iCircle * MAX_PARTICLES_IN_CIRCLE + iter_j + 0];
+                    int value1 = friends_list[Circle0_offset + iCircle * MAX_PARTICLES_IN_CIRCLE + iter_j + 1];
+                    friends_list[Circle0_offset + iCircle * MAX_PARTICLES_IN_CIRCLE + iter_j + 0] = min(value0, value1);
+                    friends_list[Circle0_offset + iCircle * MAX_PARTICLES_IN_CIRCLE + iter_j + 1] = max(value0, value1);
+                }
+        }
+    #endif
 
     // Save counters
     for (int j = 0; j < FRIENDS_CIRCLES; j++)
