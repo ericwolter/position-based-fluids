@@ -136,7 +136,7 @@ void UIManager_Init(GLFWwindow *window, CVisual *pRenderer, Simulation *pSim)
 
     // View related
     TwAddButton(mTweakBar, "View Reset",             View_Reset,         mRenderer,                     "group='View Controls' key=Z");
-    TwAddVarRW (mTweakBar, "Render Mode",            enumRenderViewMode, &mRenderer->UICmd_ColorMethod, "group='View Controls'");
+    TwAddVarRW (mTweakBar, "Render Mode",            enumRenderViewMode, &mRenderer->UICmd_DrawMode,    "group='View Controls'");
 
     // Sim debugging related
     TwAddVarRW (mTweakBar, "Friends Histogram",      TW_TYPE_BOOLCPP,   &mRenderer->UICmd_FriendsHistogarm, "group='Sim Debugging'");

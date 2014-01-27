@@ -40,6 +40,10 @@ class CVisual
 public:
     void KeyEvent(GLFWwindow *window, int key, int scancode, int action, int mods);
 
+private:
+    GLvoid swapTargets();
+
+    GLvoid renderFluidFinal(GLuint depthTexture);
 public:
     // Default constructor
     CVisual (const int windowWidth = 800, const int windowHeight = 600);
@@ -71,7 +75,7 @@ public:
     bool UICmd_ResetSimulation;
     bool UICmd_PauseSimulation;
     bool UICmd_FriendsHistogarm;
-    int  UICmd_ColorMethod;
+    int  UICmd_DrawMode;
 
 private:
     // Window stuff
@@ -81,7 +85,8 @@ private:
     int mFrameHeight;
 
     // Rendering
-    FBO *pTarget;
+    FBO *pPrevTarget;
+    FBO *pNextTarget;
     FBO *pFBO_Thickness;
 
     GLuint mParticleProgID;

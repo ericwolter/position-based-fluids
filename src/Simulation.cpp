@@ -307,7 +307,7 @@ void Simulation::updatePositions()
     mQueue.enqueueNDRangeKernel(mKernels["updatePositions"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updatePositions"));
 
     //SaveFile(mQueue, mVelocitiesBuffer, "Velo3");
-    SaveFile(mQueue, mPositionsPingBuffer, "pos1");
+    //SaveFile(mQueue, mPositionsPingBuffer, "pos1");
 }
 
 void Simulation::updateVelocities()

@@ -23,7 +23,7 @@ CVisual::CVisual (const int windowWidth, const int windowHeight)
       UICmd_ResetSimulation(false),
       UICmd_PauseSimulation(false),
       UICmd_FriendsHistogarm(false),
-      UICmd_ColorMethod(0),
+      UICmd_DrawMode(0),
       mWindowWidth(windowWidth),
       mWindowHeight(windowHeight),
       mSystemBufferID(0)
@@ -70,7 +70,8 @@ void CVisual::initWindow(const string windowname)
     // Get frame size (apple retina makes the frame size X2 the window size)
     glfwGetFramebufferSize(mWindow, &mFrameWidth, &mFrameHeight);
 
-    pTarget        = new FBO(1, true, mFrameWidth, mFrameHeight, GL_RGBA32F);
+    pPrevTarget    = new FBO(1, true, mFrameWidth, mFrameHeight, GL_RGBA32F);
+    pNextTarget    = new FBO(1, true, mFrameWidth, mFrameHeight, GL_RGBA32F);
     pFBO_Thickness = new FBO(1, true, mFrameWidth, mFrameHeight, GL_R16);
 
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
@@ -155,13 +156,35 @@ GLuint CVisual::createSharingBuffer(const GLsizei size) const
     return bufferID;
 }
 
+GLvoid CVisual::swapTargets()
+{
+    FBO* pTmp = pNextTarget;
+    pNextTarget = pPrevTarget;
+    pPrevTarget = pTmp;
+}
+
+
+GLvoid CVisual::renderFluidFinal(GLuint depthTexture)
+{
+    // Copy Result to screen buffer
+    g_ScreenFBO.SetAsDrawTarget();
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glUseProgram(g_SelectedProgram = mFluidFinalRenderProgID);
+    OGLU_BindTextureToUniform("depthTexture", 0, depthTexture);
+    glUniformMatrix4fv(UniformLoc("invProjectionMatrix"), 1, GL_FALSE, glm::value_ptr(mInvProjectionMatrix));
+    glUniform2f(UniformLoc("depthRange"), 0.1f, 10.0f);
+    
+    OGLU_RenderQuad(0, 0, 1.0, 1.0);
+}
+
 GLvoid CVisual::renderParticles()
 {
     // start buffer inspection
     OGSI_StartCycle();
 
     // Clear target
-    pTarget->SetAsDrawTarget();
+    pNextTarget->SetAsDrawTarget();
 
     glClearColor(0, 0, 0, 0);
     glClearDepth(1.0f);
@@ -174,7 +197,7 @@ GLvoid CVisual::renderParticles()
     glUniformMatrix4fv(UniformLoc("projectionMatrix"), 1, GL_FALSE, glm::value_ptr(mProjectionMatrix));
     glUniformMatrix4fv(UniformLoc("modelViewMatrix"),  1, GL_FALSE, glm::value_ptr(ZPR_ModelViewMatrix));
     glUniform1i(UniformLoc("particleCount"),    Params.particleCount);
-    glUniform1i(UniformLoc("colorMethod"),      UICmd_ColorMethod);
+    glUniform1i(UniformLoc("colorMethod"),      UICmd_DrawMode);
     glUniform1f(UniformLoc("widthOfNearPlane"), mWidthOfNearPlane);
     glUniform1f(UniformLoc("pointSize"),        Params.particleRenderSize);
 
@@ -187,28 +210,24 @@ GLvoid CVisual::renderParticles()
 
     // Draw particles
     glDrawArrays(GL_POINTS, 0, Params.particleCount);
+    swapTargets();
 
     // Unbind buffer
     glDisableVertexAttribArray(AttribLoc("position"));
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     // Inspect
-    if (OGSI_InspectTexture(pTarget->pColorTextureId[0], "Draw Particles [texture]", 1, 0)) return;
-    if (OGSI_InspectTexture(pTarget->pDepthTextureId,    "Draw Particles [depth]",   4, -3)) return;
+    if (OGSI_InspectTexture(pPrevTarget->pColorTextureId[0], "Draw Particles [texture]", 1, 0)) return;
+    if (OGSI_InspectTexture(pPrevTarget->pDepthTextureId,    "Draw Particles [depth]",   4, -3)) return;
 
     //
     // TODO: Depth Smoothing goes here !
     //
 
-    // Copy Result to screen buffer
-    g_ScreenFBO.SetAsDrawTarget();
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // Final fluid render
+    renderFluidFinal(pPrevTarget->pDepthTextureId);
 
-    glUseProgram(g_SelectedProgram = mFluidFinalRenderProgID);
-    OGLU_BindTextureToUniform("depthTexture", 0, pTarget->pDepthTextureId);
-    glUniformMatrix4fv(UniformLoc("invProjectionMatrix"), 1, GL_FALSE, glm::value_ptr(mInvProjectionMatrix));
-    OGLU_RenderQuad(0, 0, 1.0, 1.0);
-
+    // Unselect shader
     glUseProgram(0);
 }
 
