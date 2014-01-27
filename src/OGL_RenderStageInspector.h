@@ -3,7 +3,7 @@
 //
 #pragma once
 
-#include "Precomp_OpenGL.h";
+#include "Precomp_OpenGL.h"
 
 #include <string>
 using namespace std;

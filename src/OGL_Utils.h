@@ -39,7 +39,6 @@ public:
     int Height;
     int ColorFormat;
     int ColorTargets;
-    float DisplayScale;
 
     // Handles
     GLuint ID;
@@ -48,7 +47,7 @@ public:
 
     // Constructor & Destructor
     FBO();
-    FBO(int numOfTargets, bool createDepth, int width, int height, float displayScale, int internalFormat);
+    FBO(int numOfTargets, bool createDepth, int width, int height, int internalFormat);
 
     ~FBO();
 

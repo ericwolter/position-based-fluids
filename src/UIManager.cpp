@@ -12,7 +12,11 @@
 CTwGraphOpenGLCore tw;
 void *twFont;
 
-float       mDisplayscale = 1.0f;
+int         mWindowWidth;
+int         mWindowHeight;
+int         mFrameWidth;
+int         mFrameHeight;
+
 CTexFont    *mDisplayFont = g_DefaultSmallFont;
 
 GLFWwindow *mWindow;
@@ -35,8 +39,18 @@ void MouseButtonCB(GLFWwindow *window, int button, int action, int mods)
 
 void MousePosCB(GLFWwindow *window, double x, double y)
 {
-    TwEventMousePosGLFW((int)(x * mDisplayscale), (int)(y * mDisplayscale));
-    ZPR_EventMousePosGLFW(window, (int)(x * mDisplayscale), (int)(y * mDisplayscale));
+    // Convert Window -> Scaled -> Frame
+    float mousePosX = (float)x / mWindowWidth;
+    float mousePosY = (float)y / mWindowHeight;
+    int FrameX = (int)(mousePosX * mFrameWidth);
+    int FrameY = (int)(mousePosY * mFrameHeight);
+
+    // Notify Tweekbar
+    bool bProccesed = TwEventMousePosGLFW(FrameX, FrameY) != 0;
+
+    // Notify ZPR
+    if (!bProccesed)
+        ZPR_EventMousePosGLFW(window, FrameX, FrameY);
 }
 
 void KeyFunCB(GLFWwindow *window, int key, int scancode, int action, int mods)
@@ -120,17 +134,14 @@ void UIManager_Init(GLFWwindow *window, CVisual *pRenderer, Simulation *pSim)
     glfwSetScrollCallback(mWindow, MouseScrollCB );
     glfwSetKeyCallback(mWindow, KeyFunCB);
 
-    // Get window size
-    TwInit(TW_OPENGL_CORE, NULL);
-    int fbwidth , fbheight;
-    glfwGetFramebufferSize(mWindow, &fbwidth, &fbheight );
-    int width, height;
-    glfwGetWindowSize(mWindow, &width, &height);
-    TwWindowSize(fbwidth, fbheight);
+    // Get window and frame size
+    glfwGetFramebufferSize(mWindow, &mFrameWidth, &mFrameHeight);
+    glfwGetWindowSize(mWindow, &mWindowWidth, &mWindowHeight);
 
-    // Compute ratio...
-    mDisplayscale = (float)fbwidth / width;
-    mDisplayFont = mDisplayscale >= 2.0f ? g_DefaultNormalFont : g_DefaultSmallFont;
+    // Init TweekBar
+    TwInit(TW_OPENGL_CORE, NULL);
+    TwWindowSize(mWindowWidth, mWindowHeight);
+    mDisplayFont = mWindowWidth < mFrameWidth? g_DefaultNormalFont : g_DefaultSmallFont;
 
     mTweakBar = TwNewBar("PBFTweak");
     TwAddButton(mTweakBar, "Play/Pause",        PlayPause,        mRenderer, " group=Controls ");
@@ -159,9 +170,9 @@ void UIManager_Init(GLFWwindow *window, CVisual *pRenderer, Simulation *pSim)
 void DrawPerformanceGraph()
 {
     // Compute sizes
-    const int ViewWidth    = 1280 * mDisplayscale;
-    const int ViewHeight   = 720 * mDisplayscale;
-    const int BarHeight    = 20 * mDisplayscale;
+    const int ViewWidth    = mFrameWidth;
+    const int ViewHeight   = mFrameHeight;
+    const int BarHeight    = (int)(mFrameHeight * 0.03);
     const int BarWidth     = (int)(ViewWidth * 0.9);
     const int BarTop       = ViewHeight - BarHeight * 2;
     const int BarBottom    = BarTop + BarHeight;
@@ -176,8 +187,6 @@ void DrawPerformanceGraph()
         totalTime += mSim->PerfData.Trackers[i]->total_time;
 
     // Draw
-    //const color32 StartClr[] = {0xDE6866, 0x9ADE66, 0x66AADE};
-    //const color32 EndClr[]   = {0xDEA1A0, 0xBAE09D, 0x9ABFDB};
     const color32 StartClr[] = {0xFF0000, 0x00FF00, 0x0000FF};
     const color32 EndClr[]   = {0xA00000, 0x00A000, 0x0000A0};
     const color32 Alpha      = 0x80000000;
@@ -245,8 +254,8 @@ void DrawFriendsHistogram()
         histTotal += Histogram[iHist];
 
     // Define coordinates
-    const int ViewWidth    = 1280;
-    const int ViewHeight   = 720;
+    const int ViewWidth    = mFrameWidth;
+    const int ViewHeight   = mFrameHeight;
     const int HistWidth    = 100;
     const int HistHeight   = 100;
     const int HistTop      = 10;
@@ -312,7 +321,7 @@ void DrawAntTweakBar()
         // Create StageInspection combo options string
         std::ostringstream comboOptions; 
         comboOptions << " enum='0 {Off},";
-        for (size_t i = 1; i <= OGSI_Stages_Count; i++)
+        for (int i = 1; i <= OGSI_Stages_Count; i++)
             comboOptions << i << " " << " {" << OGSI_Stages[i-1] << "}" << (i != OGSI_Stages_Count ? "," : "");
         
         // Replace last "," with "'"

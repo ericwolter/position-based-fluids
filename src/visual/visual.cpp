@@ -17,15 +17,15 @@ using namespace std;
 #define isnan(x) _isnan(x)
 #endif
 
-CVisual::CVisual (const int width, const int height)
+CVisual::CVisual (const int windowWidth, const int windowHeight)
     : mWindow(NULL),
       UICmd_GenerateWaves(false),
       UICmd_ResetSimulation(false),
       UICmd_PauseSimulation(false),
       UICmd_FriendsHistogarm(false),
       UICmd_ColorMethod(0),
-      mWidth(width),
-      mHeight(height),
+      mWindowWidth(windowWidth),
+      mWindowHeight(windowHeight),
       mSystemBufferID(0)
 {
 }
@@ -55,7 +55,7 @@ void CVisual::initWindow(const string windowname)
 #endif
 
     // Create a windowed mode window and its OpenGL context
-    mWindow = glfwCreateWindow(mWidth, mHeight, windowname.c_str(), NULL, NULL);
+    mWindow = glfwCreateWindow(mWindowWidth, mWindowHeight, windowname.c_str(), NULL, NULL);
 
     // Make the window's context current
     glfwMakeContextCurrent(mWindow);
@@ -67,13 +67,11 @@ void CVisual::initWindow(const string windowname)
 #endif
     glewInit();
 
-    int fbwidth , fbheight;
-    glfwGetFramebufferSize(mWindow, &fbwidth, &fbheight );
+    // Get frame size (apple retina makes the frame size X2 the window size)
+    glfwGetFramebufferSize(mWindow, &mFrameWidth, &mFrameHeight);
 
-    float displayScale = (float)fbwidth / mWidth;
-
-    pTarget        = new FBO(1, true, mWidth, mHeight, displayScale, GL_RGBA32F);
-    pFBO_Thickness = new FBO(1, true, mWidth, mHeight, displayScale, GL_R16);
+    pTarget        = new FBO(1, true, mFrameWidth, mFrameHeight, GL_RGBA32F);
+    pFBO_Thickness = new FBO(1, true, mFrameWidth, mFrameHeight, GL_R16);
 
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     glEnable(GL_POINT_SPRITE);
@@ -88,14 +86,16 @@ void CVisual::initWindow(const string windowname)
 GLvoid CVisual::setupProjection()
 {
     // Compute projection matrix
-    float FOV = 45.0f;
-    mProjectionMatrix = glm::perspective(FOV, mWidth / (GLfloat) mHeight, 0.1f, 10.0f);
+    float aspect = mFrameWidth / (GLfloat) mFrameHeight;
+    float fovy = 45.0f;
+    mProjectionMatrix = glm::perspective(fovy, aspect, 0.1f, 10.0f);
     mInvProjectionMatrix = glm::inverse(mProjectionMatrix);
 
     // compute mWidthOfNearPlane
     int viewport[4];
     glGetIntegerv(GL_VIEWPORT, viewport);
-    mWidthOfNearPlane = (float)(abs(viewport[2] - viewport[0]) / (2.0f * tan(0.5f * FOV * M_PI / 180.0f)));
+    mWidthOfNearPlane = (float)(abs(viewport[2] - viewport[0]) / (2.0f * tan(0.5f * fovy * M_PI / 180.0f)));
+    
 
     // Update ZPR
     ZPR_SetupView(mProjectionMatrix, NULL);

@@ -42,7 +42,7 @@ public:
 
 public:
     // Default constructor
-    CVisual (const int width = 800, const int height = 600);
+    CVisual (const int windowWidth = 800, const int windowHeight = 600);
 
     ~CVisual(); // Destructor
 
@@ -75,8 +75,10 @@ public:
 
 private:
     // Window stuff
-    int mWidth;
-    int mHeight;
+    int mWindowWidth;
+    int mWindowHeight;
+    int mFrameWidth;
+    int mFrameHeight;
 
     // Rendering
     FBO *pTarget;
