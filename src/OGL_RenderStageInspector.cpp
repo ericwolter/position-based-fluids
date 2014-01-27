@@ -6,6 +6,9 @@ int    OGSI_StageToVisualize = MAXINT;
 bool   OGSI_SaveInspectionToFile = false;
 int    OGSI_Stages_Count;
 string OGSI_Stages[255];
+float  OGSI_SamplePixelCoordX;
+float  OGSI_SamplePixelCoordY;
+glm::vec4 OGSI_SamplePixelData;
 
 void OGSI_Setup(GLuint inspectionShader)
 {
@@ -17,10 +20,12 @@ void OGSI_StartCycle()
     OGSI_Stages_Count = 0;
 }
 
-void OGSI_SetVisualizeStage(int stageIndex, bool saveInspectionToFile)
+void OGSI_SetVisualizeStage(int stageIndex, bool saveInspectionToFile, float sampleX, float sampleY)
 {
     OGSI_StageToVisualize = stageIndex;
     OGSI_SaveInspectionToFile = saveInspectionToFile;
+    OGSI_SamplePixelCoordX = sampleX; 
+    OGSI_SamplePixelCoordY = sampleY;
 }
 
 bool OGSI_InspectTexture(GLuint textureID, char* szBufferTitle, float blitGain, float blitOffset)
@@ -38,6 +43,9 @@ bool OGSI_InspectTexture(GLuint textureID, char* szBufferTitle, float blitGain, 
         // Save texture to file (if save is enabled)
         if (OGSI_SaveInspectionToFile)
             OGLU_SaveTextureToFile(textureID, "inspect.raw");
+
+        // Get pixel value
+        OGSI_SamplePixelData = OGLU_SamplePixel(textureID, OGSI_SamplePixelCoordX, OGSI_SamplePixelCoordY);
 
         // Select shader
         glUseProgram(g_SelectedProgram = OGSI_Shader);

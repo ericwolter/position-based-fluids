@@ -28,6 +28,7 @@ GLuint OGLU_LoadProgram(const string vertexFilename, const string fragmentFilena
 GLuint OGLU_GenerateTexture(int Width, int Height, GLint InternalFormat, GLenum Format, GLenum Type, void *pPixels);
 void OGLU_BindTextureToUniform(const char *szUniform, GLuint nTextureUnit, GLuint nTextureID);
 void OGLU_SaveTextureToFile(GLuint nTextureID, string filename);
+glm::vec4 OGLU_SamplePixel(GLuint nTextureID, float x, float y);
 
 // FrameBufferObject class
 class FBO

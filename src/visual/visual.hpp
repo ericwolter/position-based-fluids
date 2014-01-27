@@ -71,7 +71,7 @@ public:
     bool UICmd_ResetSimulation;
     bool UICmd_PauseSimulation;
     bool UICmd_FriendsHistogarm;
-    bool UICmd_ColorMethod;
+    int  UICmd_ColorMethod;
 
 private:
     // Window stuff

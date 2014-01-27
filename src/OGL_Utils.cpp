@@ -288,6 +288,37 @@ void OGLU_SaveTextureToFile(GLuint nTextureID, string filename)
     delete[] pBuf;
 }
 
+glm::vec4 OGLU_SamplePixel(GLuint nTextureID, float x, float y)
+{
+    // Get texture size
+    GLint texWidth = 0;
+    GLint texHeight = 0;
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, nTextureID); 
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &texWidth);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &texHeight);
+
+    // Compute size
+    int byteSize = texWidth * texHeight * sizeof(float);
+
+    // Read texture
+    float* pBuf = new float[byteSize];
+    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, pBuf);
+
+    // Read pixel
+    int ix = (int)(x * texWidth + 0.5f);
+    int iy = (int)((1-y) * texHeight + 0.5f);
+    int offset = (texWidth * iy + ix) * 4;
+    glm::vec4 ret = glm::vec4(pBuf[offset + 0], pBuf[offset + 1], pBuf[offset + 2], pBuf[offset + 3]);
+
+    // release buffer
+    delete[] pBuf;
+
+    // return pixel
+    return ret;
+}
+
 FBO::FBO()
 {
     Width           = 0;

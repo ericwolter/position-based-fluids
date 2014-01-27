@@ -24,11 +24,15 @@ CVisual    *mRenderer;
 Simulation *mSim;
 TwBar      *mTweakBar;
 double      mTotalSimTime;
+float       mMousePosX;
+float       mMousePosY;
 
 int  UIM_SelectedInspectionStage;
 bool UIM_SaveInspectionStage = false;
+int  UIM_RenderMode;
 
 bool mIsFirstCycle = true;
+int  Prev_OGSI_Stages_Count = 0;
 
 
 void MouseButtonCB(GLFWwindow *window, int button, int action, int mods)
@@ -40,10 +44,10 @@ void MouseButtonCB(GLFWwindow *window, int button, int action, int mods)
 void MousePosCB(GLFWwindow *window, double x, double y)
 {
     // Convert Window -> Scaled -> Frame
-    float mousePosX = (float)x / mWindowWidth;
-    float mousePosY = (float)y / mWindowHeight;
-    int FrameX = (int)(mousePosX * mFrameWidth);
-    int FrameY = (int)(mousePosY * mFrameHeight);
+    mMousePosX = (float)x / mWindowWidth;
+    mMousePosY = (float)y / mWindowHeight;
+    int FrameX = (int)(mMousePosX * mFrameWidth);
+    int FrameY = (int)(mMousePosY * mFrameHeight);
 
     // Notify Tweekbar
     bool bProccesed = TwEventMousePosGLFW(FrameX, FrameY) != 0;
@@ -71,11 +75,6 @@ void MouseScrollCB(GLFWwindow *window, double x, double y)
     ZPR_EventMouseWheelGLFW(window, y);
 }
 
-void TW_CALL PlayPause(void *clientData)
-{
-    ((CVisual *)clientData)->UICmd_PauseSimulation = !((CVisual *)clientData)->UICmd_PauseSimulation;
-}
-
 void TW_CALL Reset(void *clientData)
 {
     ((CVisual *)clientData)->UICmd_ResetSimulation = true;
@@ -86,29 +85,9 @@ void TW_CALL DumpParticlesData(void *clientData)
     ((Simulation*)clientData)->bDumpParticlesData = true;
 }
 
-void TW_CALL GenerateWaves(void *clientData)
-{
-    ((CVisual *)clientData)->UICmd_GenerateWaves = !((CVisual *)clientData)->UICmd_GenerateWaves;
-}
-
-void TW_CALL ShowVelocity(void *clientData)
-{
-    ((CVisual *)clientData)->UICmd_ColorMethod = 0;
-}
-
-void TW_CALL ShowSorting(void *clientData)
-{
-    ((CVisual *)clientData)->UICmd_ColorMethod = 1;
-}
-
 void TW_CALL SaveInspection(void *clientData)
 {
     UIM_SaveInspectionStage = true;
-}
-
-void TW_CALL FriendsHistogram(void *clientData)
-{
-    ((CVisual *)clientData)->UICmd_FriendsHistogarm = !((CVisual *)clientData)->UICmd_FriendsHistogarm;
 }
 
 void TW_CALL View_Reset(void *clientData)
@@ -144,27 +123,43 @@ void UIManager_Init(GLFWwindow *window, CVisual *pRenderer, Simulation *pSim)
     mDisplayFont = mWindowWidth < mFrameWidth? g_DefaultNormalFont : g_DefaultSmallFont;
 
     mTweakBar = TwNewBar("PBFTweak");
-    TwAddButton(mTweakBar, "Play/Pause",        PlayPause,        mRenderer, " group=Controls ");
-    TwAddButton(mTweakBar, "Reset",             Reset,            mRenderer, " group=Controls ");
-    TwAddButton(mTweakBar, "Generate waves",    GenerateWaves,    mRenderer, " group=Controls ");
-    TwAddButton(mTweakBar, "Firends Histogram", FriendsHistogram, mRenderer, " group=Controls ");
+    TwDefine(" PBFTweak size='240 400' "); 
 
-    TwAddButton(mTweakBar, "View Reset",        View_Reset,       mRenderer, " group=View ");
-    TwAddButton(mTweakBar, "Show velocity",     ShowVelocity,     mRenderer, " group=View ");
-    TwAddButton(mTweakBar, "Show sorting",      ShowSorting,      mRenderer, " group=View ");
-    TwAddButton(mTweakBar, "Save Inspection",   SaveInspection,   mRenderer, " group=View ");
+    // Define enums
+    TwType enumRenderViewMode = TwDefineEnumFromString("enumRenderViewMode", "Velocity,Sorting");
+    TwType enumInstStage      = TwDefineEnum("enumInspectionStages", NULL, 0);
 
-    // Create bar
-    TwAddButton(mTweakBar, "Dump Part. Data", DumpParticlesData, mSim, " group=Debug ");
+    // Sim related
+    TwAddButton(mTweakBar, "Reset",             Reset,              mRenderer,                         "group='Sim Controls' key=R");
+    TwAddVarRW (mTweakBar, "Pause Sim",         TW_TYPE_BOOLCPP,    &mRenderer->UICmd_PauseSimulation, "group='Sim Controls' key=P");
+    TwAddVarRW (mTweakBar, "Generate waves",    TW_TYPE_BOOLCPP,    &mRenderer->UICmd_GenerateWaves,   "group='Sim Controls' key=W");
+
+    // View related
+    TwAddButton(mTweakBar, "View Reset",             View_Reset,         mRenderer,                     "group='View Controls' key=Z");
+    TwAddVarRW (mTweakBar, "Render Mode",            enumRenderViewMode, &mRenderer->UICmd_ColorMethod, "group='View Controls'");
+
+    // Sim debugging related
+    TwAddVarRW (mTweakBar, "Friends Histogram",      TW_TYPE_BOOLCPP,   &mRenderer->UICmd_FriendsHistogarm, "group='Sim Debugging'");
+    TwAddButton(mTweakBar, "Dump Particles Data",    DumpParticlesData, mSim,                               "group='Sim Debugging'");
+
+    // View debugging related
+    TwAddButton(mTweakBar, "Save Inspection",       SaveInspection,   mRenderer, "group='View Debugging'");
+    TwAddVarRO(mTweakBar, "Mouse.X", TW_TYPE_FLOAT, &mMousePosX, "precision=4 group='View Debugging'");
+    TwAddVarRO(mTweakBar, "Mouse.Y", TW_TYPE_FLOAT, &mMousePosY, "precision=4 group='View Debugging'");
+    TwAddVarRO(mTweakBar, "Data.X", TW_TYPE_FLOAT, &OGSI_SamplePixelData.x, "precision=4 group='View Debugging'");
+    TwAddVarRO(mTweakBar, "Data.Y", TW_TYPE_FLOAT, &OGSI_SamplePixelData.y, "precision=4 group='View Debugging'");
+    TwAddVarRO(mTweakBar, "Data.Z", TW_TYPE_FLOAT, &OGSI_SamplePixelData.z, "precision=4 group='View Debugging'");
+    TwAddVarRO(mTweakBar, "Data.W", TW_TYPE_FLOAT, &OGSI_SamplePixelData.w, "precision=4 group='View Debugging'");
+    TwAddVarRW(mTweakBar, "InspectionStage", enumInstStage, &UIM_SelectedInspectionStage, "label='Inspection Stage' group='View Debugging'");
 
     // Timing
     TwAddVarRO(mTweakBar, "Total sim time", TW_TYPE_DOUBLE, &mTotalSimTime, "precision=2 group=Stats");
 
+    // Init drawing ATB
     g_TwMgr->m_GraphAPI = TW_OPENGL_CORE;
     tw.Init();
     TwGenerateDefaultFonts(1.0);
     twFont = tw.NewTextObj();
-
 }
 
 void DrawPerformanceGraph()
@@ -317,10 +312,17 @@ void DrawAntTweakBar()
 
         // Make sure Stats group is folded
         TwDefine(" PBFTweak/Stats opened=false ");
+    }
+
+    // Check if we need to refresh OGSI stage list
+    if (Prev_OGSI_Stages_Count != OGSI_Stages_Count)
+    {
+        // Save OGSI_Stages_Count
+        Prev_OGSI_Stages_Count = OGSI_Stages_Count;
 
         // Create StageInspection combo options string
         std::ostringstream comboOptions; 
-        comboOptions << " enum='0 {Off},";
+        comboOptions << "PBFTweak/InspectionStage enum='0 {Final},";
         for (int i = 1; i <= OGSI_Stages_Count; i++)
             comboOptions << i << " " << " {" << OGSI_Stages[i-1] << "}" << (i != OGSI_Stages_Count ? "," : "");
         
@@ -328,9 +330,8 @@ void DrawAntTweakBar()
         string comboOptionsStr = comboOptions.str();
         comboOptionsStr[comboOptionsStr.length()] = '\'';
 
-        // Add Combo to ATB
-        TwType instStageEnum = TwDefineEnum("InspectionStages", NULL, 0);
-        TwAddVarRW(mTweakBar, "Inspection Stage", instStageEnum, &UIM_SelectedInspectionStage, comboOptionsStr.c_str());
+        // Update define
+        TwDefine(comboOptionsStr.c_str());
     }
 
     // Accumulate execution time
@@ -346,7 +347,7 @@ void DrawAntTweakBar()
     TwDraw();
 
     // Update stage inspection index
-    OGSI_SetVisualizeStage(UIM_SelectedInspectionStage == 0 ? MAXINT : UIM_SelectedInspectionStage - 1, UIM_SaveInspectionStage);
+    OGSI_SetVisualizeStage(UIM_SelectedInspectionStage == 0 ? MAXINT : UIM_SelectedInspectionStage - 1, UIM_SaveInspectionStage, mMousePosX, mMousePosY);
     UIM_SaveInspectionStage = false;
 }
 
