@@ -20,12 +20,12 @@ Simulation::Simulation(const cl::Context &clContext, const cl::Device &clDevice)
       mCLDevice(clDevice),
       mCells(NULL),
       mParticlesList(NULL),
+      bDumpParticlesData(false),
       mPositions(NULL),
       mVelocities(NULL),
       mPredictions(NULL),
       mDeltas(NULL),
-      mFriendsList(NULL),
-      bDumpParticlesData(false)
+      mFriendsList(NULL)
 {
 }
 
@@ -274,7 +274,7 @@ int dumpSession = 0;
 int dumpCounter = 0;
 int cycleCounter = 0;
 
-void SaveFile(cl::CommandQueue queue, cl::Buffer buffer, char* szFilename)
+void SaveFile(cl::CommandQueue queue, cl::Buffer buffer, const char* szFilename)
 {
     // Exit if dump session is disabled
     if (dumpSession == 0)
