@@ -1,3 +1,4 @@
+#include "limits.h"
 
 #include "UIManager.h"
 #include "ParamUtils.hpp"
@@ -32,7 +33,7 @@ bool UIM_SaveInspectionStage = false;
 int  UIM_RenderMode;
 
 bool mIsFirstCycle = true;
-int  Prev_OGSI_Stages_Count = 0;
+unsigned int  Prev_OGSI_Stages_Count = 0;
 
 
 void MouseButtonCB(GLFWwindow *window, int button, int action, int mods)
@@ -87,6 +88,7 @@ void TW_CALL DumpParticlesData(void *clientData)
 
 void TW_CALL SaveInspection(void *clientData)
 {
+    (void)clientData;
     UIM_SaveInspectionStage = true;
 }
 
@@ -323,7 +325,7 @@ void DrawAntTweakBar()
         // Create StageInspection combo options string
         std::ostringstream comboOptions; 
         comboOptions << "PBFTweak/InspectionStage enum='0 {Final},";
-        for (int i = 1; i <= OGSI_Stages_Count; i++)
+        for (unsigned int i = 1; i <= OGSI_Stages_Count; i++)
             comboOptions << i << " " << " {" << OGSI_Stages[i-1] << "}" << (i != OGSI_Stages_Count ? "," : "");
         
         // Replace last "," with "'"
@@ -347,7 +349,7 @@ void DrawAntTweakBar()
     TwDraw();
 
     // Update stage inspection index
-    OGSI_SetVisualizeStage(UIM_SelectedInspectionStage == 0 ? MAXINT : UIM_SelectedInspectionStage - 1, UIM_SaveInspectionStage, mMousePosX, mMousePosY);
+    OGSI_SetVisualizeStage(UIM_SelectedInspectionStage == 0 ? INT_MAX : UIM_SelectedInspectionStage - 1, UIM_SaveInspectionStage, mMousePosX, mMousePosY);
     UIM_SaveInspectionStage = false;
 }
 

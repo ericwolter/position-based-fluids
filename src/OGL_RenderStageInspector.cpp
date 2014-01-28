@@ -1,10 +1,12 @@
 #include "OGL_RenderStageInspector.h"
 #include "OGL_Utils.h"
 
+#include "limits.h"
+
 GLuint OGSI_Shader;
-int    OGSI_StageToVisualize = MAXINT;
+unsigned int    OGSI_StageToVisualize = UINT_MAX;
 bool   OGSI_SaveInspectionToFile = false;
-int    OGSI_Stages_Count;
+unsigned int    OGSI_Stages_Count;
 string OGSI_Stages[255];
 float  OGSI_SamplePixelCoordX;
 float  OGSI_SamplePixelCoordY;
@@ -28,7 +30,7 @@ void OGSI_SetVisualizeStage(int stageIndex, bool saveInspectionToFile, float sam
     OGSI_SamplePixelCoordY = sampleY;
 }
 
-bool OGSI_InspectTexture(GLuint textureID, char* szBufferTitle, float blitGain, float blitOffset)
+bool OGSI_InspectTexture(GLuint textureID, const char* szBufferTitle, float blitGain, float blitOffset)
 {
     // Check if we should top rendering
     if (OGSI_StageToVisualize < OGSI_Stages_Count)

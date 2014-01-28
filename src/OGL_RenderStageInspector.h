@@ -10,7 +10,7 @@
 using namespace std;
 
 // A list of last cycles inspection points
-extern int    OGSI_Stages_Count;
+extern unsigned int    OGSI_Stages_Count;
 extern string OGSI_Stages[255];
 extern glm::vec4 OGSI_SamplePixelData;
 
@@ -25,4 +25,4 @@ void OGSI_StartCycle();
 void OGSI_SetVisualizeStage(int stageIndex, bool saveInspectionToFile, float sampleX, float sampleY);
 
 // Use this function to add an "inspection point"
-bool OGSI_InspectTexture(GLuint textureID, char* szBufferTitle, float blitGain, float blitOffset);
+bool OGSI_InspectTexture(GLuint textureID, const char* szBufferTitle, float blitGain, float blitOffset);

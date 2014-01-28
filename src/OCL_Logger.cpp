@@ -5,11 +5,11 @@
 #include <regex>
 
 OCL_Logger::OCL_Logger() : 
-    m_debugBuf(),
-    m_msgMap(),
-    m_localBuf(NULL),
+    m_bufferSize(0),
     m_lastReportIndex(0),
-    m_bufferSize(0)
+    m_debugBuf(),
+    m_localBuf(NULL),
+    m_msgMap()
 {
 }
 
