@@ -29,12 +29,10 @@
 
 #else
 
-    #define CL_USE_DEPRECATED_OPENCL_1_1_APIS
     #define __CL_ENABLE_EXCEPTIONS
-    #undef CL_VERSION_1_2
-    #define CL_VERSION_1_1
 
     #if defined(_WINDOWS) 
+        #pragma warning( disable : 4290 )
         #include "ocl/cl.hpp"
     #else
         #pragma GCC diagnostic push

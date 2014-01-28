@@ -99,7 +99,7 @@ GLvoid CVisual::setupProjection()
     mWidthOfNearPlane = (float)(abs(viewport[2] - viewport[0]) / (2.0f * tan(0.5f * fovy * M_PI / 180.0f)));
     
     // compute mInvFocalLen
-    float tan_half_fovy  = tan(fovy * M_PI / 180.0f / 2.0);
+    float tan_half_fovy = (float)tan(fovy * M_PI / 180.0 / 2.0);
     mInvFocalLen = glm::vec2(tan_half_fovy * aspect, tan_half_fovy);
 
     // Update ZPR
