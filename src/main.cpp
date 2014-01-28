@@ -135,7 +135,9 @@ int main()
 #endif // __APPLE__
 
         // Get context for device
-        cl::Context context = cl::Context(ocl_device, properties);
+        std::vector<cl::Device> devices;
+        devices.push_back(ocl_device);
+        cl::Context context = cl::Context(devices, properties);
 
         // Create simulation object
         Simulation simulation(context, ocl_device);

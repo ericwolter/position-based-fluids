@@ -1,6 +1,6 @@
 __kernel void updatePositions(__global float4 *positions,
                               const __global float4 *predicted,
-                              __write_only __global image2d_t texPositions,
+                              __write_only image2d_t texPositions,
                               __global float4 *velocities,
                               const __global float4 *deltaVelocities,
                               const uint N)
