@@ -121,7 +121,7 @@ void UIManager_Init(GLFWwindow *window, CVisual *pRenderer, Simulation *pSim)
 
     // Init TweekBar
     TwInit(TW_OPENGL_CORE, NULL);
-    TwWindowSize(mWindowWidth, mWindowHeight);
+    TwWindowSize(mFrameWidth, mFrameHeight);
     mDisplayFont = mWindowWidth < mFrameWidth? g_DefaultNormalFont : g_DefaultSmallFont;
 
     mTweakBar = TwNewBar("PBFTweak");
