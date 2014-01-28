@@ -78,6 +78,8 @@ SET(SHADERS
     "${HESP_SOURCE_DIR}/src/shaders/standard.vs"
     "${HESP_SOURCE_DIR}/src/shaders/standard_color.fs"
     "${HESP_SOURCE_DIR}/src/shaders/standard_copy.fs"
+    "${HESP_SOURCE_DIR}/src/shaders/fluid_depth_smoothing.fs"
+    "${HESP_SOURCE_DIR}/src/shaders/fluid_final_render.fs"
 )
 
 SET(SCENARIOS

@@ -190,6 +190,8 @@ void Simulation::InitBuffers()
     // Create buffers
     mPositionsPingBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharingPingBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
     mPositionsPongBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharingPongBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
+    mParticlePosTexBuf     = cl::Image2DGL(mCLContext, CL_MEM_READ_WRITE, GL_TEXTURE_2D, 0, mSharingParticlesPos);
+
     mPredictedPingBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mPredictedPongBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mVelocitiesBuffer      = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
@@ -231,6 +233,11 @@ void Simulation::InitBuffers()
     // Copy mVelocities (Host) => mVelocitiesBuffer (GPU)
     mQueue.enqueueWriteBuffer(mVelocitiesBuffer, CL_TRUE, 0, mBufferSizeParticles, mVelocities);
     mQueue.finish();
+
+    // Copy mVelocities (Host) => mVelocitiesBuffer (GPU)
+    mQueue.enqueueWriteBuffer(mVelocitiesBuffer, CL_TRUE, 0, mBufferSizeParticles, mVelocities);
+    mQueue.finish();
+
 }
 
 void Simulation::InitCells()
@@ -300,6 +307,7 @@ void Simulation::updatePositions()
     int param = 0;
     mKernels["updatePositions"].setArg(param++, mPositionsPingBuffer);
     mKernels["updatePositions"].setArg(param++, mPredictedPingBuffer);
+    mKernels["updatePositions"].setArg(param++, mParticlePosTexBuf);
     mKernels["updatePositions"].setArg(param++, mVelocitiesBuffer);
     mKernels["updatePositions"].setArg(param++, mDeltaVelocityBuffer);
     mKernels["updatePositions"].setArg(param++, Params.particleCount);
@@ -615,6 +623,7 @@ void Simulation::Step()
     vector<cl::Memory> sharedBuffers;
     sharedBuffers.push_back(mPositionsPingBuffer);
     sharedBuffers.push_back(mPositionsPongBuffer);
+    sharedBuffers.push_back(mParticlePosTexBuf);
     mQueue.enqueueAcquireGLObjects(&sharedBuffers);
 
     // Predicit positions

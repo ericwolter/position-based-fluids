@@ -1,5 +1,6 @@
 __kernel void updatePositions(__global float4 *positions,
                               const __global float4 *predicted,
+                              __write_only __global image2d_t texPositions,
                               __global float4 *velocities,
                               const __global float4 *deltaVelocities,
                               const uint N)
@@ -7,8 +8,12 @@ __kernel void updatePositions(__global float4 *positions,
     const uint i = get_global_id(0);
     if (i >= N) return;
 
-    positions[i].xyz = predicted[i].xyz;
-    //velocities[i].xyz += deltaVelocities[i].xyz;
+    float4 newPos = predicted[i];
+    positions[i].xyz = newPos.xyz;
+    
+    // Update position texture
+    int imgWidth = get_image_width(texPositions);
+    write_imagef(texPositions, (int2)(i % imgWidth, i / imgWidth), newPos);
 
     // Ugly hack to cirumvent particles resetting if sorting is done in the beginning
     float3 dV = deltaVelocities[i].xyz;

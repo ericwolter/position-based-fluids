@@ -136,6 +136,7 @@ void UIManager_Init(GLFWwindow *window, CVisual *pRenderer, Simulation *pSim)
 
     // View related
     TwAddButton(mTweakBar, "View Reset",             View_Reset,         mRenderer,                     "group='View Controls' key=Z");
+    TwAddVarRW (mTweakBar, "Depth Smoothing",        TW_TYPE_BOOLCPP,    &mRenderer->UICmd_SmoothDepth, "group='View Controls' key=S");
     TwAddVarRW (mTweakBar, "Render Mode",            enumRenderViewMode, &mRenderer->UICmd_DrawMode,    "group='View Controls'");
 
     // Sim debugging related

@@ -24,6 +24,7 @@ CVisual::CVisual (const int windowWidth, const int windowHeight)
       UICmd_PauseSimulation(false),
       UICmd_FriendsHistogarm(false),
       UICmd_DrawMode(0),
+      UICmd_SmoothDepth(false),
       mWindowWidth(windowWidth),
       mWindowHeight(windowHeight),
       mSystemBufferID(0)
@@ -97,6 +98,9 @@ GLvoid CVisual::setupProjection()
     glGetIntegerv(GL_VIEWPORT, viewport);
     mWidthOfNearPlane = (float)(abs(viewport[2] - viewport[0]) / (2.0f * tan(0.5f * fovy * M_PI / 180.0f)));
     
+    // compute mInvFocalLen
+    float tan_half_fovy  = tan(fovy * M_PI / 180.0f / 2.0);
+    mInvFocalLen = glm::vec2(tan_half_fovy * aspect, tan_half_fovy);
 
     // Update ZPR
     ZPR_SetupView(mProjectionMatrix, NULL);
@@ -121,6 +125,7 @@ const string *CVisual::ShaderFileList()
         "standard.vs",
         "standard_copy.fs",
         "standard_color.fs",
+        "fluid_depth_smoothing.fs",
         "fluid_final_render.fs",
         ""
     };
@@ -133,6 +138,7 @@ bool CVisual::initShaders()
     // Load Shaders
     bool bLoadOK = true;
     bLoadOK = bLoadOK && (mParticleProgID         = OGLU_LoadProgram(getPathForShader("particles.vs"), getPathForShader("particles_color.fs")));
+    bLoadOK = bLoadOK && (mFluidDepthSmoothProgID = OGLU_LoadProgram(getPathForShader("standard.vs"),  getPathForShader("fluid_depth_smoothing.fs")));
     bLoadOK = bLoadOK && (mFluidFinalRenderProgID = OGLU_LoadProgram(getPathForShader("standard.vs"),  getPathForShader("fluid_final_render.fs")));
     bLoadOK = bLoadOK && (mStandardCopyProgID     = OGLU_LoadProgram(getPathForShader("standard.vs"),  getPathForShader("standard_copy.fs")));
     bLoadOK = bLoadOK && (mStandardColorProgID    = OGLU_LoadProgram(getPathForShader("standard.vs"),  getPathForShader("standard_color.fs")));
@@ -156,6 +162,12 @@ GLuint CVisual::createSharingBuffer(const GLsizei size) const
     return bufferID;
 }
 
+GLuint CVisual::createSharingTexture(const GLsizei width, const GLsizei height) const
+{
+    GLuint texID = OGLU_GenerateTexture(width, height, GL_RGBA32F, GL_RGBA, GL_FLOAT, NULL);
+    return texID;
+}
+
 GLvoid CVisual::swapTargets()
 {
     FBO* pTmp = pNextTarget;
@@ -163,6 +175,26 @@ GLvoid CVisual::swapTargets()
     pPrevTarget = pTmp;
 }
 
+GLvoid CVisual::renderFluidSmoothDepth()
+{
+    pNextTarget->SetAsDrawTarget();
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    //ZPR_ModelViewMatrix = glm::inverse(ZPR_InvModelViewMatrix);
+    ZPR_InvModelViewMatrix = glm::inverse(ZPR_ModelViewMatrix);
+    glUseProgram(g_SelectedProgram = mFluidDepthSmoothProgID);
+    OGLU_BindTextureToUniform("depthTexture", 0, pPrevTarget->pDepthTextureId);
+    OGLU_BindTextureToUniform("particlesPos", 1, mSimulation->mSharingParticlesPos);
+    glUniformMatrix4fv(UniformLoc("iMV_Matrix"), 1, GL_FALSE, glm::value_ptr(ZPR_InvModelViewMatrix));
+    glUniformMatrix4fv(UniformLoc("MV_Matrix"),  1, GL_FALSE, glm::value_ptr(ZPR_ModelViewMatrix));
+    glUniformMatrix4fv(UniformLoc("Proj_Matrix"), 1, GL_FALSE, glm::value_ptr(mProjectionMatrix));
+    glUniform2f(UniformLoc("depthRange"), 0.1f, 10.0f);
+    glUniform2fv(UniformLoc("invFocalLen"), 1, glm::value_ptr(mInvFocalLen));
+    glUniform1i(UniformLoc("particlesCount"), Params.particleCount);
+
+    OGLU_RenderQuad(0, 0, 1.0, 1.0);
+    swapTargets();
+}
 
 GLvoid CVisual::renderFluidFinal(GLuint depthTexture)
 {
@@ -219,13 +251,22 @@ GLvoid CVisual::renderParticles()
     // Inspect
     if (OGSI_InspectTexture(pPrevTarget->pColorTextureId[0], "Draw Particles [texture]", 1, 0)) return;
     if (OGSI_InspectTexture(pPrevTarget->pDepthTextureId,    "Draw Particles [depth]",   4, -3)) return;
+    if (OGSI_InspectTexture(mSimulation->mSharingParticlesPos,    "ParticlePos",   1, 0)) return;
 
-    //
-    // TODO: Depth Smoothing goes here !
-    //
+    // Smooth fluid depth
+    GLuint depthTexture = pPrevTarget->pDepthTextureId;
+    if (UICmd_SmoothDepth)
+    {
+        renderFluidSmoothDepth();
+        
+        if (OGSI_InspectTexture(pPrevTarget->pColorTextureId[0], "DepthSmooth [texture]", 1, 0)) return;
+
+        // Change next step input to smoothed depth
+        depthTexture = pPrevTarget->pColorTextureId[0];
+    }
 
     // Final fluid render
-    renderFluidFinal(pPrevTarget->pDepthTextureId);
+    renderFluidFinal(depthTexture);
 
     // Unselect shader
     glUseProgram(0);

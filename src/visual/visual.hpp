@@ -43,7 +43,10 @@ public:
 private:
     GLvoid swapTargets();
 
+    GLvoid renderFluidSmoothDepth();
+
     GLvoid renderFluidFinal(GLuint depthTexture);
+
 public:
     // Default constructor
     CVisual (const int windowWidth = 800, const int windowHeight = 600);
@@ -68,6 +71,8 @@ public:
 
     GLuint createSharingBuffer(const GLsizei size) const;
 
+    GLuint createSharingTexture(const GLsizei width, const GLsizei height) const;
+
 public:
     GLFWwindow *mWindow;
 
@@ -76,6 +81,7 @@ public:
     bool UICmd_PauseSimulation;
     bool UICmd_FriendsHistogarm;
     int  UICmd_DrawMode;
+    bool UICmd_SmoothDepth;
 
 private:
     // Window stuff
@@ -91,11 +97,13 @@ private:
 
     GLuint mParticleProgID;
     GLuint mFluidFinalRenderProgID;
+    GLuint mFluidDepthSmoothProgID;
     GLuint mStandardCopyProgID;
     GLuint mStandardColorProgID;
 
     // Projection related
     float mWidthOfNearPlane;
+    glm::vec2 mInvFocalLen;
     glm::mat4 mProjectionMatrix;
     glm::mat4 mInvProjectionMatrix;
 

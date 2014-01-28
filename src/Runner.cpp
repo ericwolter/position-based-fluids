@@ -54,6 +54,7 @@ void Runner::run(Simulation &simulation, CVisual &renderer)
                 // Generate shared buffer
                 simulation.mSharingPingBufferID = renderer.createSharingBuffer(Params.particleCount * sizeof(cl_float4));
                 simulation.mSharingPongBufferID = renderer.createSharingBuffer(Params.particleCount * sizeof(cl_float4));
+                simulation.mSharingParticlesPos = renderer.createSharingTexture(2048, (Params.particleCount + 2048 - 1) / 2048);
 
                 // Init buffers
                 simulation.InitBuffers();

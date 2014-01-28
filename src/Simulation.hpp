@@ -74,6 +74,8 @@ public:
     cl::Buffer mOmegaBuffer;
     cl::Buffer mParameters;
 
+    cl::Image2DGL mParticlePosTexBuf;
+
     // Radix buffers
     cl::Buffer mInKeysBuffer;
     cl::Buffer mInPermutationBuffer;
@@ -131,6 +133,9 @@ public:
     // Open GL Sharing buffers
     GLuint mSharingPingBufferID;
     GLuint mSharingPongBufferID;
+
+    // Open GL Sharing Texture buffer
+    GLuint mSharingParticlesPos;
 
     // Performance measurement
     OCLPerfMon PerfData;
