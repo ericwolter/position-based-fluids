@@ -14,16 +14,8 @@ __kernel void updatePositions(__global float4 *positions,
     // Update position texture
     int imgWidth = get_image_width(texPositions);
     write_imagef(texPositions, (int2)(i % imgWidth, i / imgWidth), newPos);
-
-    // Ugly hack to cirumvent particles resetting if sorting is done in the beginning
-    float3 dV = deltaVelocities[i].xyz;
-    float l_dV = fast_length(dV);
-    if(l_dV > 1.0f) {
-        dV = normalize(dV);
-    }
     
-    velocities[i].xyz += dV;
-
+    velocities[i].xyz += deltaVelocities[i].xyz;
     positions[i].w = length(velocities[i].xyz);
 
     // #if defined(USE_DEBUG)
