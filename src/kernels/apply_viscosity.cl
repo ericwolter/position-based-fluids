@@ -40,7 +40,7 @@ __kernel void applyViscosity(
             const float3 r = predicted[i].xyz - predicted[j_index].xyz;
             const float r_length_2 = (r.x * r.x + r.y * r.y + r.z * r.z);
 
-            if (r_length_2 > 0.0f && r_length_2 < Params->h_2)
+            if (r_length_2 < Params->h_2)
             {
                 // ignore particles where the density is zero
                 // this is either a numerical issue or a problem

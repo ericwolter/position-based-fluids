@@ -45,7 +45,7 @@ __kernel void computeScaling(__constant struct Parameters *Params,
             const float r_length_2 = r.x * r.x + r.y * r.y + r.z * r.z;
 
             // Required for numerical stability
-            if (r_length_2 > 0.0f && r_length_2 < Params->h_2)
+            if (r_length_2 < Params->h_2)
             {
                 const float r_length = sqrt(r_length_2);
 
