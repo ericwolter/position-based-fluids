@@ -522,6 +522,7 @@ void Simulation::radixsort()
         mKernels["scanhistograms"].setArg(1, sizeof(cl_uint)* maxmemcache, NULL);
         mKernels["scanhistograms"].setArg(2, mGlobSumBuffer);
         mQueue.enqueueNDRangeKernel(mKernels["scanhistograms"], 0, cl::NDRange(sh1_nbitems), cl::NDRange(sh1_nblocitems), NULL, PerfData.GetTrackerEvent("scanhistograms1", pass));
+        mQueue.finish();
 
         const size_t sh2_nbitems = _HISTOSPLIT / 2;
         const size_t sh2_nblocitems = sh2_nbitems;
