@@ -4,7 +4,7 @@ uniform sampler2D depthTexture;
 uniform mat4      invProjectionMatrix;
 
 // outputs
-out vec4 output; 
+out vec4 result; 
 
 // Local variables
 ivec2 frameSize; 
@@ -50,5 +50,5 @@ void main()
     
     vec3 normal = normalize(cross(ddx, ddy));
     
-    output = vec4(normal, 1);
+    result = vec4(normal, 1);
 }

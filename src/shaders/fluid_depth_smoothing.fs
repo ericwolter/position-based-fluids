@@ -12,7 +12,7 @@ uniform vec2      invFocalLen; // See http://stackoverflow.com/questions/1764722
 uniform int       particlesCount;
 
 // outputs
-out vec4 output; 
+out vec4 result; 
 
 // Local variables
 ivec2 frameSize; 
@@ -173,7 +173,7 @@ void main()
     float zbufferDepth = ViewSpaceDepth_to_ZBufferDepth(viewSpaceDepth);
     
     // Compose result
-    output = vec4(zbufferDepth, 0, 0, 1);
+    result = vec4(zbufferDepth, 0, 0, 1);
     
     // Test: input depth, output depth, vsInput, vsOutput 
     // float zbufferInput = texelFetch(depthTexture, iuv, 0).x;
