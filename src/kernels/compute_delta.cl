@@ -13,7 +13,7 @@ __kernel void computeDelta(__constant struct Parameters *Params,
 
     // Load data into shared block
     float4 i_data = predicted[i];
-    __local float4 loc_predicted[local_size]; //size=local_size*4*4
+    __local float4 loc_predicted[32]; //size=local_size*4*4
     loc_predicted[get_local_id(0)] = i_data;
     barrier(CLK_LOCAL_MEM_FENCE);    
 
