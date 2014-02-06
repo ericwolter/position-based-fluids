@@ -70,6 +70,7 @@ set(KERNELS
     "${HESP_SOURCE_DIR}/src/kernels/update_positions.cl"
     "${HESP_SOURCE_DIR}/src/kernels/update_predicted.cl"
     "${HESP_SOURCE_DIR}/src/kernels/update_velocities.cl"
+    "${HESP_SOURCE_DIR}/src/kernels/logging.cl"
 )
 
 SET(SHADERS
