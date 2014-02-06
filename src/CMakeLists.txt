@@ -54,41 +54,41 @@ add_subdirectory(visual)
 add_subdirectory(ocl)
 
 set(KERNELS
-    "${HESP_SOURCE_DIR}/src/hesp.hpp"
-    "${HESP_SOURCE_DIR}/src/parameters.hpp"
-    "${HESP_SOURCE_DIR}/src/kernels/utilities.cl"
-    "${HESP_SOURCE_DIR}/src/kernels/apply_viscosity.cl"
-    "${HESP_SOURCE_DIR}/src/kernels/apply_vorticity.cl"
-    "${HESP_SOURCE_DIR}/src/kernels/build_friends_list.cl"
-    "${HESP_SOURCE_DIR}/src/kernels/compute_delta.cl"
-    "${HESP_SOURCE_DIR}/src/kernels/compute_scaling.cl"
-    "${HESP_SOURCE_DIR}/src/kernels/pack_data.cl"
-    "${HESP_SOURCE_DIR}/src/kernels/predict_positions.cl"
-    "${HESP_SOURCE_DIR}/src/kernels/radixsort.cl"
-    "${HESP_SOURCE_DIR}/src/kernels/reset_grid.cl"
-    "${HESP_SOURCE_DIR}/src/kernels/update_cells.cl"
-    "${HESP_SOURCE_DIR}/src/kernels/update_positions.cl"
-    "${HESP_SOURCE_DIR}/src/kernels/update_predicted.cl"
-    "${HESP_SOURCE_DIR}/src/kernels/update_velocities.cl"
-    "${HESP_SOURCE_DIR}/src/kernels/logging.cl"
+    "${PBF_SOURCE_DIR}/src/hesp.hpp"
+    "${PBF_SOURCE_DIR}/src/parameters.hpp"
+    "${PBF_SOURCE_DIR}/src/kernels/utilities.cl"
+    "${PBF_SOURCE_DIR}/src/kernels/apply_viscosity.cl"
+    "${PBF_SOURCE_DIR}/src/kernels/apply_vorticity.cl"
+    "${PBF_SOURCE_DIR}/src/kernels/build_friends_list.cl"
+    "${PBF_SOURCE_DIR}/src/kernels/compute_delta.cl"
+    "${PBF_SOURCE_DIR}/src/kernels/compute_scaling.cl"
+    "${PBF_SOURCE_DIR}/src/kernels/pack_data.cl"
+    "${PBF_SOURCE_DIR}/src/kernels/predict_positions.cl"
+    "${PBF_SOURCE_DIR}/src/kernels/radixsort.cl"
+    "${PBF_SOURCE_DIR}/src/kernels/reset_grid.cl"
+    "${PBF_SOURCE_DIR}/src/kernels/update_cells.cl"
+    "${PBF_SOURCE_DIR}/src/kernels/update_positions.cl"
+    "${PBF_SOURCE_DIR}/src/kernels/update_predicted.cl"
+    "${PBF_SOURCE_DIR}/src/kernels/update_velocities.cl"
+    "${PBF_SOURCE_DIR}/src/kernels/logging.cl"
 )
 
 SET(SHADERS
-    "${HESP_SOURCE_DIR}/src/shaders/particles.vs"
-    "${HESP_SOURCE_DIR}/src/shaders/particles_color.fs"
-    "${HESP_SOURCE_DIR}/src/shaders/standard.vs"
-    "${HESP_SOURCE_DIR}/src/shaders/standard_color.fs"
-    "${HESP_SOURCE_DIR}/src/shaders/standard_copy.fs"
-    "${HESP_SOURCE_DIR}/src/shaders/fluid_depth_smoothing.fs"
-    "${HESP_SOURCE_DIR}/src/shaders/fluid_final_render.fs"
+    "${PBF_SOURCE_DIR}/src/shaders/particles.vs"
+    "${PBF_SOURCE_DIR}/src/shaders/particles_color.fs"
+    "${PBF_SOURCE_DIR}/src/shaders/standard.vs"
+    "${PBF_SOURCE_DIR}/src/shaders/standard_color.fs"
+    "${PBF_SOURCE_DIR}/src/shaders/standard_copy.fs"
+    "${PBF_SOURCE_DIR}/src/shaders/fluid_depth_smoothing.fs"
+    "${PBF_SOURCE_DIR}/src/shaders/fluid_final_render.fs"
 )
 
 SET(SCENARIOS
-    "${HESP_SOURCE_DIR}/assets/scenarios/dam_coarse.par"
+    "${PBF_SOURCE_DIR}/assets/scenarios/dam_coarse.par"
 )
 
 SET(TEXTURES
-    "${HESP_SOURCE_DIR}/assets/textures/wall.tga"
+    "${PBF_SOURCE_DIR}/assets/textures/wall.tga"
 )
 
 SET(ANT_TWEAK_BAR_SRC
@@ -118,10 +118,10 @@ SOURCE_GROUP("_AntTweakBar" FILES ${ANT_TWEAK_BAR_SRC} ${ANT_TWEAK_BAR_SRC_WIN32
 
 # also headers are not necessary for cmake, 
 # include them here so they appear in IDE like Xcode
-add_executable(hesp ${SOURCE} ${HEADER} ${KERNELS} ${SHADERS} ${SCENARIOS} ${TEXTURES} ${ANT_TWEAK_BAR_SRC} ${ANT_TWEAK_BAR_SRC_WIN32})
+add_executable(pbf ${SOURCE} ${HEADER} ${KERNELS} ${SHADERS} ${SCENARIOS} ${TEXTURES} ${ANT_TWEAK_BAR_SRC} ${ANT_TWEAK_BAR_SRC_WIN32})
 
 if (APPLE)
-    target_link_libraries(hesp
+    target_link_libraries(pbf
         glfw
         soil
         ${OPENGL_LIBRARY}
@@ -134,7 +134,7 @@ if (APPLE)
         ${GLEW_LIB}
     )
 elseif(MSVC)
-    target_link_libraries(hesp
+    target_link_libraries(pbf
         glfw
         soil
         glew32s
@@ -143,7 +143,7 @@ elseif(MSVC)
         ${ANTTWEAKBAR_LIBRARY}
     )
 else()
-    target_link_libraries(hesp
+    target_link_libraries(pbf
         glfw
         soil
         ${OPENGL_LIBRARY}
