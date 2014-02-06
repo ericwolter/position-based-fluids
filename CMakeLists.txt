@@ -10,7 +10,7 @@ if (APPLE)
     find_library(COCOA_LIB Cocoa)
     find_library(IOKIT_LIB IOKit)
     find_library(COREVIDEO_LIB CoreVideo)
-    find_library(GLEW_LIB Glew)
+    find_package(Glew)
 endif (APPLE)
 
 add_subdirectory(lib)

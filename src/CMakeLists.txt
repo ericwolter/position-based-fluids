@@ -4,6 +4,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/lib/glfw/include
     ${CMAKE_SOURCE_DIR}/lib/soil/src/
     ${CMAKE_SOURCE_DIR}/lib/AntTweakBar/include
+    ${GLEW_INCLUDE_DIRS}
 )
 
 if(MSVC)
@@ -131,7 +132,7 @@ if (APPLE)
         ${IOKIT_LIB}
         ${COREVIDEO_LIB}
         ${ANTTWEAKBAR_LIBRARY}
-        ${GLEW_LIB}
+        ${GLEW_LIBRARIES}
     )
 elseif(MSVC)
     target_link_libraries(pbf
@@ -151,6 +152,11 @@ else()
         ${ANTTWEAKBAR_LIBRARY}
     )
 endif()
+
+set_target_properties( pbf PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY_DEBUG   ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+  RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
+)
 
 add_custom_target(copy ALL
     COMMENT "Copying support files")
@@ -198,3 +204,4 @@ foreach(TEXTURE ${TEXTURES})
         COMMAND ${CMAKE_COMMAND} -E copy ${SRC} ${DST}
         )
 endforeach(TEXTURE)
+
