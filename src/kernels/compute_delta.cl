@@ -9,6 +9,14 @@ __kernel void computeDelta(__constant struct Parameters *Params,
     const int i = get_global_id(0);
     if (i >= N) return;
 
+    const size_t local_size = 32;
+
+    // Load data into shared block
+    float4 i_data = predicted[i];
+    __local float4 loc_predicted[local_size]; //size=local_size*4*4
+    loc_predicted[get_local_id(0)] = i_data;
+    barrier(CLK_LOCAL_MEM_FENCE);    
+
     uint2 randSeed = (uint2)(1 + get_global_id(0), 1);
 
     // Sum of lambdas
@@ -46,8 +54,16 @@ __kernel void computeDelta(__constant struct Parameters *Params,
             // Read friend index from friends_list
             const int j_index = friends_list[baseIndex + iFriend];
 
+            // Get j particle data
+            // const float4 j_data = predicted[j_index];
+            float4 j_data;
+            if (j_index / local_size == get_group_id(0))
+                j_data = loc_predicted[j_index % local_size];
+            else
+                j_data = predicted[j_index];
+
             // Compute r, length(r) and length(r)^2
-            const float3 r         = predicted[i].xyz - predicted[j_index].xyz;
+            const float3 r         = predicted[i].xyz - j_data.xyz;
             const float r_length_2 = dot(r, r);
             
             if (r_length_2 < h_2_cache)
@@ -66,7 +82,7 @@ __kernel void computeDelta(__constant struct Parameters *Params,
                 const float s_corr = Params->surfaceTenstionK * r_q_radio * r_q_radio * r_q_radio * r_q_radio;
 
                 // Sum for delta p of scaling factors and grad spiky (equation 12)
-                sum += (predicted[i].w + predicted[j_index].w + s_corr) * gradient_spiky;
+                sum += (predicted[i].w + j_data.w + s_corr) * gradient_spiky;
             }
         }
     }
