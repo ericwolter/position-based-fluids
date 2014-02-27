@@ -437,11 +437,10 @@ void Simulation::computeDelta(int iterationIndex)
     mKernels["computeDelta"].setArg(param++, mPredictedPingBuffer); // xyz=Predicted z=Scaling
     mKernels["computeDelta"].setArg(param++, mFriendsListBuffer);
     mKernels["computeDelta"].setArg(param++, fWavePos);
-    mKernels["computeDelta"].setArg(param++, mStatsBuffer);
     mKernels["computeDelta"].setArg(param++, Params.particleCount);
 
-    std::cout << "CL_KERNEL_LOCAL_MEM_SIZE = " << mKernels["computeDelta"].getWorkGroupInfo<CL_KERNEL_LOCAL_MEM_SIZE>(NULL) << std::endl;
-    std::cout << "CL_KERNEL_PRIVATE_MEM_SIZE = " << mKernels["computeDelta"].getWorkGroupInfo<CL_KERNEL_PRIVATE_MEM_SIZE>(NULL) << std::endl;
+    // std::cout << "CL_KERNEL_LOCAL_MEM_SIZE = " << mKernels["computeDelta"].getWorkGroupInfo<CL_KERNEL_LOCAL_MEM_SIZE>(NULL) << std::endl;
+    // std::cout << "CL_KERNEL_PRIVATE_MEM_SIZE = " << mKernels["computeDelta"].getWorkGroupInfo<CL_KERNEL_PRIVATE_MEM_SIZE>(NULL) << std::endl;
 
     // mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
     mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, cl::NDRange(((Params.particleCount + 255) / 256) * 256), cl::NDRange(256), NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
@@ -660,6 +659,23 @@ void Simulation::Step()
 
         // Compute position delta
         this->computeDelta(i);
+        // mQueue.finish();
+
+        // printf("iteration %d\n", i);
+
+        // cl_uint *stats = new cl_uint[2];
+        // stats[0] = 0;
+        // stats[1] = 0;
+        // mQueue.enqueueReadBuffer(mStatsBuffer, CL_TRUE, 0, sizeof(cl_uint) * 2, stats);
+
+        // std::cout << "hits: " << stats[0] << std::endl;
+        // std::cout << "miss: " << stats[1] << std::endl;
+        // std::cout << "total: " << stats[0] + stats[1] << std::endl;
+
+        // stats[0] = 0;
+        // stats[1] = 0;
+        // mQueue.enqueueWriteBuffer(mStatsBuffer, CL_TRUE, 0, sizeof(cl_uint) * 2, stats);
+        // mQueue.finish();
 
         // Update predicted position
         this->updatePredicted(i);
@@ -699,20 +715,6 @@ void Simulation::Step()
         f.write((const char *)mPositions, mBufferSizeParticles);
         f.close();
     }
-
-    cl_uint *stats = new cl_uint[2];
-    stats[0] = 0;
-    stats[1] = 0;
-    mQueue.enqueueReadBuffer(mStatsBuffer, CL_TRUE, 0, sizeof(cl_uint) * 2, stats);
-    
-    std::cout << "hits: " << stats[0] << std::endl;
-    std::cout << "miss: " << stats[1] << std::endl;
-    std::cout << "total: " << stats[0]+stats[1] << std::endl;
-
-    stats[0] = 0;
-    stats[1] = 0;
-    mQueue.enqueueWriteBuffer(mStatsBuffer, CL_TRUE, 0, sizeof(cl_uint) * 2, stats);
-    mQueue.finish();
 
     // Release OpenGL shared object, allowing openGL do to it's thing...
     mQueue.enqueueReleaseGLObjects(&sharedBuffers);

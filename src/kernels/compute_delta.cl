@@ -4,29 +4,28 @@ __kernel void computeDelta(__constant struct Parameters *Params,
                            const __global float4 *predicted, // xyz=predicted, w=scaling
                            const __global int *friends_list,
                            const float wave_generator,
-                           __global uint *stats,
                            const int N)
 {
     const int i = get_global_id(0);
 
-    const size_t local_size = 256;
-    const uint li = get_local_id(0);
-    const uint group_id = get_group_id(0);
+    // const size_t local_size = 256;
+    // const uint li = get_local_id(0);
+    // const uint group_id = get_group_id(0);
 
-    float4 i_data;
-    if (i >= N)
-    {
-        i_data = (float4)(0.0f);
-    }
-    else
-    {
-        i_data = predicted[i];
-    }
+    // float4 i_data;
+    // if (i >= N)
+    // {
+    //     i_data = (float4)(0.0f);
+    // }
+    // else
+    // {
+    //     i_data = predicted[i];
+    // }
 
-    // Load data into shared block
-    __local float4 loc_predicted[local_size]; //size=local_size*4*4
-    loc_predicted[li] = i_data;
-    barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+    // // Load data into shared block
+    // __local float4 loc_predicted[local_size]; //size=local_size*4*4
+    // loc_predicted[li] = i_data;
+    // barrier(CLK_LOCAL_MEM_FENCE);
 
     if (i >= N) return;
 
@@ -40,6 +39,9 @@ __kernel void computeDelta(__constant struct Parameters *Params,
     // equation (13)
     const float q_2 = pow(Params->surfaceTenstionDist * h_cache, 2);
     const float poly6_q = pow(h_2_cache - q_2, 3);
+
+    int localHit =0;
+    int localMiss = 0;
 
     // read number of friends
     int totalFriends = 0;
@@ -68,18 +70,20 @@ __kernel void computeDelta(__constant struct Parameters *Params,
             const int j_index = friends_list[baseIndex + iFriend];
 
             // Get j particle data
-            // const float4 j_data = predicted[j_index];
-            float4 j_data;
-            if ((j_index >> 8) == group_id)
-            {
-                j_data = loc_predicted[j_index & (255)];
-                atomic_inc(&stats[0]);
-            }
-            else
-            {
-                j_data = predicted[j_index];
-                atomic_inc(&stats[1]);
-            }
+            const float4 j_data = predicted[j_index];
+            // float4 j_data;
+            // if ((j_index >> 8) == group_id)
+            // {
+            //     j_data = loc_predicted[j_index & (255)];
+            //     localHit++;
+            //     //atomic_inc(&stats[0]);
+            // }
+            // else
+            // {
+            //     j_data = predicted[j_index];
+            //     localMiss++;
+            //     //atomic_inc(&stats[1]);
+            // }
 
             // Compute r, length(r) and length(r)^2
             const float3 r         = predicted[i].xyz - j_data.xyz;
@@ -126,6 +130,10 @@ __kernel void computeDelta(__constant struct Parameters *Params,
 
     // Compute delta
     delta[i].xyz = future - predicted[i].xyz;
+
+//    if(group_id == 0) {
+  //      printf("%d: hits: %d vs miss: %d\n", i, localHit,localMiss);
+    //}
 
     // #if defined(USE_DEBUG)
     //printf("compute_delta: result: i: %d (N=%d)\ndelta: [%f,%f,%f,%f]\n",
