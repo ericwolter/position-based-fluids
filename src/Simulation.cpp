@@ -200,6 +200,7 @@ void Simulation::InitBuffers()
     mOmegaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mDensityBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.particleCount * sizeof(cl_float));
     mParameters            = cl::Buffer(mCLContext, CL_MEM_READ_ONLY,  sizeof(Params));
+    mStatsBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * 2);
 
     // Radix buffers
     if (Params.particleCount % (_ITEMS * _GROUPS) == 0)
@@ -238,6 +239,11 @@ void Simulation::InitBuffers()
     mQueue.enqueueWriteBuffer(mVelocitiesBuffer, CL_TRUE, 0, mBufferSizeParticles, mVelocities);
     mQueue.finish();
 
+    cl_uint *stats = new cl_uint[2];
+    stats[0] = 0;
+    stats[1] = 0;
+    mQueue.enqueueWriteBuffer(mStatsBuffer, CL_TRUE, 0, sizeof(cl_uint) * 2, stats);
+    mQueue.finish();
 }
 
 void Simulation::InitCells()
@@ -274,17 +280,17 @@ int dumpSession = 0;
 int dumpCounter = 0;
 int cycleCounter = 0;
 
-void SaveFile(cl::CommandQueue queue, cl::Buffer buffer, const char* szFilename)
+void SaveFile(cl::CommandQueue queue, cl::Buffer buffer, const char *szFilename)
 {
     // Exit if dump session is disabled
     if (dumpSession == 0)
         return;
 
-     // Get buffer size
+    // Get buffer size
     int bufSize = buffer.getInfo<CL_MEM_SIZE>();
 
     // Read data from GPU
-    char* buf = new char[bufSize];
+    char *buf = new char[bufSize];
     queue.enqueueReadBuffer(buffer, CL_TRUE, 0, bufSize, buf);
     queue.finish();
 
@@ -292,11 +298,11 @@ void SaveFile(cl::CommandQueue queue, cl::Buffer buffer, const char* szFilename)
     dumpCounter++;
     char szTarget[256];
     sprintf(szTarget, "%s/dump%d/%d_%d_%s.bin", getRootPath().c_str(), dumpSession, dumpCounter, cycleCounter, szFilename);
-    
+
     // Save to disk
     ofstream f(szTarget, ios::out | ios::trunc | ios::binary);
     f.seekp(0);
-    f.write((const char*)buf, bufSize);
+    f.write((const char *)buf, bufSize);
     f.close();
 
     delete[] buf;
@@ -431,10 +437,14 @@ void Simulation::computeDelta(int iterationIndex)
     mKernels["computeDelta"].setArg(param++, mPredictedPingBuffer); // xyz=Predicted z=Scaling
     mKernels["computeDelta"].setArg(param++, mFriendsListBuffer);
     mKernels["computeDelta"].setArg(param++, fWavePos);
+    mKernels["computeDelta"].setArg(param++, mStatsBuffer);
     mKernels["computeDelta"].setArg(param++, Params.particleCount);
 
+    std::cout << "CL_KERNEL_LOCAL_MEM_SIZE = " << mKernels["computeDelta"].getWorkGroupInfo<CL_KERNEL_LOCAL_MEM_SIZE>(NULL) << std::endl;
+    std::cout << "CL_KERNEL_PRIVATE_MEM_SIZE = " << mKernels["computeDelta"].getWorkGroupInfo<CL_KERNEL_PRIVATE_MEM_SIZE>(NULL) << std::endl;
+
     // mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
-    mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, cl::NDRange(((Params.particleCount + 31) / 32) * 32), cl::NDRange(32), NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
+    mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, cl::NDRange(((Params.particleCount + 255) / 256) * 256), cl::NDRange(256), NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
 
     //SaveFile(mQueue, mDeltaBuffer, "delta2");
 }
@@ -448,7 +458,11 @@ void Simulation::computeScaling(int iterationIndex)
     mKernels["computeScaling"].setArg(param++, mFriendsListBuffer);
     mKernels["computeScaling"].setArg(param++, Params.particleCount);
 
+    // std::cout << "CL_KERNEL_LOCAL_MEM_SIZE = " << mKernels["computeScaling"].getWorkGroupInfo<CL_KERNEL_LOCAL_MEM_SIZE>(NULL) << std::endl;
+    // std::cout << "CL_KERNEL_PRIVATE_MEM_SIZE = " << mKernels["computeScaling"].getWorkGroupInfo<CL_KERNEL_PRIVATE_MEM_SIZE>(NULL) << std::endl;
+
     mQueue.enqueueNDRangeKernel(mKernels["computeScaling"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeScaling", iterationIndex));
+    // mQueue.enqueueNDRangeKernel(mKernels["computeScaling"], 0, cl::NDRange(((Params.particleCount + 399) / 400) * 400), cl::NDRange(400), NULL, PerfData.GetTrackerEvent("computeScaling", iterationIndex));
 
     //SaveFile(mQueue, mPredictedPingBuffer, "pred2");
     //SaveFile(mQueue, mDensityBuffer,       "dens2");
@@ -646,7 +660,7 @@ void Simulation::Step()
 
         // Compute position delta
         this->computeDelta(i);
-        
+
         // Update predicted position
         this->updatePredicted(i);
     }
@@ -682,9 +696,24 @@ void Simulation::Step()
         // Save to disk
         ofstream f("particles_pos.bin", ios::out | ios::trunc | ios::binary);
         f.seekp(0);
-        f.write((const char*)mPositions, mBufferSizeParticles);
+        f.write((const char *)mPositions, mBufferSizeParticles);
         f.close();
     }
+
+    cl_uint *stats = new cl_uint[2];
+    stats[0] = 0;
+    stats[1] = 0;
+    mQueue.enqueueReadBuffer(mStatsBuffer, CL_TRUE, 0, sizeof(cl_uint) * 2, stats);
+    
+    std::cout << "hits: " << stats[0] << std::endl;
+    std::cout << "miss: " << stats[1] << std::endl;
+    std::cout << "total: " << stats[0]+stats[1] << std::endl;
+
+    stats[0] = 0;
+    stats[1] = 0;
+    mQueue.enqueueWriteBuffer(mStatsBuffer, CL_TRUE, 0, sizeof(cl_uint) * 2, stats);
+    mQueue.finish();
+
     // Release OpenGL shared object, allowing openGL do to it's thing...
     mQueue.enqueueReleaseGLObjects(&sharedBuffers);
     mQueue.finish();
@@ -696,7 +725,7 @@ void Simulation::Step()
     oclLog.CycleExecute(mQueue);
 }
 
-void Simulation::dumpData( cl_float4 * (&positions), cl_float4 * (&velocities) )
+void Simulation::dumpData(cl_float4 * (&positions), cl_float4 * (&velocities))
 {
     mQueue.enqueueReadBuffer(mPositionsPingBuffer, CL_TRUE, 0, mBufferSizeParticles, mPositions);
     mQueue.enqueueReadBuffer(mVelocitiesBuffer, CL_TRUE, 0, mBufferSizeParticles, mVelocities);

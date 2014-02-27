@@ -4,18 +4,31 @@ __kernel void computeDelta(__constant struct Parameters *Params,
                            const __global float4 *predicted, // xyz=predicted, w=scaling
                            const __global int *friends_list,
                            const float wave_generator,
+                           __global uint *stats,
                            const int N)
 {
     const int i = get_global_id(0);
-    if (i >= N) return;
 
-    const size_t local_size = 32;
+    const size_t local_size = 256;
+    const uint li = get_local_id(0);
+    const uint group_id = get_group_id(0);
+
+    float4 i_data;
+    if (i >= N)
+    {
+        i_data = (float4)(0.0f);
+    }
+    else
+    {
+        i_data = predicted[i];
+    }
 
     // Load data into shared block
-    float4 i_data = predicted[i];
-    __local float4 loc_predicted[32]; //size=local_size*4*4
-    loc_predicted[get_local_id(0)] = i_data;
-    barrier(CLK_LOCAL_MEM_FENCE);    
+    __local float4 loc_predicted[local_size]; //size=local_size*4*4
+    loc_predicted[li] = i_data;
+    barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);
+
+    if (i >= N) return;
 
     uint2 randSeed = (uint2)(1 + get_global_id(0), 1);
 
@@ -57,15 +70,21 @@ __kernel void computeDelta(__constant struct Parameters *Params,
             // Get j particle data
             // const float4 j_data = predicted[j_index];
             float4 j_data;
-            if (j_index / local_size == get_group_id(0))
-                j_data = loc_predicted[j_index % local_size];
+            if ((j_index >> 8) == group_id)
+            {
+                j_data = loc_predicted[j_index & (255)];
+                atomic_inc(&stats[0]);
+            }
             else
+            {
                 j_data = predicted[j_index];
+                atomic_inc(&stats[1]);
+            }
 
             // Compute r, length(r) and length(r)^2
             const float3 r         = predicted[i].xyz - j_data.xyz;
             const float r_length_2 = dot(r, r);
-            
+
             if (r_length_2 < h_2_cache)
             {
                 const float r_length   = sqrt(r_length_2);
@@ -99,11 +118,11 @@ __kernel void computeDelta(__constant struct Parameters *Params,
     frand(&randSeed);
 
     // Clamp Y
-    if      (future.y < Params->yMin) future.y = Params->yMin + frand(&randSeed) * randDist;
-    if      (future.z < Params->zMin) future.z = Params->zMin + frand(&randSeed) * randDist;
+    if (future.y < Params->yMin) future.y = Params->yMin + frand(&randSeed) * randDist;
+    if (future.z < Params->zMin) future.z = Params->zMin + frand(&randSeed) * randDist;
     else if (future.z > Params->zMax) future.z = Params->zMax - frand(&randSeed) * randDist;
-    if      (future.x < (Params->xMin + wave_generator))  future.x = Params->xMin + wave_generator + frand(&randSeed) * randDist;
-    else if (future.x > (Params->xMax                 ))  future.x = Params->xMax                  - frand(&randSeed) * randDist;
+    if (future.x < (Params->xMin + wave_generator))  future.x = Params->xMin + wave_generator + frand(&randSeed) * randDist;
+    else if (future.x > (Params->xMax))  future.x = Params->xMax                  - frand(&randSeed) * randDist;
 
     // Compute delta
     delta[i].xyz = future - predicted[i].xyz;

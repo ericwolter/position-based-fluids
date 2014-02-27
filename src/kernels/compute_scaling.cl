@@ -6,6 +6,23 @@ __kernel void computeScaling(__constant struct Parameters *Params,
 {
     // Scaling = lambda
     const int i = get_global_id(0);
+
+    // const size_t local_size = 400;
+    // const uint li = get_local_id(0);
+    // const uint group_id = get_group_id(0);
+
+    // float4 i_data;
+    // if (i >= N) {
+    //     i_data = (float4)(0.0f);
+    // } else {
+    //     i_data = predicted[i];
+    // }
+
+    // // Load data into shared block
+    // __local float4 loc_predicted[local_size]; //size=local_size*4*4
+    // loc_predicted[li] = i_data;
+    // barrier(CLK_LOCAL_MEM_FENCE | CLK_GLOBAL_MEM_FENCE);    
+
     if (i >= N) return;
 
     const float e = Params->epsilon * Params->restDensity;
@@ -41,7 +58,15 @@ __kernel void computeScaling(__constant struct Parameters *Params,
             // Read friend index from friends_list
             const int j_index = friends_list[baseIndex + iFriend];
 
-            const float3 r = predicted[i].xyz - predicted[j_index].xyz;
+            // Get j particle data
+            const float4 j_data = predicted[j_index];
+            // float4 j_data;
+            // if (j_index / local_size == group_id)
+            //     j_data = loc_predicted[j_index % local_size];
+            // else
+            //     j_data = predicted[j_index];
+
+            const float3 r = predicted[i].xyz - j_data.xyz;
             const float r_length_2 = r.x * r.x + r.y * r.y + r.z * r.z;
 
             // Required for numerical stability

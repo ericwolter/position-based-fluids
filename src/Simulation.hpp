@@ -84,6 +84,7 @@ public:
     cl::Buffer mHistogramBuffer;
     cl::Buffer mGlobSumBuffer;
     cl::Buffer mHistoTempBuffer;
+    cl::Buffer mStatsBuffer;
 
     // Lengths of each cell in each direction
     cl_float4 mCellLength;
