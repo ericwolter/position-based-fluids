@@ -188,9 +188,9 @@ void Simulation::InitBuffers()
     }
 
     // Create buffers
-    mPositionsPingBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharingPingBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
-    mPositionsPongBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharingPongBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
-    mParticlePosTexBuf     = cl::Image2DGL(mCLContext, CL_MEM_READ_WRITE, GL_TEXTURE_2D, 0, mSharingParticlesPos);
+    mPositionsPingBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharedPingBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
+    mPositionsPongBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharedPongBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
+    mParticlePosImg        = cl::Image2DGL(mCLContext, CL_MEM_READ_WRITE, GL_TEXTURE_2D, 0, mSharedParticlesPos);
 
     mPredictedPingBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mPredictedPongBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
@@ -307,7 +307,7 @@ void Simulation::updatePositions()
     int param = 0;
     mKernels["updatePositions"].setArg(param++, mPositionsPingBuffer);
     mKernels["updatePositions"].setArg(param++, mPredictedPingBuffer);
-    mKernels["updatePositions"].setArg(param++, mParticlePosTexBuf);
+    mKernels["updatePositions"].setArg(param++, mParticlePosImg);
     mKernels["updatePositions"].setArg(param++, mVelocitiesBuffer);
     mKernels["updatePositions"].setArg(param++, mDeltaVelocityBuffer);
     mKernels["updatePositions"].setArg(param++, Params.particleCount);
@@ -368,6 +368,7 @@ void Simulation::predictPositions()
 {
     int param = 0;
     mKernels["predictPositions"].setArg(param++, mParameters);
+    mKernels["predictPositions"].setArg(param++, (cl_uint)bPauseSim);
     mKernels["predictPositions"].setArg(param++, mPositionsPingBuffer);
     mKernels["predictPositions"].setArg(param++, mPredictedPingBuffer);
     mKernels["predictPositions"].setArg(param++, mVelocitiesBuffer);
@@ -608,9 +609,9 @@ void Simulation::radixsort()
     mPredictedPingBuffer = mPredictedPongBuffer;
     mPredictedPongBuffer = tmp2;
 
-    GLuint tmp4 = mSharingPingBufferID;
-    mSharingPingBufferID = mSharingPongBufferID;
-    mSharingPongBufferID = tmp4;
+    GLuint tmp4 = mSharedPingBufferID;
+    mSharedPingBufferID = mSharedPongBufferID;
+    mSharedPongBufferID = tmp4;
 }
 
 void Simulation::Step()
@@ -624,7 +625,7 @@ void Simulation::Step()
     vector<cl::Memory> sharedBuffers;
     sharedBuffers.push_back(mPositionsPingBuffer);
     sharedBuffers.push_back(mPositionsPongBuffer);
-    sharedBuffers.push_back(mParticlePosTexBuf);
+    sharedBuffers.push_back(mParticlePosImg);
     mQueue.enqueueAcquireGLObjects(&sharedBuffers);
 
     // Predicit positions

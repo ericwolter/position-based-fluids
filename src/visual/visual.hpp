@@ -41,11 +41,11 @@ public:
     void KeyEvent(GLFWwindow *window, int key, int scancode, int action, int mods);
 
 private:
-    GLvoid swapTargets();
+    void swapTargets();
 
-    GLvoid renderFluidSmoothDepth();
+    void renderFluidSmoothDepth();
 
-    GLvoid renderFluidFinal(GLuint depthTexture);
+    void renderFluidFinal(GLuint depthTexture);
 
 public:
     // Default constructor
@@ -61,13 +61,13 @@ public:
 
     bool initShaders();
 
-    GLvoid setupProjection();
+    void setupProjection();
 
-    GLvoid initSystemVisual(Simulation &sim);
+    void initSystemVisual(Simulation &sim);
 
-    GLvoid renderParticles();
+    void renderParticles();
 
-    GLvoid presentToScreen();
+    void presentToScreen();
 
     GLuint createSharingBuffer(const GLsizei size) const;
 
