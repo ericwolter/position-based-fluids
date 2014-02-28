@@ -82,6 +82,9 @@ void CVisual::initWindow(const string windowname)
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
     glDepthFunc(GL_LEQUAL);
+
+    // Check that things are fine
+    OGLU_CheckCoreError("initWindow (end)");
 }
 
 
@@ -164,7 +167,7 @@ GLuint CVisual::createSharingBuffer(const GLsizei size) const
 
 GLuint CVisual::createSharingTexture(const GLsizei width, const GLsizei height) const
 {
-    GLuint texID = OGLU_GenerateTexture(width, height, GL_RGBA32F, GL_RGBA, GL_FLOAT, NULL);
+    GLuint texID = OGLU_GenerateTexture(width, height, GL_RGBA32F, GL_FLOAT, NULL);
     return texID;
 }
 
