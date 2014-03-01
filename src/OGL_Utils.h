@@ -27,7 +27,7 @@ GLuint OGLU_LoadProgram(const string vertexFilename, const string fragmentFilena
 
 GLuint OGLU_GenerateTexture(int Width, int Height, GLint InternalFormat, GLenum Type = GL_UNSIGNED_BYTE, void *pPixels = 0);
 void OGLU_BindTextureToUniform(const char *szUniform, GLuint nTextureUnit, GLuint nTextureID);
-void OGLU_CheckCoreError(char* szTitle);
+void OGLU_CheckCoreError(const char* szTitle);
 
 class CopyTextureToHost
 {
