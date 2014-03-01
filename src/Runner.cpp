@@ -51,6 +51,9 @@ void Runner::run(Simulation &simulation, CVisual &renderer)
                 // Store new particle count
                 prevParticleCount = Params.particleCount;
 
+                // Notify renderer for parameter changed
+                renderer.parametersChanged();
+
                 // Generate shared buffer
                 simulation.mSharedPingBufferID = renderer.createSharingBuffer(Params.particleCount * sizeof(cl_float4));
                 simulation.mSharedPongBufferID = renderer.createSharingBuffer(Params.particleCount * sizeof(cl_float4));

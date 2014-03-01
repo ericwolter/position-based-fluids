@@ -24,6 +24,7 @@ void OGLU_Init();
 void OGLU_RenderQuad(float left, float top, float width, float height);
 GLuint OGLU_LoadShader(const string szFilename, unsigned int type);
 GLuint OGLU_LoadProgram(const string vertexFilename, const string fragmentFilename);
+GLuint OGLU_LoadProgram(const string shaderFile, GLuint type);
 
 GLuint OGLU_GenerateTexture(int Width, int Height, GLint InternalFormat, GLenum Type = GL_UNSIGNED_BYTE, void *pPixels = 0);
 void OGLU_BindTextureToUniform(const char *szUniform, GLuint nTextureUnit, GLuint nTextureID);

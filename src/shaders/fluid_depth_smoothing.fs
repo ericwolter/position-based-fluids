@@ -2,14 +2,19 @@
 
 uniform sampler2D depthTexture;
 uniform sampler2D particlesPos;
+uniform usampler2D visParticles;
+
 uniform mat4      MV_Matrix;
 uniform mat4      iMV_Matrix;
 uniform mat4      Proj_Matrix;
 uniform vec2      depthRange;
 uniform vec2      invFocalLen; // See http://stackoverflow.com/questions/17647222/ssao-changing-dramatically-with-camera-angle
 
+
 // Particles related
+uniform float     smoothLength;
 uniform int       particlesCount;
+uniform uint      currentCycleID;
 
 // outputs
 out vec4 result; 
@@ -96,26 +101,31 @@ vec3 GetParticlePos(int index)
 
 float GetDensity(vec3 worldPos)
 {
-    float h = 0.035;
-    float h_2 = h*h;
+    int visMapWidth = textureSize(visParticles, 0).x;
+    
+    float h_2 = smoothLength*smoothLength;
     
     float density = 0.0;
     for (int i = 0; i < particlesCount; i++)
     {
+        // Check if we should skip this particle (not visible)
+        uint partCycleID = texelFetch(visParticles, ivec2(i % visMapWidth, i / visMapWidth), 0).x;
+        if (partCycleID != currentCycleID) continue;
+    
         // Get particles position
         vec3 partPos = GetParticlePos(i);
         
         // find distance^2 between pixel and particles
         vec3 delta = partPos - worldPos;
         float r_2 = dot(delta, delta);
-        
+
         // Check if out of range
-        if (r_2 > h_2)
-            continue;
-            
-        // append density
-        float h_2_r_2_diff = h_2 - r_2;
-        density += h_2_r_2_diff * h_2_r_2_diff * h_2_r_2_diff;    
+        if (r_2 < h_2)
+        {
+            // append density
+            float h_2_r_2_diff = h_2 - r_2;
+            density += h_2_r_2_diff * h_2_r_2_diff * h_2_r_2_diff;    
+        }
     }
     
     return density;
@@ -139,15 +149,18 @@ void main()
     vec3 pixelCamNorm = normalize(cameraPos - modelPos);
     
     // Scan for closest density along camera normal
-    float scanDist = 0.035 / 2.0;
-    float scanStep = scanDist / 6;
-    float TargetDensity = 1.0 / 400000000.0;
+    float scanDist = 0.035*4;
+    float scanStep = scanDist / 100;
+    float TargetDensity = 1.0 / 700000000.0;
+    
+    //result = vec4(GetDensity(modelPos), modelPos.x, 0, 1);
+    //return;
     
     vec3  currPos = modelPos;
     float currDensity = 1.0E10;
     vec3  prevPos = currPos;
     float prevDensity = currDensity;
-    for (float tp = -scanDist; tp < scanDist; tp += scanStep)
+    for (float tp = -scanDist*0.1; tp < scanDist; tp += scanStep)
     {
         // Compute shifted test point
         prevPos = currPos;
@@ -178,5 +191,5 @@ void main()
     // Test: input depth, output depth, vsInput, vsOutput 
     // float zbufferInput = texelFetch(depthTexture, iuv, 0).x;
     // vec3 vsPos = uvToViewSpace(iuv);
-    // output = vec4(zbufferInput, zbufferDepth, vsPos.z, viewSpaceDepth.z);
+    // result = vec4(zbufferInput, zbufferDepth, vsPos.z, viewSpaceDepth.z);
 }

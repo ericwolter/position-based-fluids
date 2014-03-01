@@ -169,6 +169,48 @@ GLuint OGLU_LoadShader(const string szFilename, unsigned int type)
     return handle;
 }
 
+GLuint OGLU_LoadProgram(const string shaderFile, GLuint type)
+{
+    GLuint programID = 0;
+
+    // Load shaders
+    GLuint shaderID   = OGLU_LoadShader(shaderFile, type);
+
+    // Create Program
+    programID = glCreateProgram();
+    glAttachShader(programID, shaderID);
+    glLinkProgram(programID);
+
+    // Compilation checking.
+    GLint result = 0;
+    GLint errorLoglength = 0;
+    glGetProgramiv(programID, GL_LINK_STATUS, &result);
+    glGetProgramiv(programID, GL_INFO_LOG_LENGTH, &errorLoglength);
+
+    // Display message error/warning
+    bool ShowWarnings = true;
+    if ((errorLoglength > 1) && (ShowWarnings || !result))
+    {
+        // Report message
+        char *errorMsg = new char[errorLoglength + 1];
+        glGetProgramInfoLog(programID, errorLoglength, NULL, errorMsg);
+        cerr << "Shader compile " << (result ? "warning(s)" : "error(s)") << ": " << shaderFile.c_str() << endl;
+        cerr << errorMsg << endl;
+        delete[] errorMsg;
+    }
+
+    // Delete shaders
+    glDeleteShader(shaderID);
+
+    // Handle error
+    if (!result)
+    {
+        glDeleteShader(programID);
+        programID = 0;
+    }
+
+    return programID;
+}
 GLuint OGLU_LoadProgram(const string vertexFilename, const string fragmentFilename)
 {
     GLuint programID = 0;
