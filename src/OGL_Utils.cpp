@@ -305,14 +305,14 @@ void OGLU_BindTextureToUniform(const char *szUniform, GLuint nTextureUnit, GLuin
     glBindTexture(GL_TEXTURE_2D, nTextureID);
 }
 
-void OGLU_CheckCoreError(char* szTitle)
+void OGLU_CheckCoreError(const char* szTitle)
 {
     int err=0;
     char msg[256];
     while( (err=glGetError())!=0 )
     {
         sprintf(msg, "OpenGL error 0x%x @ %s\n", err, szTitle);
-        fprintf(stderr, msg);
+        fputs(msg, stderr);
     }
 }
 
