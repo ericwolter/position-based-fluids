@@ -68,7 +68,7 @@ public:
 
     void initSystemVisual(Simulation &sim);
 
-    void CVisual::parametersChanged();
+    void parametersChanged();
 
     void renderParticles();
 
