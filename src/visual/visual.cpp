@@ -17,6 +17,18 @@ using namespace std;
 #define isnan(x) _isnan(x)
 #endif
 
+void _stdcall OpenGL_DebugLog(GLenum source,
+                       GLenum type,
+                       GLuint id,
+                       GLenum severity,
+                       GLsizei length,
+                       const GLchar* message,
+                       void* userParam) 
+{
+    cout << "OpenGL Error: " << message << endl;
+}
+
+
 CVisual::CVisual (const int windowWidth, const int windowHeight)
     : mWindow(NULL),
       UICmd_GenerateWaves(false),
@@ -52,8 +64,8 @@ void CVisual::initWindow(const string windowname)
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #else
-    glfwWindowHint(GLFW_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_VERSION_MINOR, 2);
+    #define ENABLE_OPENGL_LOG_REPORTING
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 #endif
 
     // Create a windowed mode window and its OpenGL context
@@ -68,6 +80,12 @@ void CVisual::initWindow(const string windowname)
     glewExperimental = true;
 #endif
     glewInit();
+
+#ifdef ENABLE_OPENGL_LOG_REPORTING
+    // Enable OpenGL debugging
+    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    glDebugMessageCallback(OpenGL_DebugLog, NULL);
+#endif
 
     // Get frame size (apple retina makes the frame size X2 the window size)
     glfwGetFramebufferSize(mWindow, &mFrameWidth, &mFrameHeight);
