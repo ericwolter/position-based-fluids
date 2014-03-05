@@ -5,6 +5,7 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/lib/soil/src/
     ${CMAKE_SOURCE_DIR}/lib/AntTweakBar/include
     ${GLEW_INCLUDE_DIRS}
+	${OPENCL_INCLUDE_DIRS}
 )
 
 if(MSVC)

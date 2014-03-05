@@ -455,7 +455,7 @@ FBO::FBO(int numOfTargets, bool createDepth, int width, int height, int internal
     ColorTargets = numOfTargets;
 
     // create a framebuffer object
-    glGenFramebuffersEXT(1, &ID);
+    glGenFramebuffers(1, &ID);
     glBindFramebuffer(GL_FRAMEBUFFER, ID);
 
     // Create colorTextureId
