@@ -84,6 +84,9 @@ SET(SHADERS
     "${PBF_SOURCE_DIR}/src/shaders/fluid_depth_smoothing.fs"
     "${PBF_SOURCE_DIR}/src/shaders/fluid_final_render.fs"
     "${PBF_SOURCE_DIR}/src/shaders/vis_scan.cms"
+    "${PBF_SOURCE_DIR}/src/shaders/grid_build.cms"
+    "${PBF_SOURCE_DIR}/src/shaders/grid_chain_reset.cms"
+    "${PBF_SOURCE_DIR}/src/shaders/grid_reset.cms"
 )
 
 SET(SCENARIOS

@@ -1,4 +1,4 @@
-#version 150
+#version 430
 
 uniform sampler2D depthTexture;
 uniform sampler2D particlesPos;
@@ -10,6 +10,8 @@ uniform mat4      Proj_Matrix;
 uniform vec2      depthRange;
 uniform vec2      invFocalLen; // See http://stackoverflow.com/questions/17647222/ssao-changing-dramatically-with-camera-angle
 
+layout(r32i) uniform iimage2D grid_chain;
+layout(r32i) uniform iimage2D grid;
 
 // Particles related
 uniform float     smoothLength;
@@ -131,6 +133,80 @@ float GetDensity(vec3 worldPos)
     return density;
 }
 
+int expandBits(int x)
+{
+    x = (x | (x << 16)) & 0x030000FF;
+    x = (x | (x <<  8)) & 0x0300F00F;
+    x = (x | (x <<  4)) & 0x030C30C3;
+    x = (x | (x <<  2)) & 0x09249249;
+
+    return x;
+}
+
+int mortonNumber(ivec3 gridPos)
+{
+    return expandBits(gridPos.x) | (expandBits(gridPos.y) << 1) | (expandBits(gridPos.z) << 2);
+}
+
+uint calcGridHash(ivec3 gridPos)
+{
+    return mortonNumber(gridPos) % /*GRID_BUF_SIZE*/ (2048*2048);
+}
+
+float GetDensityGrid(vec3 worldPos)
+{
+    // Cash h^2
+    float h_2 = smoothLength*smoothLength;
+
+    // Reset density sum
+    float density = 0.0;
+    int count = 0;
+    
+    // Compute Grid position
+    ivec3 gridCell = ivec3(worldPos / smoothLength);
+    //return vec3(gridCell);
+
+    // scan 3x3x3 cells
+    for (int iz = -1; iz <= +1; iz++)
+    {
+        for (int iy = -1; iy <= +1; iy++)
+        {
+            for (int ix = -1; ix <= +1; ix++)
+            {
+                // Find first cell particle
+                uint gridOffset = calcGridHash(gridCell + ivec3(ix, iy, iz));
+                int partIdx = imageLoad(grid, ivec2(gridOffset % 2048, gridOffset / 2048)).x;
+                
+                // Scan chain
+                while (partIdx != -1)
+                {
+                    // Get particles position
+                    vec3 partPos = GetParticlePos(partIdx);
+                    
+                    // find distance^2 between pixel and particles
+                    vec3 delta = partPos - worldPos;
+                    float r_2 = dot(delta, delta);
+                    
+                    // Check if out of range
+                    if (r_2 < h_2)
+                    {
+                    count++;
+                    //density += r_2;
+                        // append density
+                        float h_2_r_2_diff = h_2 - r_2;
+                        density += h_2_r_2_diff * h_2_r_2_diff * h_2_r_2_diff;    
+                    }
+                    
+                    // Get next particle in chain
+                    partIdx = imageLoad(grid_chain, ivec2(partIdx % 2048, partIdx / 2048)).x;
+                }
+            }
+        }
+    }
+
+    return density;
+}
+
 void main()
 {
     // Get frame coord
@@ -156,19 +232,22 @@ void main()
     //result = vec4(GetDensity(modelPos), modelPos.x, 0, 1);
     //return;
     
+    int   iterations = 0;
     vec3  currPos = modelPos;
     float currDensity = 1.0E10;
     vec3  prevPos = currPos;
     float prevDensity = currDensity;
     for (float tp = -scanDist*0.1; tp < scanDist; tp += scanStep)
     {
+        iterations++;
+        
         // Compute shifted test point
         prevPos = currPos;
         currPos = modelPos + tp * pixelCamNorm;
         
         // get test point density
         prevDensity = currDensity;
-        currDensity = GetDensity(currPos);
+        currDensity = GetDensityGrid(currPos);
         
         // Exit when we cross the threshold
         if (currDensity < TargetDensity)
@@ -186,7 +265,7 @@ void main()
     float zbufferDepth = ViewSpaceDepth_to_ZBufferDepth(viewSpaceDepth);
     
     // Compose result
-    result = vec4(zbufferDepth, 0, 0, 1);
+    result = vec4(zbufferDepth, iterations, 0, 1);
     
     // Test: input depth, output depth, vsInput, vsOutput 
     // float zbufferInput = texelFetch(depthTexture, iuv, 0).x;

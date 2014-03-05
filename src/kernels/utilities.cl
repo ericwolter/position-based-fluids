@@ -85,3 +85,16 @@ uint calcGridHash(int3 gridPos)
 {
     return mortonNumber(gridPos) % GRID_BUF_SIZE;
 }
+
+uint imgReadui1(image2d_t img, int index)
+{
+    sampler_t smp = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_NEAREST;
+    int imgWidth = get_image_width(img);
+    return read_imageui(img, smp, (int2)(index % imgWidth, index / imgWidth)).x;
+}
+
+void imgWriteui1(image2d_t img, int index, uint value)
+{
+    int imgWidth = get_image_width(img);
+    write_imageui(img, (int2)(index % imgWidth, index / imgWidth), (uint4)(value, 0, 0, 1));
+}

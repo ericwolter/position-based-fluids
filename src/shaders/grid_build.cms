@@ -1,0 +1,66 @@
+#version 430
+
+uniform sampler2D particlesPos;
+uniform usampler2D visParticles;
+uniform uint currentCycleID;
+uniform uint particlesCount;
+uniform float smoothLength;
+
+layout(r32i) uniform iimage2D grid_chain;
+layout(r32i) uniform iimage2D grid;
+
+layout (local_size_x = 1, local_size_y = 1) in;
+
+vec3 GetParticlePos(uint index)
+{
+    // Compute texture location
+    ivec2 texSize = textureSize(particlesPos, 0);
+    ivec2 texCoord = ivec2(index % texSize.x, index / texSize.x);
+    
+    // Get position value
+    return texelFetch(particlesPos, texCoord, 0).xyz;
+}
+
+int expandBits(int x)
+{
+    x = (x | (x << 16)) & 0x030000FF;
+    x = (x | (x <<  8)) & 0x0300F00F;
+    x = (x | (x <<  4)) & 0x030C30C3;
+    x = (x | (x <<  2)) & 0x09249249;
+
+    return x;
+}
+
+int mortonNumber(ivec3 gridPos)
+{
+    return expandBits(gridPos.x) | (expandBits(gridPos.y) << 1) | (expandBits(gridPos.z) << 2);
+}
+
+uint calcGridHash(ivec3 gridPos)
+{
+    return mortonNumber(gridPos) % /*GRID_BUF_SIZE*/ (2048*2048);
+}
+
+void main() 
+{
+    // Check for valid particle index
+    uint partIndex = gl_GlobalInvocationID.y * 2048 + gl_GlobalInvocationID.x;
+    if (partIndex >= particlesCount)
+        return;
+
+    // Check if we should skip particle if it's not visible
+    uint partCycleID = texelFetch(visParticles, ivec2(gl_GlobalInvocationID.xy), 0).x;
+    if (partCycleID != currentCycleID)
+        return;
+        
+    // Get particle position
+    vec3 partPos = GetParticlePos(partIndex);
+
+    // Compute Grid position
+    ivec3 gridCell = ivec3(partPos / smoothLength);
+    uint gridOffset = calcGridHash(gridCell);
+    
+    // Update Grid and chain
+    int prevIndex = imageAtomicExchange(grid, ivec2(gridOffset % 2048, gridOffset / 2048), int(partIndex));
+    imageStore(grid_chain, ivec2(gl_GlobalInvocationID.xy), ivec4(prevIndex));
+}

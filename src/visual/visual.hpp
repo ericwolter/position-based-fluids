@@ -48,6 +48,9 @@ private:
     void renderFluidFinal(GLuint depthTexture);
 
     void scanForVisible(GLuint inputTexture);
+
+    void buildGrid();
+
 public:
     // Default constructor
     CVisual (const int windowWidth = 800, const int windowHeight = 600);
@@ -105,12 +108,18 @@ private:
 
     // GL Store Textures
     GLuint mImgParticleVisible;
+    GLuint mImgGridChain;
+    GLuint mImgGrid;
+
     GLuint mParticleProgID;
     GLuint mFluidFinalRenderProgID;
     GLuint mFluidDepthSmoothProgID;
     GLuint mStandardCopyProgID;
     GLuint mStandardColorProgID;
     GLuint mVisibleScanProgID;
+    GLuint mResetGridProgID;
+    GLuint mResetGridChainProgID;
+    GLuint mBuildGridProgID;
 
     // Projection related
     float mWidthOfNearPlane;

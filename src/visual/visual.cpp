@@ -135,9 +135,13 @@ void CVisual::initImageBuffers()
 {
     // Generate texture
     mImgParticleVisible = OGLU_GenerateTexture(2048, DivCeil(Params.particleCount, 2048), GL_R32UI);
+    mImgGridChain       = OGLU_GenerateTexture(2048, DivCeil(Params.particleCount, 2048), GL_R32I);
+    mImgGrid            = OGLU_GenerateTexture(2048, 2048, GL_R32I);
 
     // Bind texture to an image units (so we can write to it)
     glBindImageTexture(0, mImgParticleVisible, 0, true, 0,  GL_READ_WRITE, GL_R32UI);
+    glBindImageTexture(1, mImgGridChain,       0, true, 0,  GL_READ_WRITE, GL_R32I);
+    glBindImageTexture(2, mImgGrid,            0, true, 0,  GL_READ_WRITE, GL_R32I);
 }
 
 void CVisual::parametersChanged()
@@ -165,6 +169,9 @@ const string *CVisual::ShaderFileList()
         "standard_color.fs",
         "fluid_depth_smoothing.fs",
         "fluid_final_render.fs",
+        "grid_reset.cms",
+        "grid_chain_reset.cms",
+        "grid_build.cms",
         "vis_scan.cms",
         ""
     };
@@ -182,6 +189,9 @@ bool CVisual::initShaders()
     bLoadOK = bLoadOK && (mStandardCopyProgID     = OGLU_LoadProgram(getPathForShader("standard.vs"),  getPathForShader("standard_copy.fs")));
     bLoadOK = bLoadOK && (mStandardColorProgID    = OGLU_LoadProgram(getPathForShader("standard.vs"),  getPathForShader("standard_color.fs")));
     bLoadOK = bLoadOK && (mVisibleScanProgID      = OGLU_LoadProgram(getPathForShader("vis_scan.cms"), GL_COMPUTE_SHADER));
+    bLoadOK = bLoadOK && (mResetGridProgID        = OGLU_LoadProgram(getPathForShader("grid_reset.cms"), GL_COMPUTE_SHADER));
+    bLoadOK = bLoadOK && (mResetGridChainProgID   = OGLU_LoadProgram(getPathForShader("grid_chain_reset.cms"), GL_COMPUTE_SHADER));
+    bLoadOK = bLoadOK && (mBuildGridProgID        = OGLU_LoadProgram(getPathForShader("grid_build.cms"), GL_COMPUTE_SHADER));
 
     // Set-up Render-Stange-Inspector
     OGSI_Setup(mStandardCopyProgID);
@@ -191,6 +201,20 @@ bool CVisual::initShaders()
     {
         glUseProgram(g_SelectedProgram = mVisibleScanProgID);
         glUniform1i(UniformLoc("destTex"),    0);
+
+        glUseProgram(g_SelectedProgram = mResetGridChainProgID);
+        glUniform1i(UniformLoc("grid_chain"), 1);
+
+        glUseProgram(g_SelectedProgram = mResetGridProgID);
+        glUniform1i(UniformLoc("grid"),       2);
+
+        glUseProgram(g_SelectedProgram = mBuildGridProgID);
+        glUniform1i(UniformLoc("grid_chain"), 1);
+        glUniform1i(UniformLoc("grid"),       2);
+
+        glUseProgram(g_SelectedProgram = mFluidDepthSmoothProgID);
+        glUniform1i(UniformLoc("grid_chain"), 1);
+        glUniform1i(UniformLoc("grid"),       2);
     }
 
     return bLoadOK;
@@ -253,6 +277,29 @@ void CVisual::scanForVisible(GLuint inputTexture)
     glUniform1ui(UniformLoc("cycleID"), mCycleID);
     OGLU_BindTextureToUniform("inputTexture", 0, inputTexture);
     glDispatchCompute(mFrameWidth, mFrameHeight, 1);
+}
+
+void CVisual::buildGrid()
+{
+    // Reset grid
+    glUseProgram(g_SelectedProgram = mResetGridProgID);
+    glDispatchCompute(2048, 2048, 1);
+
+    // Reset grid chains
+    glUseProgram(g_SelectedProgram = mResetGridChainProgID);
+    glDispatchCompute(2048, DivCeil(Params.particleCount, 2048), 1);
+
+    // Build Grid
+    glUseProgram(g_SelectedProgram = mBuildGridProgID);
+    glUniform1ui(UniformLoc("currentCycleID"), mCycleID);
+    glUniform1ui(UniformLoc("particlesCount"), Params.particleCount);
+    glUniform1f (UniformLoc("smoothLength"), Params.h);
+    OGLU_BindTextureToUniform("visiblityMap", 0, mImgParticleVisible);
+    OGLU_BindTextureToUniform("particlesPos", 1, mSimulation->mSharedParticlesPos);
+    
+    glDispatchCompute(2048, DivCeil(Params.particleCount, 2048), 1);
+
+    if (OGSI_InspectTexture(mImgGrid, "Build Grid", 1, 0)) return;
 }
 
 void CVisual::renderFluidFinal(GLuint depthTexture)
@@ -319,6 +366,9 @@ void CVisual::renderParticles()
     scanForVisible(pPrevTarget->pColorTextureId[0]);
     if (OGSI_InspectTexture(mImgParticleVisible,    "VisImg",   1, 0)) return;
     
+    // Build grid
+    buildGrid();
+
     // Smooth fluid depth
     GLuint depthTexture = pPrevTarget->pDepthTextureId;
     if (UICmd_SmoothDepth)
