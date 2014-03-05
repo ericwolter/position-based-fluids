@@ -32,6 +32,7 @@ void FindRootDirectory()
     GetModuleFileName( NULL, path, sizeof(path));
     PathRemoveFileSpec(path);
     rootDirectory = path;
+    rootDirectory += "\\.";
 #else
     char path[PATH_MAX + 1];
     char absolute_path[PATH_MAX + 1];
