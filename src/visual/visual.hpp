@@ -41,12 +41,13 @@ public:
     void KeyEvent(GLFWwindow *window, int key, int scancode, int action, int mods);
 
 private:
-    GLvoid swapTargets();
+    void swapTargets();
 
-    GLvoid renderFluidSmoothDepth();
+    void renderFluidSmoothDepth();
 
-    GLvoid renderFluidFinal(GLuint depthTexture);
+    void renderFluidFinal(GLuint depthTexture);
 
+    void scanForVisible(GLuint inputTexture);
 public:
     // Default constructor
     CVisual (const int windowWidth = 800, const int windowHeight = 600);
@@ -61,13 +62,17 @@ public:
 
     bool initShaders();
 
-    GLvoid setupProjection();
+    void initImageBuffers();
 
-    GLvoid initSystemVisual(Simulation &sim);
+    void setupProjection();
 
-    GLvoid renderParticles();
+    void initSystemVisual(Simulation &sim);
 
-    GLvoid presentToScreen();
+    void parametersChanged();
+
+    void renderParticles();
+
+    void presentToScreen();
 
     GLuint createSharingBuffer(const GLsizei size) const;
 
@@ -90,16 +95,22 @@ private:
     int mFrameWidth;
     int mFrameHeight;
 
-    // Rendering
+    // Rendering states
+    int mCycleID;
+
+    // Rendering FBOs
     FBO *pPrevTarget;
     FBO *pNextTarget;
     FBO *pFBO_Thickness;
 
+    // GL Store Textures
+    GLuint mImgParticleVisible;
     GLuint mParticleProgID;
     GLuint mFluidFinalRenderProgID;
     GLuint mFluidDepthSmoothProgID;
     GLuint mStandardCopyProgID;
     GLuint mStandardColorProgID;
+    GLuint mVisibleScanProgID;
 
     // Projection related
     float mWidthOfNearPlane;

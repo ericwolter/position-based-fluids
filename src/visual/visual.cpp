@@ -17,6 +17,18 @@ using namespace std;
 #define isnan(x) _isnan(x)
 #endif
 
+void _stdcall OpenGL_DebugLog(GLenum source,
+                       GLenum type,
+                       GLuint id,
+                       GLenum severity,
+                       GLsizei length,
+                       const GLchar* message,
+                       void* userParam) 
+{
+    cout << "OpenGL Error: " << message << endl;
+}
+
+
 CVisual::CVisual (const int windowWidth, const int windowHeight)
     : mWindow(NULL),
       UICmd_GenerateWaves(false),
@@ -27,6 +39,7 @@ CVisual::CVisual (const int windowWidth, const int windowHeight)
       UICmd_SmoothDepth(false),
       mWindowWidth(windowWidth),
       mWindowHeight(windowHeight),
+      mCycleID(0),
       mSystemBufferID(0)
 {
 }
@@ -51,8 +64,8 @@ void CVisual::initWindow(const string windowname)
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #else
-    glfwWindowHint(GLFW_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_VERSION_MINOR, 2);
+    #define ENABLE_OPENGL_LOG_REPORTING
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
 #endif
 
     // Create a windowed mode window and its OpenGL context
@@ -68,12 +81,18 @@ void CVisual::initWindow(const string windowname)
 #endif
     glewInit();
 
+#ifdef ENABLE_OPENGL_LOG_REPORTING
+    // Enable OpenGL debugging
+    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    glDebugMessageCallback(OpenGL_DebugLog, NULL);
+#endif
+
     // Get frame size (apple retina makes the frame size X2 the window size)
     glfwGetFramebufferSize(mWindow, &mFrameWidth, &mFrameHeight);
 
     pPrevTarget    = new FBO(1, true, mFrameWidth, mFrameHeight, GL_RGBA32F);
     pNextTarget    = new FBO(1, true, mFrameWidth, mFrameHeight, GL_RGBA32F);
-    pFBO_Thickness = new FBO(1, true, mFrameWidth, mFrameHeight, GL_R16);
+    pFBO_Thickness = new FBO(1, true, mFrameWidth, mFrameHeight, GL_R16UI);
 
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     glEnable(GL_POINT_SPRITE);
@@ -82,10 +101,13 @@ void CVisual::initWindow(const string windowname)
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
     glDepthFunc(GL_LEQUAL);
+
+    // Check that things are fine
+    OGLU_CheckCoreError("initWindow (end)");
 }
 
 
-GLvoid CVisual::setupProjection()
+void CVisual::setupProjection()
 {
     // Compute projection matrix
     float aspect = mFrameWidth / (GLfloat) mFrameHeight;
@@ -107,7 +129,23 @@ GLvoid CVisual::setupProjection()
     ZPR_Reset();
 }
 
-GLvoid CVisual::initSystemVisual(Simulation &sim)
+#define DivCeil(num, divider) ((num + divider - 1) / divider) 
+
+void CVisual::initImageBuffers()
+{
+    // Generate texture
+    mImgParticleVisible = OGLU_GenerateTexture(2048, DivCeil(Params.particleCount, 2048), GL_R32UI);
+
+    // Bind texture to an image units (so we can write to it)
+    glBindImageTexture(0, mImgParticleVisible, 0, true, 0,  GL_READ_WRITE, GL_R32UI);
+}
+
+void CVisual::parametersChanged()
+{
+    initImageBuffers();
+}
+
+void CVisual::initSystemVisual(Simulation &sim)
 {
     mSimulation = &sim;
 
@@ -127,6 +165,7 @@ const string *CVisual::ShaderFileList()
         "standard_color.fs",
         "fluid_depth_smoothing.fs",
         "fluid_final_render.fs",
+        "vis_scan.cms",
         ""
     };
 
@@ -142,9 +181,17 @@ bool CVisual::initShaders()
     bLoadOK = bLoadOK && (mFluidFinalRenderProgID = OGLU_LoadProgram(getPathForShader("standard.vs"),  getPathForShader("fluid_final_render.fs")));
     bLoadOK = bLoadOK && (mStandardCopyProgID     = OGLU_LoadProgram(getPathForShader("standard.vs"),  getPathForShader("standard_copy.fs")));
     bLoadOK = bLoadOK && (mStandardColorProgID    = OGLU_LoadProgram(getPathForShader("standard.vs"),  getPathForShader("standard_color.fs")));
+    bLoadOK = bLoadOK && (mVisibleScanProgID      = OGLU_LoadProgram(getPathForShader("vis_scan.cms"), GL_COMPUTE_SHADER));
 
     // Set-up Render-Stange-Inspector
     OGSI_Setup(mStandardCopyProgID);
+
+    // Setup Unitforms
+    if (bLoadOK)
+    {
+        glUseProgram(g_SelectedProgram = mVisibleScanProgID);
+        glUniform1i(UniformLoc("destTex"),    0);
+    }
 
     return bLoadOK;
 }
@@ -164,18 +211,18 @@ GLuint CVisual::createSharingBuffer(const GLsizei size) const
 
 GLuint CVisual::createSharingTexture(const GLsizei width, const GLsizei height) const
 {
-    GLuint texID = OGLU_GenerateTexture(width, height, GL_RGBA32F, GL_RGBA, GL_FLOAT, NULL);
+    GLuint texID = OGLU_GenerateTexture(width, height, GL_RGBA32F);
     return texID;
 }
 
-GLvoid CVisual::swapTargets()
+void CVisual::swapTargets()
 {
     FBO* pTmp = pNextTarget;
     pNextTarget = pPrevTarget;
     pPrevTarget = pTmp;
 }
 
-GLvoid CVisual::renderFluidSmoothDepth()
+void CVisual::renderFluidSmoothDepth()
 {
     pNextTarget->SetAsDrawTarget();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -183,20 +230,32 @@ GLvoid CVisual::renderFluidSmoothDepth()
     //ZPR_ModelViewMatrix = glm::inverse(ZPR_InvModelViewMatrix);
     ZPR_InvModelViewMatrix = glm::inverse(ZPR_ModelViewMatrix);
     glUseProgram(g_SelectedProgram = mFluidDepthSmoothProgID);
-    OGLU_BindTextureToUniform("depthTexture", 0, pPrevTarget->pDepthTextureId);
-    OGLU_BindTextureToUniform("particlesPos", 1, mSimulation->mSharingParticlesPos);
+    OGLU_BindTextureToUniform("depthTexture", 0, pPrevTarget->pColorTextureId[0]);
+    OGLU_BindTextureToUniform("particlesPos", 1, mSimulation->mSharedParticlesPos);
+    OGLU_BindTextureToUniform("visParticles", 2, mImgParticleVisible);
     glUniformMatrix4fv(UniformLoc("iMV_Matrix"), 1, GL_FALSE, glm::value_ptr(ZPR_InvModelViewMatrix));
     glUniformMatrix4fv(UniformLoc("MV_Matrix"),  1, GL_FALSE, glm::value_ptr(ZPR_ModelViewMatrix));
     glUniformMatrix4fv(UniformLoc("Proj_Matrix"), 1, GL_FALSE, glm::value_ptr(mProjectionMatrix));
     glUniform2f(UniformLoc("depthRange"), 0.1f, 10.0f);
     glUniform2fv(UniformLoc("invFocalLen"), 1, glm::value_ptr(mInvFocalLen));
+    glUniform1f(UniformLoc("smoothLength"), Params.h);
     glUniform1i(UniformLoc("particlesCount"), Params.particleCount);
+    glUniform1ui(UniformLoc("currentCycleID"), mCycleID);
 
     OGLU_RenderQuad(0, 0, 1.0, 1.0);
     swapTargets();
 }
 
-GLvoid CVisual::renderFluidFinal(GLuint depthTexture)
+void CVisual::scanForVisible(GLuint inputTexture)
+{
+    // Setup program
+    glUseProgram(g_SelectedProgram = mVisibleScanProgID);
+    glUniform1ui(UniformLoc("cycleID"), mCycleID);
+    OGLU_BindTextureToUniform("inputTexture", 0, inputTexture);
+    glDispatchCompute(mFrameWidth, mFrameHeight, 1);
+}
+
+void CVisual::renderFluidFinal(GLuint depthTexture)
 {
     // Copy Result to screen buffer
     g_ScreenFBO.SetAsDrawTarget();
@@ -210,8 +269,11 @@ GLvoid CVisual::renderFluidFinal(GLuint depthTexture)
     OGLU_RenderQuad(0, 0, 1.0, 1.0);
 }
 
-GLvoid CVisual::renderParticles()
+void CVisual::renderParticles()
 {
+    // Increment cycleID
+    mCycleID++;
+
     // start buffer inspection
     OGSI_StartCycle();
 
@@ -235,7 +297,7 @@ GLvoid CVisual::renderParticles()
 
     // Bind positions buffer
     glEnableVertexAttribArray(AttribLoc("position"));
-    glBindBuffer(GL_ARRAY_BUFFER, mSimulation->mSharingPingBufferID);
+    glBindBuffer(GL_ARRAY_BUFFER, mSimulation->mSharedPingBufferID);
     glVertexAttribPointer(AttribLoc("position"), 4, GL_FLOAT, GL_FALSE, 0, 0);
 
     glBindFragDataLocation(g_SelectedProgram, 0, "colorOut");
@@ -249,10 +311,14 @@ GLvoid CVisual::renderParticles()
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     // Inspect
-    if (OGSI_InspectTexture(pPrevTarget->pColorTextureId[0], "Draw Particles [texture]", 1, 0)) return;
-    if (OGSI_InspectTexture(pPrevTarget->pDepthTextureId,    "Draw Particles [depth]",   4, -3)) return;
-    if (OGSI_InspectTexture(mSimulation->mSharingParticlesPos,    "ParticlePos",   1, 0)) return;
+    if (OGSI_InspectTexture(pPrevTarget->pColorTextureId[0],  "Draw Particles [texture]", 1, 0)) return;
+    if (OGSI_InspectTexture(pPrevTarget->pDepthTextureId,     "Draw Particles [depth]",   4, -3)) return;
+    if (OGSI_InspectTexture(mSimulation->mSharedParticlesPos, "ParticlePos",   1, 0)) return;
 
+    // Scan for visible particles
+    scanForVisible(pPrevTarget->pColorTextureId[0]);
+    if (OGSI_InspectTexture(mImgParticleVisible,    "VisImg",   1, 0)) return;
+    
     // Smooth fluid depth
     GLuint depthTexture = pPrevTarget->pDepthTextureId;
     if (UICmd_SmoothDepth)
@@ -272,7 +338,7 @@ GLvoid CVisual::renderParticles()
     glUseProgram(0);
 }
 
-GLvoid CVisual::presentToScreen()
+void CVisual::presentToScreen()
 {
     glfwSwapBuffers(mWindow);
 }

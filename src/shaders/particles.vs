@@ -6,19 +6,23 @@ uniform mat4 projectionMatrix;
 uniform float widthOfNearPlane;
 uniform float pointSize;
 uniform int   particleCount;
-uniform int   colorMethod;
 
 // attributes
 in vec4 position;
 
 // Outputs to fragment shader
-out float frag_color;
-out vec3  frag_vsPosition; // View space position
+out float      frag_color;
+out vec3       frag_vsPosition; // View space position
+flat out int   frag_particleIndex;
+flat out float frag_velocity;
 
 void main()
 {  
-    // Choose color method (0=speed, 1=index)
-    frag_color = colorMethod == 0 ? position.w : float(gl_VertexID) / particleCount;
+    // Store particle index
+    frag_particleIndex = gl_VertexID; 
+ 
+    // Forward velocity to fragment shader
+    frag_velocity = position.w;
     
     // Model -> View space 
     vec4 eye_position = modelViewMatrix * vec4(position.xyz, 1.0);

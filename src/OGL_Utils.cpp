@@ -8,67 +8,64 @@
 #include <iostream>
 using namespace std;
 
-GLint IntFmtToFmt[] = {GL_R8,           GL_RED,
-                       GL_R8_SNORM,     GL_RED,
-                       GL_R16,          GL_RED,
-                       GL_R16_SNORM,    GL_RED,
-                       GL_RG8,          GL_RG,
-                       GL_RG8_SNORM,    GL_RG,
-                       GL_RG16,         GL_RG,
-                       GL_RG16_SNORM,   GL_RG,
-                       GL_R3_G3_B2,     GL_RGB,
-                       GL_RGB4,         GL_RGB,
-                       GL_RGB5,         GL_RGB,
-                       GL_RGB8,         GL_RGB,
-                       GL_RGB8_SNORM,   GL_RGB,
-                       GL_RGB10,        GL_RGB,
-                       GL_RGB12,        GL_RGB,
-                       GL_RGB16_SNORM,  GL_RGB,
-                       GL_RGBA2,        GL_RGB,
-                       GL_RGBA4,        GL_RGB,
-                       GL_RGB5_A1,      GL_RGBA,
-                       GL_RGBA8,        GL_RGBA,
-                       GL_RGBA8_SNORM,  GL_RGBA,
-                       GL_RGB10_A2,     GL_RGBA,
-                       GL_RGB10_A2UI,   GL_RGBA,
-                       GL_RGBA12,       GL_RGBA,
-                       GL_RGBA16,       GL_RGBA,
-                       GL_SRGB8,        GL_RGB,
-                       GL_SRGB8_ALPHA8, GL_RGBA,
-                       GL_R16F,         GL_RED,
-                       GL_RG16F,        GL_RG,
-                       GL_RGB16F,       GL_RGB,
-                       GL_RGBA16F,      GL_RGBA,
-                       GL_R32F,         GL_RED,
-                       GL_RG32F,        GL_RG,
-                       GL_RGB32F,       GL_RGB,
-                       GL_RGBA32F,      GL_RGBA,
-                       GL_RGB9_E5,      GL_RGB,
-                       GL_R8I,          GL_RED,
-                       GL_R8UI,         GL_RED,
-                       GL_R16I,         GL_RED,
-                       GL_R16UI,        GL_RED,
-                       GL_R32I,         GL_RED,
-                       GL_R32UI,        GL_RED,
-                       GL_RG8I,         GL_RG,
-                       GL_RG8UI,        GL_RG,
-                       GL_RG16I,        GL_RG,
-                       GL_RG16UI,       GL_RG,
-                       GL_RG32I,        GL_RG,
-                       GL_RG32UI,       GL_RG,
-                       GL_RGB8I,        GL_RGB,
-                       GL_RGB8UI,       GL_RGB,
-                       GL_RGB16I,       GL_RGB,
-                       GL_RGB16UI,      GL_RGB,
-                       GL_RGB32I,       GL_RGB,
-                       GL_RGB32UI,      GL_RGB,
-                       GL_RGBA8I,       GL_RGBA,
-                       GL_RGBA8UI,      GL_RGBA,
-                       GL_RGBA16I,      GL_RGBA,
-                       GL_RGBA16UI,     GL_RGBA,
-                       GL_RGBA32I,      GL_RGBA,
-                       GL_RGBA32UI,     GL_RGBA,
-                       0,               0
+
+#define FMT_TABLE_INDEX          0
+#define FMT_TABLE_INTFMT         1
+#define FMT_TABLE_EXTFMT         2
+#define FMT_TABLE_HOSTTYPE       3
+#define FMT_TABLE_COMPONENTBITS  4
+#define FMT_TABLE_COMPONENTCOUNT 5
+#define FMT_TABLE_DECODERTYPE    6
+#define FMT_TABLE_ROW_ITEMS      7
+
+GLint IntFmtToFmt[] = {//ID IntFmt                 ExtFmt              HostType                 ComponentSize, NumberOfComponents, DecoderType
+                         1,  GL_R8,                 GL_RED,             GL_UNSIGNED_BYTE,        8,  1, 'u',
+                         2,  GL_R8_SNORM,           GL_RED,             GL_BYTE,                 8,  1, 'i',
+                         3,  GL_R16F,               GL_RED,             GL_HALF_FLOAT,           16, 1, 'f',
+                         4,  GL_R32F,               GL_RED,             GL_FLOAT,                32, 1, 'f',
+                         5,  GL_R8UI,               GL_RED_INTEGER,     GL_UNSIGNED_BYTE,        8,  1, 'u',
+                         6,  GL_R8I,                GL_RED_INTEGER,     GL_BYTE,                 8,  1, 'i',
+                         7,  GL_R16UI,              GL_RED_INTEGER,     GL_UNSIGNED_SHORT,       16, 1, 'u',
+                         8,  GL_R16I,               GL_RED_INTEGER,     GL_SHORT,                16, 1, 'i',
+                         9,  GL_R32UI,              GL_RED_INTEGER,     GL_UNSIGNED_INT,         32, 1, 'u',
+                        10,  GL_R32I,               GL_RED_INTEGER,     GL_INT,                  32, 1, 'i',
+                        11,  GL_RG8,                GL_RG,              GL_UNSIGNED_BYTE,        8,  2, 'u',
+                        12,  GL_RG8_SNORM,          GL_RG,              GL_BYTE,                 8,  2, 'i',
+                        13,  GL_RG16F,              GL_RG,              GL_HALF_FLOAT,           16, 2, 'f',
+                        14,  GL_RG32F,              GL_RG,              GL_FLOAT,                32, 2, 'f',
+                        15,  GL_RG8UI,              GL_RG_INTEGER,      GL_UNSIGNED_BYTE,        8,  2, 'u',
+                        16,  GL_RG8I,               GL_RG_INTEGER,      GL_BYTE,                 8,  2, 'i',
+                        17,  GL_RG16UI,             GL_RG_INTEGER,      GL_UNSIGNED_SHORT,       16, 2, 'u',
+                        18,  GL_RG16I,              GL_RG_INTEGER,      GL_SHORT,                16, 2, 'i',
+                        19,  GL_RG32UI,             GL_RG_INTEGER,      GL_UNSIGNED_INT,         32, 2, 'u',
+                        20,  GL_RG32I,              GL_RG_INTEGER,      GL_INT,                  32, 2, 'i',
+                        21,  GL_RGB8,               GL_RGB,             GL_UNSIGNED_BYTE,        8,  3, 'u',
+                        22,  GL_SRGB8,              GL_RGB,             GL_UNSIGNED_BYTE,        8,  3, 'u',
+                        23,  GL_RGB8_SNORM,         GL_RGB,             GL_BYTE,                 8,  3, 'i',
+                        24,  GL_RGB16F,             GL_RGB,             GL_HALF_FLOAT,           16, 3, 'f',
+                        25,  GL_RGB32F,             GL_RGB,             GL_FLOAT,                32, 3, 'f',
+                        26,  GL_RGB8UI,             GL_RGB_INTEGER,     GL_UNSIGNED_BYTE,        8,  3, 'u',
+                        27,  GL_RGB8I,              GL_RGB_INTEGER,     GL_BYTE,                 8,  3, 'i',
+                        28,  GL_RGB16UI,            GL_RGB_INTEGER,     GL_UNSIGNED_SHORT,       16, 3, 'u',
+                        29,  GL_RGB16I,             GL_RGB_INTEGER,     GL_SHORT,                16, 3, 'i',
+                        30,  GL_RGB32UI,            GL_RGB_INTEGER,     GL_UNSIGNED_INT,         32, 3, 'u',
+                        31,  GL_RGB32I,             GL_RGB_INTEGER,     GL_INT,                  32, 3, 'i',
+                        32,  GL_RGBA8,              GL_RGBA,            GL_UNSIGNED_BYTE,        8,  4, 'u',
+                        33,  GL_SRGB8_ALPHA8,       GL_RGBA,            GL_UNSIGNED_BYTE,        8,  4, 'u',
+                        34,  GL_RGBA8_SNORM,        GL_RGBA,            GL_BYTE,                 8,  4, 'i',
+                        35,  GL_RGBA16F,            GL_RGBA,            GL_HALF_FLOAT,           16, 4, 'f',
+                        36,  GL_RGBA32F,            GL_RGBA,            GL_FLOAT,                32, 4, 'f',
+                        37,  GL_RGBA8UI,            GL_RGBA_INTEGER,    GL_UNSIGNED_BYTE,        8,  4, 'u',
+                        38,  GL_RGBA8I,             GL_RGBA_INTEGER,    GL_BYTE,                 8,  4, 'i',
+                        39,  GL_RGBA16UI,           GL_RGBA_INTEGER,    GL_UNSIGNED_SHORT,       16, 4, 'u',
+                        40,  GL_RGBA16I,            GL_RGBA_INTEGER,    GL_SHORT,                16, 4, 'i',
+                        41,  GL_RGBA32I,            GL_RGBA_INTEGER,    GL_INT,                  32, 4, 'i',
+                        42,  GL_RGBA32UI,           GL_RGBA_INTEGER,    GL_UNSIGNED_INT,         32, 4, 'u',
+                        43,  GL_DEPTH_COMPONENT,    GL_DEPTH_COMPONENT, GL_UNSIGNED_INT,         24, 1, 'u',
+                        44,  GL_DEPTH_COMPONENT16,  GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT,       16, 1, 'u',
+                        45,  GL_DEPTH_COMPONENT24,  GL_DEPTH_COMPONENT, GL_UNSIGNED_INT,         24, 1, 'u',
+                        46,  GL_DEPTH_COMPONENT32F, GL_DEPTH_COMPONENT, GL_FLOAT,                32, 1, 'f',
+                        0,   0,                     0,                  0,                       0,  0, ' '
                       };
 
 FBO  g_ScreenFBO;
@@ -172,6 +169,48 @@ GLuint OGLU_LoadShader(const string szFilename, unsigned int type)
     return handle;
 }
 
+GLuint OGLU_LoadProgram(const string shaderFile, GLuint type)
+{
+    GLuint programID = 0;
+
+    // Load shaders
+    GLuint shaderID   = OGLU_LoadShader(shaderFile, type);
+
+    // Create Program
+    programID = glCreateProgram();
+    glAttachShader(programID, shaderID);
+    glLinkProgram(programID);
+
+    // Compilation checking.
+    GLint result = 0;
+    GLint errorLoglength = 0;
+    glGetProgramiv(programID, GL_LINK_STATUS, &result);
+    glGetProgramiv(programID, GL_INFO_LOG_LENGTH, &errorLoglength);
+
+    // Display message error/warning
+    bool ShowWarnings = true;
+    if ((errorLoglength > 1) && (ShowWarnings || !result))
+    {
+        // Report message
+        char *errorMsg = new char[errorLoglength + 1];
+        glGetProgramInfoLog(programID, errorLoglength, NULL, errorMsg);
+        cerr << "Shader compile " << (result ? "warning(s)" : "error(s)") << ": " << shaderFile.c_str() << endl;
+        cerr << errorMsg << endl;
+        delete[] errorMsg;
+    }
+
+    // Delete shaders
+    glDeleteShader(shaderID);
+
+    // Handle error
+    if (!result)
+    {
+        glDeleteShader(programID);
+        programID = 0;
+    }
+
+    return programID;
+}
 GLuint OGLU_LoadProgram(const string vertexFilename, const string fragmentFilename)
 {
     GLuint programID = 0;
@@ -235,19 +274,24 @@ void OGLU_RenderQuad(float left, float top, float width, float height)
     glEnable(GL_DEPTH_TEST);
 }
 
-GLuint OGLU_GenerateTexture(int Width, int Height, GLint InternalFormat, GLenum Format, GLenum Type, void *pPixels)
+GLuint OGLU_GenerateTexture(int Width, int Height, GLint InternalFormat, GLenum Type, void *pPixels)
 {
     // Generate and bind texture
     GLuint ret;
     glGenTextures(1, &ret);
 
+    // Get pixel format
+    int iFmt = 0;
+    while ((IntFmtToFmt[iFmt + FMT_TABLE_INTFMT] != 0) && (IntFmtToFmt[iFmt + FMT_TABLE_INTFMT] != InternalFormat)) iFmt += FMT_TABLE_ROW_ITEMS;
+    int colorFormat = IntFmtToFmt[iFmt + FMT_TABLE_EXTFMT];
+
     // Setup image
     glBindTexture(GL_TEXTURE_2D, ret);
-    glTexImage2D(GL_TEXTURE_2D, 0, InternalFormat, Width, Height, 0, Format, Type, pPixels);
+    glTexImage2D(GL_TEXTURE_2D, 0, InternalFormat, Width, Height, 0, colorFormat, Type, pPixels);
 
     // Change default parameters to WARP=CLAMP FILTER=NEAREST
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
@@ -261,59 +305,131 @@ void OGLU_BindTextureToUniform(const char *szUniform, GLuint nTextureUnit, GLuin
     glBindTexture(GL_TEXTURE_2D, nTextureID);
 }
 
-void OGLU_SaveTextureToFile(GLuint nTextureID, string filename)
+void OGLU_CheckCoreError(const char* szTitle)
 {
-    // Get texture size
-    GLint texWidth = 0;
-    GLint texHeight = 0;
+    int err=0;
+    char msg[256];
+    while( (err=glGetError())!=0 )
+    {
+        sprintf(msg, "OpenGL error 0x%x @ %s\n", err, szTitle);
+        fputs(msg, stderr);
+    }
+}
 
+CopyTextureToHost::CopyTextureToHost(GLuint textureID) : 
+    Width(0), 
+    Height(0), 
+    ExternalFormat(0), 
+    InternalFormat(0), 
+    ComponentCount(0),
+    BitsPerChannel(0),
+    DecoderType(' '),
+    BufferSize(0), 
+    Buffer(NULL)
+{
+    // Make sure we don't have errors to begin with
+    OGLU_CheckCoreError("CopyTextureToHost(start)");
+
+    // Bind texture
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, nTextureID); 
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &texWidth);
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &texHeight);
+    glBindTexture(GL_TEXTURE_2D, textureID); 
+
+    // Read parameters
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &Width);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &Height);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_INTERNAL_FORMAT, &InternalFormat);
+
+
+    // Find pixel format
+    int iFmt = 0;
+    while ((IntFmtToFmt[iFmt + FMT_TABLE_INTFMT] != 0) && (IntFmtToFmt[iFmt + FMT_TABLE_INTFMT] != InternalFormat)) iFmt += FMT_TABLE_ROW_ITEMS;
+    ExternalFormat = IntFmtToFmt[iFmt + FMT_TABLE_EXTFMT];
+
+    // Make sure format was found
+    if (ExternalFormat == 0)
+    {
+        cout << "Unrecognized internal texture format\n";
+        return ;
+    }
 
     // Compute size
-    int byteSize = texWidth * texHeight * 4 * sizeof(float);
+    DecoderType    = IntFmtToFmt[iFmt + FMT_TABLE_DECODERTYPE];
+    ComponentCount = IntFmtToFmt[iFmt + FMT_TABLE_COMPONENTCOUNT];
+    BitsPerChannel = IntFmtToFmt[iFmt + FMT_TABLE_COMPONENTBITS];
+    int HostType   = IntFmtToFmt[iFmt + FMT_TABLE_HOSTTYPE];
+
+    // Workaround for depth reading
+    if (InternalFormat == GL_DEPTH_COMPONENT)
+    {
+        HostType       = GL_FLOAT;
+        BitsPerChannel = 32;
+    }
+
+    // Allocate buffer
+    BytesPerPixel = (BitsPerChannel * ComponentCount) / 8;
+    BufferSize = Width * Height * BytesPerPixel;
+    Buffer = new char[BufferSize];
 
     // Read texture
-    char* pBuf = new char[byteSize];
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, pBuf);
+    glGetTexImage(GL_TEXTURE_2D, 0, ExternalFormat, HostType, Buffer);
 
+    // Make sure we didn't fuck up
+    OGLU_CheckCoreError("CopyTextureToHost(end)");
+}
+
+CopyTextureToHost::~CopyTextureToHost()
+{
+    delete[] Buffer;
+}
+
+void CopyTextureToHost::SaveToFile(string filename)
+{
     // Write to file
     ofstream f(filename.c_str(), ios::out | ios::trunc | ios::binary);
     f.seekp(0);
-    f.write((char*)pBuf, byteSize);
+    f.write((char*)Buffer, BufferSize);
     f.close();
-
-    delete[] pBuf;
 }
 
-glm::vec4 OGLU_SamplePixel(GLuint nTextureID, float x, float y)
+glm::vec4 CopyTextureToHost::GetPixel(float x, float y)
 {
-    // Get texture size
-    GLint texWidth = 0;
-    GLint texHeight = 0;
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, nTextureID); 
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &texWidth);
-    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &texHeight);
-
-    // Compute size
-    int byteSize = texWidth * texHeight * sizeof(float);
-
-    // Read texture
-    float* pBuf = new float[byteSize];
-    glGetTexImage(GL_TEXTURE_2D, 0, GL_RGBA, GL_FLOAT, pBuf);
-
     // Read pixel
-    int ix = (int)(x * texWidth + 0.5f);
-    int iy = (int)((1-y) * texHeight + 0.5f);
-    int offset = (texWidth * iy + ix) * 4;
-    glm::vec4 ret = glm::vec4(pBuf[offset + 0], pBuf[offset + 1], pBuf[offset + 2], pBuf[offset + 3]);
+    int ix = (int)(x * Width);
+    int iy = (int)((1-y) * Height);
+    int offset = (Width * iy + ix) * BytesPerPixel;
 
-    // release buffer
-    delete[] pBuf;
+    // Translate pixels
+    glm::vec4 ret;
+    for (int iComp = 0; iComp < ComponentCount; iComp++)
+    {
+        float value = FLT_MAX;
+        switch (DecoderType)
+        {
+            case 'i': 
+                switch (BitsPerChannel)
+                {
+                    case 8:  value = (float)((GLbyte*)  Buffer) [(offset + iComp * BitsPerChannel / 8) / 1]; break;
+                    case 16: value = (float)((GLshort*) Buffer) [(offset + iComp * BitsPerChannel / 8) / 2]; break;
+                    case 32: value = (float)((GLint*)   Buffer) [(offset + iComp * BitsPerChannel / 8) / 4]; break;
+                }
+
+            case 'u': 
+                switch (BitsPerChannel)
+                {
+                    case 8:  value = (float)((GLubyte*)  Buffer) [(offset + iComp * BitsPerChannel / 8) / 1]; break;
+                    case 16: value = (float)((GLushort*) Buffer) [(offset + iComp * BitsPerChannel / 8) / 2]; break;
+                    case 32: value = (float)((GLuint*)   Buffer) [(offset + iComp * BitsPerChannel / 8) / 4]; break;
+                }
+
+            case 'f': 
+                switch (BitsPerChannel)
+                {
+                    case 32: value = ((float*) Buffer) [(offset + iComp * BitsPerChannel / 8) / 4]; break;
+                }
+        }
+
+        ret[iComp] = value;
+    }
 
     // return pixel
     return ret;
@@ -338,20 +454,15 @@ FBO::FBO(int numOfTargets, bool createDepth, int width, int height, int internal
     ColorFormat  = internalFormat;
     ColorTargets = numOfTargets;
 
-    // Get pixel format
-    int iFmt = 0;
-    while ((IntFmtToFmt[iFmt] != 0) && (IntFmtToFmt[iFmt] != internalFormat)) iFmt += 2;
-    int ColorFormat = IntFmtToFmt[iFmt + 1];
-
     // create a framebuffer object
-    glGenFramebuffersEXT(1, &ID);
+    glGenFramebuffers(1, &ID);
     glBindFramebuffer(GL_FRAMEBUFFER, ID);
 
     // Create colorTextureId
     for (int i = 0; i < numOfTargets; i++)
     {
         // Create colorTextureId
-        pColorTextureId[i] = OGLU_GenerateTexture(Width, Height, internalFormat, ColorFormat, GL_UNSIGNED_BYTE, 0);
+        pColorTextureId[i] = OGLU_GenerateTexture(Width, Height, internalFormat);
 
         // attach the texture to FBO depth attachment point
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, pColorTextureId[i], 0);
@@ -360,11 +471,37 @@ FBO::FBO(int numOfTargets, bool createDepth, int width, int height, int internal
     if (createDepth)
     {
         // create depth texture
-        pDepthTextureId = OGLU_GenerateTexture(Width, Height, GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, 0);
+        pDepthTextureId = OGLU_GenerateTexture(Width, Height, GL_DEPTH_COMPONENT);
 
         // attach the texture to FBO depth attachment point
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, pDepthTextureId, 0);
     }
+
+    // check FBO status
+    GLenum FBOstatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (FBOstatus != GL_FRAMEBUFFER_COMPLETE)
+        cout << "GL_FRAMEBUFFER_COMPLETE failed, CANNOT use FBO\n";
+
+    // switch back to window-system-provided framebuffer
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+FBO::FBO(int target, int textureID)
+{
+    // Setup FBOInfo
+    glBindTexture(target, textureID);
+    glGetTexLevelParameteriv(target, 0, GL_TEXTURE_WIDTH, &Width);
+    glGetTexLevelParameteriv(target, 0, GL_TEXTURE_HEIGHT, &Height);
+    glGetTexLevelParameteriv(target, 0, GL_TEXTURE_INTERNAL_FORMAT, &ColorFormat);
+    ColorTargets = 1;
+    pColorTextureId[0] = textureID;
+
+    // create a framebuffer object
+    glGenFramebuffers(1, &ID);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, ID);
+
+    // attach the texture to FBO depth attachment point
+    glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, target, textureID, 0);
 
     // check FBO status
     GLenum FBOstatus = glCheckFramebufferStatus(GL_FRAMEBUFFER);

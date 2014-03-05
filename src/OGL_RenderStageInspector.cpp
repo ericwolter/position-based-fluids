@@ -42,12 +42,14 @@ bool OGSI_InspectTexture(GLuint textureID, const char* szBufferTitle, float blit
     // check if we need to render inspection point
     if (OGSI_Stages_Count == OGSI_StageToVisualize)
     {
+        CopyTextureToHost texture(textureID);
+
         // Save texture to file (if save is enabled)
         if (OGSI_SaveInspectionToFile)
-            OGLU_SaveTextureToFile(textureID, "inspect.raw");
+            texture.SaveToFile("inspect.raw");
 
         // Get pixel value
-        OGSI_SamplePixelData = OGLU_SamplePixel(textureID, OGSI_SamplePixelCoordX, OGSI_SamplePixelCoordY);
+        OGSI_SamplePixelData = texture.GetPixel(OGSI_SamplePixelCoordX, OGSI_SamplePixelCoordY);
 
         // Select shader
         glUseProgram(g_SelectedProgram = OGSI_Shader);

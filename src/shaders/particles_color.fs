@@ -2,11 +2,13 @@
 
 uniform mat4  projectionMatrix;
 uniform float pointSize;
-uniform int   colorMethod;
+uniform int   particleCount;
 
 // inputs from vertex shader
-in float frag_color;
-in vec3  frag_vsPosition; // View space position
+in float      frag_color;
+in vec3       frag_vsPosition; // View space position
+flat in int   frag_particleIndex;
+flat in float frag_velocity;
 
 // outputs
 out vec4 colorOut;
@@ -52,14 +54,22 @@ void main()
     // Transform into window coordinates coordinates
     float far = gl_DepthRange.far;
     float near = gl_DepthRange.near;
-    gl_FragDepth = (abs(far - near) * ndcDepth + near + far) / 2.0;
+    float fragDepth = (abs(far - near) * ndcDepth + near + far) / 2.0;
+    gl_FragDepth = fragDepth;
+
+    // Compose output
+    colorOut = vec4(fragDepth, frag_particleIndex, 0, 1.0);
 
     // Compute color
     const vec3 light_direction = vec3(1.0);
     float cosAngIncidence = dot(n, light_direction);
     cosAngIncidence = clamp(cosAngIncidence, 0.0, 1.0);
 
-    // Set color
-    vec3 dif_color = colorMethod == 0 ? vec3(frag_color, frag_color, 1.0) : colorscale(frag_color);
-    colorOut = vec4(dif_color, 1.0) * cosAngIncidence;    
+    // [DEBUG] Color according to index
+    // vec3 dif_color = colorscale(float(frag_particleIndex) / particleCount);
+    // colorOut = vec4(dif_color, 1.0) * cosAngIncidence;    
+    
+    // [DEBUG] Color according to velocity
+    // vec3 dif_color = vec3(frag_velocity, frag_velocity, 1.0);
+    // colorOut = vec4(dif_color, 1.0) * cosAngIncidence;    
 }

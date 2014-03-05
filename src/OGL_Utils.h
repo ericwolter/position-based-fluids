@@ -24,11 +24,33 @@ void OGLU_Init();
 void OGLU_RenderQuad(float left, float top, float width, float height);
 GLuint OGLU_LoadShader(const string szFilename, unsigned int type);
 GLuint OGLU_LoadProgram(const string vertexFilename, const string fragmentFilename);
+GLuint OGLU_LoadProgram(const string shaderFile, GLuint type);
 
-GLuint OGLU_GenerateTexture(int Width, int Height, GLint InternalFormat, GLenum Format, GLenum Type, void *pPixels);
+GLuint OGLU_GenerateTexture(int Width, int Height, GLint InternalFormat, GLenum Type = GL_UNSIGNED_BYTE, void *pPixels = 0);
 void OGLU_BindTextureToUniform(const char *szUniform, GLuint nTextureUnit, GLuint nTextureID);
-void OGLU_SaveTextureToFile(GLuint nTextureID, string filename);
-glm::vec4 OGLU_SamplePixel(GLuint nTextureID, float x, float y);
+void OGLU_CheckCoreError(const char* szTitle);
+
+class CopyTextureToHost
+{
+public:
+    GLint Width;
+    GLint Height;
+    GLint ExternalFormat;
+    GLint InternalFormat;
+    GLint ComponentCount;
+    GLint BitsPerChannel;
+    GLint BytesPerPixel;
+    char  DecoderType;
+
+    GLint BufferSize;
+    char* Buffer;
+
+    CopyTextureToHost(GLuint textureID);
+    ~CopyTextureToHost();
+
+    void SaveToFile(string filename);
+    glm::vec4 GetPixel(float x, float y);
+};
 
 // FrameBufferObject class
 class FBO
@@ -49,6 +71,7 @@ public:
     // Constructor & Destructor
     FBO();
     FBO(int numOfTargets, bool createDepth, int width, int height, int internalFormat);
+    FBO(int target, int textureID);
 
     ~FBO();
 

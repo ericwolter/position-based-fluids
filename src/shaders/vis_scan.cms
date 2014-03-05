@@ -1,0 +1,15 @@
+#version 430
+
+uniform sampler2D inputTexture;
+uniform uint cycleID;
+
+layout(r32ui) uniform uimage2D destTex;
+
+layout (local_size_x = 1, local_size_y = 1) in;
+
+void main() 
+{
+    uint x = uint(texelFetch(inputTexture, ivec2(gl_GlobalInvocationID.xy), 0).y + 0.5);
+    ivec2 storePos = ivec2(x % 2048, x / 2048);
+    imageStore(destTex, storePos, uvec4(cycleID));
+}
