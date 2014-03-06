@@ -8,24 +8,26 @@ __kernel void computeDelta(__constant struct Parameters *Params,
 {
     const int i = get_global_id(0);
 
-    // const size_t local_size = 256;
-    // const uint li = get_local_id(0);
-    // const uint group_id = get_group_id(0);
+#ifdef LOCALMEM
+	const size_t local_size = 256;
+	const uint li = get_local_id(0);
+	const uint group_id = get_group_id(0);
 
-    // float4 i_data;
-    // if (i >= N)
-    // {
-    //     i_data = (float4)(0.0f);
-    // }
-    // else
-    // {
-    //     i_data = predicted[i];
-    // }
+	float4 i_data;
+	if (i >= N)
+	{
+			i_data = (float4)(0.0f);
+	}
+	else
+	{
+		i_data = predicted[i];
+	}
 
-    // // Load data into shared block
-    // __local float4 loc_predicted[local_size]; //size=local_size*4*4
-    // loc_predicted[li] = i_data;
-    // barrier(CLK_LOCAL_MEM_FENCE);
+	// Load data into shared block
+	__local float4 loc_predicted[local_size]; //size=local_size*4*4
+	loc_predicted[li] = i_data;
+	barrier(CLK_LOCAL_MEM_FENCE);
+#endif
 
     if (i >= N) return;
 
@@ -70,20 +72,25 @@ __kernel void computeDelta(__constant struct Parameters *Params,
             const int j_index = friends_list[baseIndex + iFriend];
 
             // Get j particle data
-            const float4 j_data = predicted[j_index];
-            // float4 j_data;
+#ifdef LOCALMEM
+            float4 j_data;
             // if ((j_index >> 8) == group_id)
-            // {
-            //     j_data = loc_predicted[j_index & (255)];
+            if ((j_index / 256) == group_id)
+            {
+            //    j_data = loc_predicted[j_index & (255)];
+                j_data = loc_predicted[j_index % 256];
             //     localHit++;
             //     //atomic_inc(&stats[0]);
-            // }
-            // else
-            // {
-            //     j_data = predicted[j_index];
+            }
+            else
+            {
+                j_data = predicted[j_index];
             //     localMiss++;
             //     //atomic_inc(&stats[1]);
-            // }
+            }
+#else
+            const float4 j_data = predicted[j_index];
+#endif
 
             // Compute r, length(r) and length(r)^2
             const float3 r         = predicted[i].xyz - j_data.xyz;

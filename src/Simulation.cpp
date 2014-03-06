@@ -443,8 +443,11 @@ void Simulation::computeDelta(int iterationIndex)
     // std::cout << "CL_KERNEL_LOCAL_MEM_SIZE = " << mKernels["computeDelta"].getWorkGroupInfo<CL_KERNEL_LOCAL_MEM_SIZE>(NULL) << std::endl;
     // std::cout << "CL_KERNEL_PRIVATE_MEM_SIZE = " << mKernels["computeDelta"].getWorkGroupInfo<CL_KERNEL_PRIVATE_MEM_SIZE>(NULL) << std::endl;
 
-    // mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
+#ifdef LOCALMEM
     mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, cl::NDRange(((Params.particleCount + 255) / 256) * 256), cl::NDRange(256), NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
+#else
+	mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
+#endif
 
     //SaveFile(mQueue, mDeltaBuffer, "delta2");
 }

@@ -51,6 +51,8 @@
 
 #endif // __OPENCL_VERSION__
 
+//#define LOCALMEM
+
 // RADIX SORTING
 // C++ class for sorting integer list in OpenCL
 // copyright Philippe Helluy, Université de Strasbourg, France, 2011, helluy@math.unistra.fr
