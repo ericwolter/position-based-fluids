@@ -34,7 +34,7 @@ void SelectOpenCLDevice(cl::Platform &platform, cl::Device &device)
 
         // Get platform devices
         vector<cl::Device> devices;
-        cit->getDevices(CL_DEVICE_TYPE_GPU, &devices);
+        cit->getDevices(CL_DEVICE_TYPE_ALL, &devices);
         for (vector<cl::Device>::const_iterator dit = devices.begin(); dit != devices.end(); dit++)
         {
             // Add to options
@@ -72,7 +72,7 @@ void SelectOpenCLDevice(cl::Platform &platform, cl::Device &device)
 
     // CUSTOM CHANGE "BestOption" HERE... (but don't commit it)
     // BestOption = ...;
-    BestOption = 0;
+    // BestOption = 0;
 
     // Check if found atleast one device
     if (BestOption == -1)
@@ -148,7 +148,7 @@ int main()
     }
     catch (const cl::Error &ecl)
     {
-        cerr << "OpenCL Error caught: " << ecl.what() << "(" << ecl.err() << ")" << endl;
+            cerr << "OpenCL Error caught: " << ecl.what() << "(" << ecl.err() << ")" << endl;
         exit(-1);
     }
     catch (const exception &e)

@@ -3,6 +3,7 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
                                const __global int *cells,
                                const __global int *particles_list,
                                __global int *friends_list,
+                               __write_only __global image2d_t img_friends_list,
                                const int N)
 {
     const int i = get_global_id(0);
@@ -80,6 +81,14 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
     #endif
 
     // Save counters
-    for (int j = 0; j < FRIENDS_CIRCLES; j++)
-        friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + j] = circleParticles[j];
+    for (int iCircle = 0; iCircle < FRIENDS_CIRCLES; iCircle++)
+    {
+        friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + iCircle] = circleParticles[iCircle];
+        imgWriteui1(img_friends_list, i * PARTICLE_FRIENDS_BLOCK_SIZE + iCircle, circleParticles[iCircle]);
+        for (int iter_i = 0; iter_i < circleParticles[iCircle]; iter_i++)
+        {
+            int index = Circle0_offset + iCircle * MAX_PARTICLES_IN_CIRCLE + iter_i;
+            imgWriteui1(img_friends_list, index, friends_list[index]);
+        }
+    }
 }

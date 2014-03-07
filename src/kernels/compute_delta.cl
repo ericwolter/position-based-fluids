@@ -3,20 +3,21 @@ __kernel void computeDelta(__constant struct Parameters *Params,
                            __global float4 *delta,
                            const __global float4 *predicted, // xyz=predicted, w=scaling
                            const __global int *friends_list,
+                           __global image2d_t img_friends_list,
                            const float wave_generator,
                            const int N)
 {
     const int i = get_global_id(0);
 
 #ifdef LOCALMEM
-	const size_t local_size = 256;
+	#define local_size (64)
 	const uint li = get_local_id(0);
 	const uint group_id = get_group_id(0);
 
 	float4 i_data;
 	if (i >= N)
 	{
-			i_data = (float4)(0.0f);
+		i_data = (float4)(0.0f);
 	}
 	else
 	{
@@ -49,7 +50,7 @@ __kernel void computeDelta(__constant struct Parameters *Params,
     int totalFriends = 0;
     int circleParticles[FRIENDS_CIRCLES];
     for (int j = 0; j < FRIENDS_CIRCLES; j++)
-        totalFriends += circleParticles[j] = friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + j];
+        totalFriends += circleParticles[j] = imgReadui1(img_friends_list, i * PARTICLE_FRIENDS_BLOCK_SIZE + j);
 
     int proccedFriends = 0;
     for (int iCircle = 0; iCircle < FRIENDS_CIRCLES; iCircle++)
@@ -69,24 +70,23 @@ __kernel void computeDelta(__constant struct Parameters *Params,
         for (int iFriend = 0; iFriend < circleParticles[iCircle]; iFriend++)
         {
             // Read friend index from friends_list
-            const int j_index = friends_list[baseIndex + iFriend];
+
+            const int j_index = imgReadui1(img_friends_list, baseIndex + iFriend);
 
             // Get j particle data
 #ifdef LOCALMEM
             float4 j_data;
-            // if ((j_index >> 8) == group_id)
-            if ((j_index / 256) == group_id)
+            if ((j_index / local_size) == group_id)
             {
-            //    j_data = loc_predicted[j_index & (255)];
-                j_data = loc_predicted[j_index % 256];
+                j_data = loc_predicted[j_index % local_size];
             //     localHit++;
-            //     //atomic_inc(&stats[0]);
+            //     atomic_inc(&stats[0]);
             }
             else
             {
                 j_data = predicted[j_index];
             //     localMiss++;
-            //     //atomic_inc(&stats[1]);
+            //     atomic_inc(&stats[1]);
             }
 #else
             const float4 j_data = predicted[j_index];

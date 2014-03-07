@@ -75,6 +75,7 @@ public:
     cl::Buffer mParameters;
 
     cl::Image2DGL mParticlePosImg;
+    cl::Image2DGL mFriendsListImg;
 
     // Radix buffers
     cl::Buffer mInKeysBuffer;
@@ -137,6 +138,7 @@ public:
 
     // Open GL Sharing Texture buffer
     GLuint mSharedParticlesPos;
+    GLuint mSharedFriendsList;
 
     // Performance measurement
     OCLPerfMon PerfData;
