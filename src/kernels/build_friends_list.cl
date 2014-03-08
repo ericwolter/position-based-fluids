@@ -25,7 +25,7 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
                                const __global int *cells,
                                const __global int *particles_list,
                                __global int *friends_list,
-                               __write_only __global image2d_t img_friends_list,
+                               __write_only image2d_t img_friends_list,
                                const int N)
 {
     const int i = get_global_id(0);

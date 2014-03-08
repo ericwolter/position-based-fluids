@@ -3,7 +3,7 @@ __kernel void computeDelta(__constant struct Parameters *Params,
                            __global float4 *delta,
                            const __global float4 *predicted, // xyz=predicted, w=scaling
                            const __global int *friends_list,
-                           __global image2d_t img_friends_list,
+                           __read_only image2d_t img_friends_list,
                            const float wave_generator,
                            const int N)
 {

@@ -2,7 +2,7 @@ __kernel void computeScaling(__constant struct Parameters *Params,
                              __global float4 *predicted,
                              __global float *density,
                              const __global int *friends_list,
-                             __global image2d_t img_friends_list,
+                             __read_only image2d_t img_friends_list,
                              const int N)
 {
     // Scaling = lambda
