@@ -33,6 +33,8 @@
 
     #if defined(_WINDOWS) 
         #pragma warning( disable : 4290 )
+        #include <CL/cl.h>
+        #undef CL_VERSION_1_2 // Fuckings to NVIDIA for no supporting OpenCL 1.2
         #include "ocl/cl.hpp"
     #else
         #pragma GCC diagnostic push
