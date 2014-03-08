@@ -127,6 +127,11 @@ bool Simulation::InitKernels()
     std::ostringstream clflags;
     clflags << "-cl-mad-enable -cl-no-signed-zeros -cl-fast-relaxed-math ";
 
+    // Vendor related flags
+    string devVendor = mCLDevice.getInfo<CL_DEVICE_VENDOR>();
+    if (devVendor.find("NVIDIA") != std::string::npos)
+        clflags << "-cl-nv-verbose ";
+
 #ifdef USE_DEBUG
     clflags << "-DUSE_DEBUG ";
 #endif // USE_DEBUG
@@ -138,23 +143,33 @@ bool Simulation::InitKernels()
     clflags << "-DLOG_SIZE="                    << (int)1024 << " ";
     clflags << "-DEND_OF_CELL_LIST="            << (int)(-1)         << " ";
 
-    clflags << "-DFRIENDS_CIRCLES="             << (int)(Params.friendsCircles)     << " ";  // Defines how many friends circle are we going to scan for
-    clflags << "-DMAX_PARTICLES_IN_CIRCLE="     << (int)(Params.particlesPerCircle) << " ";  // Defines the max number of particles per cycle
-    clflags << "-DPARTICLE_FRIENDS_BLOCK_SIZE=" << (int)(Params.friendsCircles + Params.friendsCircles * Params.particlesPerCircle) << " ";  // FRIENDS_CIRCLES + FRIENDS_CIRCLES * MAX_PARTICLES_IN_CIRCLE
+    clflags << "-DMAX_PARTICLES_COUNT="         << (int)(Params.particleCount)      << " ";  
+    clflags << "-DMAX_FRIENDS_CIRCLES="         << (int)(Params.friendsCircles)     << " ";  
+    clflags << "-DMAX_FRIENDS_IN_CIRCLE="       << (int)(Params.particlesPerCircle) << " ";  
+    clflags << "-DFRIENDS_BLOCK_SIZE="          << (int)(Params.particleCount * Params.friendsCircles) << " ";  
 
     clflags << "-DGRID_BUF_SIZE="     << (int)(Params.gridBufSize) << " ";
 
     clflags << "-DPOLY6_FACTOR="      << 315.0f / (64.0f * M_PI * pow(Params.h, 9)) << "f ";
     clflags << "-DGRAD_SPIKY_FACTOR=" << 45.0f / (M_PI * pow(Params.h, 6)) << "f ";
 
-
     // Compile kernels
     cl::Program program = clSetup.createProgram(kernelSources, mCLContext, mCLDevice, clflags.str());
     if (program() == 0)
         return false;
 
+    // save BuildLog
+    string buildLog = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(mCLDevice);
+    ofstream f("build.log", ios::out | ios::trunc);
+    f << buildLog;
+    f.close();
+
     // Build kernels table
     mKernels = clSetup.createKernelsMap(program);
+
+    // Write kernel info
+    cout << "CL_KERNEL_WORK_GROUP_SIZE=" << mKernels["computeDelta"].getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(mCLDevice) << endl;
+    cout << "CL_KERNEL_LOCAL_MEM_SIZE =" << mKernels["computeDelta"].getWorkGroupInfo<CL_KERNEL_LOCAL_MEM_SIZE>(mCLDevice) << endl;
 
     // Copy Params (Host) => mParams (GPU)
     mQueue = cl::CommandQueue(mCLContext, mCLDevice, CL_QUEUE_PROFILING_ENABLE);

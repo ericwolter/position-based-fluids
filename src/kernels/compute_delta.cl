@@ -9,28 +9,19 @@ __kernel void computeDelta(__constant struct Parameters *Params,
 {
     const int i = get_global_id(0);
 
-#ifdef LOCALMEM
-	#define local_size (64)
-	const uint li = get_local_id(0);
-	const uint group_id = get_group_id(0);
-
-	float4 i_data;
-	if (i >= N)
-	{
-		i_data = (float4)(0.0f);
-	}
-	else
-	{
-		i_data = predicted[i];
-	}
-
-	// Load data into shared block
-	__local float4 loc_predicted[local_size]; //size=local_size*4*4
-	loc_predicted[li] = i_data;
-	barrier(CLK_LOCAL_MEM_FENCE);
-#endif
-
     if (i >= N) return;
+    
+#ifdef LOCALMEM
+    #define local_size       (256)
+
+    const uint local_id = get_local_id(0);
+    const uint group_id = get_group_id(0);
+
+    // Load data into shared block
+    __local float4 loc_predicted[local_size]; 
+    loc_predicted[local_id] = predicted[i];
+    barrier(CLK_LOCAL_MEM_FENCE);
+#endif
 
     uint2 randSeed = (uint2)(1 + get_global_id(0), 1);
 
@@ -48,12 +39,13 @@ __kernel void computeDelta(__constant struct Parameters *Params,
 
     // read number of friends
     int totalFriends = 0;
-    int circleParticles[FRIENDS_CIRCLES];
-    for (int j = 0; j < FRIENDS_CIRCLES; j++)
-        totalFriends += circleParticles[j] = imgReadui1(img_friends_list, i * PARTICLE_FRIENDS_BLOCK_SIZE + j);
+    int circleParticles[MAX_FRIENDS_CIRCLES];
+    for (int j = 0; j < MAX_FRIENDS_CIRCLES; j++)
+        totalFriends += circleParticles[j] = friends_list[j * MAX_PARTICLES_COUNT + i];
+//        totalFriends += circleParticles[j] = imgReadui1(img_friends_list, j * MAX_PARTICLES_COUNT + i);
 
     int proccedFriends = 0;
-    for (int iCircle = 0; iCircle < FRIENDS_CIRCLES; iCircle++)
+    for (int iCircle = 0; iCircle < MAX_FRIENDS_CIRCLES; iCircle++)
     {
         // Check if we want to process/skip next friends circle
         if (((float)proccedFriends) / totalFriends > 0.5f)
@@ -62,21 +54,22 @@ __kernel void computeDelta(__constant struct Parameters *Params,
         // Add next circle to process count
         proccedFriends += circleParticles[iCircle];
 
-        // Compute friends list start offset
-        int baseIndex = i * PARTICLE_FRIENDS_BLOCK_SIZE + FRIENDS_CIRCLES +   // Offset to first circle -> "circle[0]"
-                        iCircle * MAX_PARTICLES_IN_CIRCLE;                    // Offset to iCircle      -> "circle[iCircle]"
+        // Compute friends start offset
+        int baseIndex = FRIENDS_BLOCK_SIZE +                                      // Skip friendsCount block
+                        iCircle * (MAX_PARTICLES_COUNT * MAX_FRIENDS_IN_CIRCLE) + // Offset to relevent circle
+                        i;   
 
         // Process friends in circle
         for (int iFriend = 0; iFriend < circleParticles[iCircle]; iFriend++)
         {
             // Read friend index from friends_list
-
-            const int j_index = imgReadui1(img_friends_list, baseIndex + iFriend);
+            //const int j_index = imgReadui1(img_friends_list, baseIndex + iFriend * MAX_PARTICLES_COUNT);
+            const int j_index = friends_list[baseIndex + iFriend * MAX_PARTICLES_COUNT];
 
             // Get j particle data
 #ifdef LOCALMEM
             float4 j_data;
-            if ((j_index / local_size) == group_id)
+            if (j_index / local_size == group_id)
             {
                 j_data = loc_predicted[j_index % local_size];
             //     localHit++;
