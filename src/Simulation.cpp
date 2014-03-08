@@ -208,7 +208,6 @@ void Simulation::InitBuffers()
     mPositionsPingBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharedPingBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
     mPositionsPongBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharedPongBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
     mParticlePosImg        = cl::Image2DGL(mCLContext, CL_MEM_READ_WRITE, GL_TEXTURE_2D, 0, mSharedParticlesPos);
-    mFriendsListImg        = cl::Image2DGL(mCLContext, CL_MEM_READ_WRITE, GL_TEXTURE_2D, 0, mSharedFriendsList);
 
     mPredictedPingBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mPredictedPongBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
@@ -413,7 +412,6 @@ void Simulation::buildFriendsList()
     mKernels["buildFriendsList"].setArg(param++, mCellsBuffer);
     mKernels["buildFriendsList"].setArg(param++, mParticlesListBuffer);
     mKernels["buildFriendsList"].setArg(param++, mFriendsListBuffer);
-    mKernels["buildFriendsList"].setArg(param++, mFriendsListImg);
     mKernels["buildFriendsList"].setArg(param++, Params.particleCount);
     mQueue.enqueueNDRangeKernel(mKernels["buildFriendsList"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("buildFriendsList"));
 
@@ -456,7 +454,6 @@ void Simulation::computeDelta(int iterationIndex)
     mKernels["computeDelta"].setArg(param++, mDeltaBuffer);
     mKernels["computeDelta"].setArg(param++, mPredictedPingBuffer); // xyz=Predicted z=Scaling
     mKernels["computeDelta"].setArg(param++, mFriendsListBuffer);
-    mKernels["computeDelta"].setArg(param++, mFriendsListImg);
     mKernels["computeDelta"].setArg(param++, fWavePos);
     mKernels["computeDelta"].setArg(param++, Params.particleCount);
 
@@ -479,7 +476,6 @@ void Simulation::computeScaling(int iterationIndex)
     mKernels["computeScaling"].setArg(param++, mPredictedPingBuffer);
     mKernels["computeScaling"].setArg(param++, mDensityBuffer);
     mKernels["computeScaling"].setArg(param++, mFriendsListBuffer);
-    mKernels["computeScaling"].setArg(param++, mFriendsListImg);
     mKernels["computeScaling"].setArg(param++, Params.particleCount);
 
     // std::cout << "CL_KERNEL_LOCAL_MEM_SIZE = " << mKernels["computeScaling"].getWorkGroupInfo<CL_KERNEL_LOCAL_MEM_SIZE>(NULL) << std::endl;
@@ -663,7 +659,6 @@ void Simulation::Step()
     sharedBuffers.push_back(mPositionsPingBuffer);
     sharedBuffers.push_back(mPositionsPongBuffer);
     sharedBuffers.push_back(mParticlePosImg);
-    sharedBuffers.push_back(mFriendsListImg);
     mQueue.enqueueAcquireGLObjects(&sharedBuffers);
 
     // Predicit positions

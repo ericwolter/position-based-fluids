@@ -75,7 +75,6 @@ public:
     cl::Buffer mParameters;
 
     cl::Image2DGL mParticlePosImg;
-    cl::Image2DGL mFriendsListImg;
 
     // Radix buffers
     cl::Buffer mInKeysBuffer;

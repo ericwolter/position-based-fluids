@@ -3,7 +3,6 @@ __kernel void computeDelta(__constant struct Parameters *Params,
                            __global float4 *delta,
                            const __global float4 *predicted, // xyz=predicted, w=scaling
                            const __global int *friends_list,
-                           __global image2d_t img_friends_list,
                            const float wave_generator,
                            const int N)
 {
@@ -42,7 +41,6 @@ __kernel void computeDelta(__constant struct Parameters *Params,
     int circleParticles[MAX_FRIENDS_CIRCLES];
     for (int j = 0; j < MAX_FRIENDS_CIRCLES; j++)
         totalFriends += circleParticles[j] = friends_list[j * MAX_PARTICLES_COUNT + i];
-//        totalFriends += circleParticles[j] = imgReadui1(img_friends_list, j * MAX_PARTICLES_COUNT + i);
 
     int proccedFriends = 0;
     for (int iCircle = 0; iCircle < MAX_FRIENDS_CIRCLES; iCircle++)
@@ -63,7 +61,6 @@ __kernel void computeDelta(__constant struct Parameters *Params,
         for (int iFriend = 0; iFriend < circleParticles[iCircle]; iFriend++)
         {
             // Read friend index from friends_list
-            //const int j_index = imgReadui1(img_friends_list, baseIndex + iFriend * MAX_PARTICLES_COUNT);
             const int j_index = friends_list[baseIndex + iFriend * MAX_PARTICLES_COUNT];
 
             // Get j particle data

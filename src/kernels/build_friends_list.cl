@@ -25,7 +25,6 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
                                const __global int *cells,
                                const __global int *particles_list,
                                __global int *friends_list,
-                               __write_only __global image2d_t img_friends_list,
                                const int N)
 {
     const int i = get_global_id(0);
@@ -87,7 +86,6 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
                                 i;                                                            // Offset to particle_index                    
                     
                     friends_list[index] = j_index;
-                    imgWriteui1(img_friends_list, index, j_index);
                 }
             }
         }
@@ -97,6 +95,5 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
     for (int iCircle = 0; iCircle < MAX_FRIENDS_CIRCLES; iCircle++)
     {
         friends_list[iCircle * MAX_PARTICLES_COUNT + i] = circleParticles[iCircle];
-        imgWriteui1(img_friends_list, iCircle * MAX_PARTICLES_COUNT + i, circleParticles[iCircle]);
     }
 }
