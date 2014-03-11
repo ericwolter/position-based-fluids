@@ -59,6 +59,10 @@ void Runner::run(Simulation &simulation, CVisual &renderer)
                 simulation.mSharedPongBufferID = renderer.createSharingBuffer(Params.particleCount * sizeof(cl_float4));
                 simulation.mSharedParticlesPos = renderer.createSharingTexture(2048, (Params.particleCount + 2048 - 1) / 2048);
 
+                // Generated friends list shared buffer
+                int nFriendListSize = Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle);
+                simulation.mSharedFriendsList   = OGLU_GenerateTexture(2048, (nFriendListSize + 2048 - 1) / 2048, GL_R32UI);
+
                 // Init buffers
                 simulation.InitBuffers();
             }
