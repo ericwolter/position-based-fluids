@@ -51,7 +51,7 @@
 
 #endif // __OPENCL_VERSION__
 
-#define LOCALMEM
+//#define LOCALMEM
 
 // RADIX SORTING
 // C++ class for sorting integer list in OpenCL
