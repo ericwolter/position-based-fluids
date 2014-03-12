@@ -149,11 +149,13 @@ int main()
     catch (const cl::Error &ecl)
     {
         cerr << "OpenCL Error caught: " << ecl.what() << "(" << ecl.err() << ")" << endl;
+        getchar();
         exit(-1);
     }
     catch (const exception &e)
     {
         cerr << "STD Error caught: " << e.what() << endl;
+        getchar();
         exit(-1);
     }
 

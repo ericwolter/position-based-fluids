@@ -163,16 +163,13 @@ set_target_properties( pbf PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 )
 
-add_custom_target(copy ALL
-    COMMENT "Copying support files")
-
 foreach(KERNEL ${KERNELS})
     get_filename_component(FILENAME ${KERNEL} NAME)
     set(SRC "${KERNEL}")
     set(DST "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/data/kernels/${FILENAME}")
 
     add_custom_command(
-        TARGET copy
+        TARGET pbf POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy ${SRC} ${DST}
         )
 endforeach(KERNEL)
@@ -183,7 +180,7 @@ foreach(SHADER ${SHADERS})
     set(DST "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/data/shaders/${FILENAME}")
 
     add_custom_command(
-        TARGET copy
+        TARGET pbf POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy ${SRC} ${DST}
         )
 endforeach(SHADER)
@@ -194,7 +191,7 @@ foreach(SCENARIO ${SCENARIOS})
     set(DST "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/data/scenarios/${FILENAME}")
 
     add_custom_command(
-        TARGET copy
+        TARGET pbf POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy ${SRC} ${DST}
         )
 endforeach(SCENARIO)
@@ -205,7 +202,7 @@ foreach(TEXTURE ${TEXTURES})
     set(DST "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/data/textures/${FILENAME}")
 
     add_custom_command(
-        TARGET copy
+        TARGET pbf POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy ${SRC} ${DST}
         )
 endforeach(TEXTURE)

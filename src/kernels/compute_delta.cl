@@ -7,7 +7,20 @@ __kernel void computeDelta(__constant struct Parameters *Params,
                            const int N)
 {
     const int i = get_global_id(0);
+
     if (i >= N) return;
+    
+#ifdef LOCALMEM
+    #define local_size       (256)
+
+    const uint local_id = get_local_id(0);
+    const uint group_id = get_group_id(0);
+
+    // Load data into shared block
+    __local float4 loc_predicted[local_size]; 
+    loc_predicted[local_id] = predicted[i];
+    barrier(CLK_LOCAL_MEM_FENCE);
+#endif
 
     uint2 randSeed = (uint2)(1 + get_global_id(0), 1);
 
@@ -20,14 +33,17 @@ __kernel void computeDelta(__constant struct Parameters *Params,
     const float q_2 = pow(Params->surfaceTenstionDist * h_cache, 2);
     const float poly6_q = pow(h_2_cache - q_2, 3);
 
+    int localHit =0;
+    int localMiss = 0;
+
     // read number of friends
     int totalFriends = 0;
-    int circleParticles[FRIENDS_CIRCLES];
-    for (int j = 0; j < FRIENDS_CIRCLES; j++)
-        totalFriends += circleParticles[j] = friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + j];
+    int circleParticles[MAX_FRIENDS_CIRCLES];
+    for (int j = 0; j < MAX_FRIENDS_CIRCLES; j++)
+        totalFriends += circleParticles[j] = friends_list[j * MAX_PARTICLES_COUNT + i];
 
     int proccedFriends = 0;
-    for (int iCircle = 0; iCircle < FRIENDS_CIRCLES; iCircle++)
+    for (int iCircle = 0; iCircle < MAX_FRIENDS_CIRCLES; iCircle++)
     {
         // Check if we want to process/skip next friends circle
         if (((float)proccedFriends) / totalFriends > 0.5f)
@@ -36,20 +52,40 @@ __kernel void computeDelta(__constant struct Parameters *Params,
         // Add next circle to process count
         proccedFriends += circleParticles[iCircle];
 
-        // Compute friends list start offset
-        int baseIndex = i * PARTICLE_FRIENDS_BLOCK_SIZE + FRIENDS_CIRCLES +   // Offset to first circle -> "circle[0]"
-                        iCircle * MAX_PARTICLES_IN_CIRCLE;                    // Offset to iCircle      -> "circle[iCircle]"
+        // Compute friends start offset
+        int baseIndex = FRIENDS_BLOCK_SIZE +                                      // Skip friendsCount block
+                        iCircle * (MAX_PARTICLES_COUNT * MAX_FRIENDS_IN_CIRCLE) + // Offset to relevent circle
+                        i;   
 
         // Process friends in circle
         for (int iFriend = 0; iFriend < circleParticles[iCircle]; iFriend++)
         {
             // Read friend index from friends_list
-            const int j_index = friends_list[baseIndex + iFriend];
+            const int j_index = friends_list[baseIndex + iFriend * MAX_PARTICLES_COUNT];
+
+            // Get j particle data
+#ifdef LOCALMEM
+            float4 j_data;
+            if (j_index / local_size == group_id)
+            {
+                j_data = loc_predicted[j_index % local_size];
+            //     localHit++;
+            //     atomic_inc(&stats[0]);
+            }
+            else
+            {
+                j_data = predicted[j_index];
+            //     localMiss++;
+            //     atomic_inc(&stats[1]);
+            }
+#else
+            const float4 j_data = predicted[j_index];
+#endif
 
             // Compute r, length(r) and length(r)^2
-            const float3 r         = predicted[i].xyz - predicted[j_index].xyz;
+            const float3 r         = predicted[i].xyz - j_data.xyz;
             const float r_length_2 = dot(r, r);
-            
+
             if (r_length_2 < h_2_cache)
             {
                 const float r_length   = sqrt(r_length_2);
@@ -66,7 +102,7 @@ __kernel void computeDelta(__constant struct Parameters *Params,
                 const float s_corr = Params->surfaceTenstionK * r_q_radio * r_q_radio * r_q_radio * r_q_radio;
 
                 // Sum for delta p of scaling factors and grad spiky (equation 12)
-                sum += (predicted[i].w + predicted[j_index].w + s_corr) * gradient_spiky;
+                sum += (predicted[i].w + j_data.w + s_corr) * gradient_spiky;
             }
         }
     }
@@ -83,14 +119,18 @@ __kernel void computeDelta(__constant struct Parameters *Params,
     frand(&randSeed);
 
     // Clamp Y
-    if      (future.y < Params->yMin) future.y = Params->yMin + frand(&randSeed) * randDist;
-    if      (future.z < Params->zMin) future.z = Params->zMin + frand(&randSeed) * randDist;
+    if (future.y < Params->yMin) future.y = Params->yMin + frand(&randSeed) * randDist;
+    if (future.z < Params->zMin) future.z = Params->zMin + frand(&randSeed) * randDist;
     else if (future.z > Params->zMax) future.z = Params->zMax - frand(&randSeed) * randDist;
-    if      (future.x < (Params->xMin + wave_generator))  future.x = Params->xMin + wave_generator + frand(&randSeed) * randDist;
-    else if (future.x > (Params->xMax                 ))  future.x = Params->xMax                  - frand(&randSeed) * randDist;
+    if (future.x < (Params->xMin + wave_generator))  future.x = Params->xMin + wave_generator + frand(&randSeed) * randDist;
+    else if (future.x > (Params->xMax))  future.x = Params->xMax                  - frand(&randSeed) * randDist;
 
     // Compute delta
     delta[i].xyz = future - predicted[i].xyz;
+
+//    if(group_id == 0) {
+  //      printf("%d: hits: %d vs miss: %d\n", i, localHit,localMiss);
+    //}
 
     // #if defined(USE_DEBUG)
     //printf("compute_delta: result: i: %d (N=%d)\ndelta: [%f,%f,%f,%f]\n",

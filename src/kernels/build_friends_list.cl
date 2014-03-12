@@ -1,3 +1,25 @@
+// Important: below arrays are Row Major (http://en.wikipedia.org/wiki/Row-major_order)
+// friendsData = struct
+// {
+//     Uint32 friendsCount[MAX_FRIENDS_CIRCLES][MAX_PARTICLES_COUNT];
+//     Uint32 friendIndex[MAX_FRIENDS_CIRCLES][MAX_FRIENDS_IN_CIRCLE][MAX_PARTICLES_COUNT];
+// }
+// 
+// Related defines
+//     MAX_PARTICLES_COUNT          Defines how many particles exists in the simulation
+//     MAX_FRIENDS_CIRCLES          Defines how many friends circle are we going to scan for
+//     MAX_FRIENDS_IN_CIRCLE        Defines the max number of particles per cycle
+//     
+// Cached values
+//     FRIENDS_BLOCK_SIZE = MAX_PARTICLES_COUNT * MAX_FRIENDS_CIRCLES;
+// 
+// Access patterns
+//     friendsCount[CircleIndex][ParticleIndex]             ==> Data[CircleIndex * MAX_PARTICLES_COUNT + ParticleIndex];
+//     friendIndex[CircleIndex][FriendIndex][ParticleIndex] ==> Data[FRIENDS_BLOCK_SIZE +                                             // Skip friendsCount block
+//                                                                   CircleIndex * (MAX_PARTICLES_COUNT * MAX_FRIENDS_IN_CIRCLE) +    // Offset to relevent circle
+//                                                                   FriendIndex * (MAX_PARTICLES_COUNT)                              // Offset to relevent friend_index
+//                                                                   ParticleIndex];                                                  // Offset to particle_index
+
 __kernel void buildFriendsList(__constant struct Parameters *Params,
                                const __global float4 *predicted,
                                const __global int *cells,
@@ -7,13 +29,12 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
 {
     const int i = get_global_id(0);
     if (i >= N) return;
-
-    const int Circle0_offset  = i * PARTICLE_FRIENDS_BLOCK_SIZE + FRIENDS_CIRCLES;
+    
     const float MIN_R = 0.3f * Params->h;
 
     // Define circle particle counter varible
-    __private int circleParticles[FRIENDS_CIRCLES];
-    for (int j = 0; j < FRIENDS_CIRCLES; j++)
+    __private int circleParticles[MAX_FRIENDS_CIRCLES];
+    for (int j = 0; j < MAX_FRIENDS_CIRCLES; j++)
         circleParticles[j] = 0;
 
     // Start grid scan
@@ -46,40 +67,33 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
 
                     // Find particle circle
                     const float adjusted_r = max(0.0f, (sqrt(r_length_2) - MIN_R) / (Params->h - MIN_R));
-                    const int j_circle = min(convert_int(adjusted_r * adjusted_r * adjusted_r * FRIENDS_CIRCLES), FRIENDS_CIRCLES - 1);
+                    const int j_circle = min(convert_int(adjusted_r * adjusted_r * adjusted_r * MAX_FRIENDS_CIRCLES), MAX_FRIENDS_CIRCLES - 1);
 
                     // Make sure particle doesn't have too many friends
-                    if (circleParticles[j_circle] >= MAX_PARTICLES_IN_CIRCLE - 5)
+                    if (circleParticles[j_circle] >= MAX_FRIENDS_IN_CIRCLE)
                     {
-                        // printf("Damn! we need a bigger MAX_PARTICLES_IN_CIRCLE\n");
+                        // printf("Damn! we need a bigger MAX_FRIENDS_IN_CIRCLE\n");
                         continue;
                     }
 
-                    // Add friend to relevent circle
-                    friends_list[Circle0_offset + j_circle * MAX_PARTICLES_IN_CIRCLE + circleParticles[j_circle]] = j_index;
+                    // Increments friends in circle counter
+                    int friendIndex = circleParticles[j_circle]++;
 
-                    circleParticles[j_circle]++;
+                    // Add friend to relevent circle
+                    int index = FRIENDS_BLOCK_SIZE +                                          // Skip friendsCount block
+                                j_circle    * (MAX_PARTICLES_COUNT * MAX_FRIENDS_IN_CIRCLE) + // Offset to relevent circle
+                                friendIndex * (MAX_PARTICLES_COUNT) +                         // Offset to relevent friend_index
+                                i;                                                            // Offset to particle_index                    
+                    
+                    friends_list[index] = j_index;
                 }
             }
         }
     }
-    
-    #ifdef CANCEL_RANDOMNESS
-        // Sort list
-        for (int iCircle = 0; iCircle < FRIENDS_CIRCLES; iCircle++)
-        {
-            for (int iter_i = 0; iter_i < circleParticles[iCircle] - 1; iter_i++)
-                for (int iter_j = 0; iter_j < circleParticles[iCircle] - iter_i - 1; iter_j++)
-                {
-                    int value0 = friends_list[Circle0_offset + iCircle * MAX_PARTICLES_IN_CIRCLE + iter_j + 0];
-                    int value1 = friends_list[Circle0_offset + iCircle * MAX_PARTICLES_IN_CIRCLE + iter_j + 1];
-                    friends_list[Circle0_offset + iCircle * MAX_PARTICLES_IN_CIRCLE + iter_j + 0] = min(value0, value1);
-                    friends_list[Circle0_offset + iCircle * MAX_PARTICLES_IN_CIRCLE + iter_j + 1] = max(value0, value1);
-                }
-        }
-    #endif
 
     // Save counters
-    for (int j = 0; j < FRIENDS_CIRCLES; j++)
-        friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + j] = circleParticles[j];
+    for (int iCircle = 0; iCircle < MAX_FRIENDS_CIRCLES; iCircle++)
+    {
+        friends_list[iCircle * MAX_PARTICLES_COUNT + i] = circleParticles[iCircle];
+    }
 }

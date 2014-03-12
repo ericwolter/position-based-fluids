@@ -13,12 +13,12 @@ __kernel void applyVorticity(
 
     // read number of friends
     int totalFriends = 0;
-    int circleParticles[FRIENDS_CIRCLES];
-    for (int j = 0; j < FRIENDS_CIRCLES; j++)
-        totalFriends += circleParticles[j] = friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + j];
-
+    int circleParticles[MAX_FRIENDS_CIRCLES];
+    for (int j = 0; j < MAX_FRIENDS_CIRCLES; j++)
+        totalFriends += circleParticles[j] = friends_list[j * MAX_PARTICLES_COUNT + i];
+        
     int proccedFriends = 0;
-    for (int iCircle = 0; iCircle < FRIENDS_CIRCLES; iCircle++)
+    for (int iCircle = 0; iCircle < MAX_FRIENDS_CIRCLES; iCircle++)
     {
         // Check if we want to process/skip next friends circle
         if (((float)proccedFriends) / totalFriends > 0.5f)
@@ -26,14 +26,17 @@ __kernel void applyVorticity(
 
         // Add next circle to process count
         proccedFriends += circleParticles[iCircle];
+        
+        // Compute friends start offset
+        int baseIndex = FRIENDS_BLOCK_SIZE +                                      // Skip friendsCount block
+                        iCircle * (MAX_PARTICLES_COUNT * MAX_FRIENDS_IN_CIRCLE) + // Offset to relevent circle
+                        i;                                                        // Offset to particle_index              
 
         // Process friends in circle
         for (int iFriend = 0; iFriend < circleParticles[iCircle]; iFriend++)
         {
             // Read friend index from friends_list
-            const int j_index = friends_list[i * PARTICLE_FRIENDS_BLOCK_SIZE + FRIENDS_CIRCLES +   // Offset to first circle -> "circle[0]"
-                                             iCircle * MAX_PARTICLES_IN_CIRCLE +                   // Offset to iCircle      -> "circle[iCircle]"
-                                             iFriend];                                             // Offset to iFriend      -> "circle[iCircle][iFriend]"
+            const int j_index = friends_list[baseIndex + iFriend * MAX_PARTICLES_COUNT];
 
             const float3 r = predicted[i].xyz - predicted[j_index].xyz;
             const float r_length_2 = (r.x * r.x + r.y * r.y + r.z * r.z);
