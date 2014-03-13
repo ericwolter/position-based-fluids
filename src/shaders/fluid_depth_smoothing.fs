@@ -15,6 +15,8 @@ layout(r32i) uniform iimage2D grid;
 
 // Particles related
 uniform float     smoothLength;
+//uniform float     poly6Factor;
+//uniform float     poly6GradFactor;
 uniform int       particlesCount;
 uniform uint      currentCycleID;
 
@@ -153,18 +155,18 @@ uint calcGridHash(ivec3 gridPos)
     return mortonNumber(gridPos) % /*GRID_BUF_SIZE*/ (2048*2048);
 }
 
-float GetDensityGrid(vec3 worldPos)
+void SampleDensityAndGradient(vec3 worldPos, out float density, out vec3 gradient)
 {
     // Cash h^2
     float h_2 = smoothLength*smoothLength;
 
     // Reset density sum
-    float density = 0.0;
+    density = 0.0;
+    gradient = vec3(0);
     int count = 0;
     
     // Compute Grid position
     ivec3 gridCell = ivec3(worldPos / smoothLength);
-    //return vec3(gridCell);
 
     // scan 3x3x3 cells
     for (int iz = -1; iz <= +1; iz++)
@@ -190,10 +192,14 @@ float GetDensityGrid(vec3 worldPos)
                     // Check if out of range
                     if (r_2 < h_2)
                     {
-                    count++;
-                    //density += r_2;
-                        // append density
+                        // count in-range particles
+                        count++;
+
+                        // sum gradient
                         float h_2_r_2_diff = h_2 - r_2;
+                        gradient += delta * h_2_r_2_diff * h_2_r_2_diff;
+
+                        // append density
                         density += h_2_r_2_diff * h_2_r_2_diff * h_2_r_2_diff;    
                     }
                     
@@ -204,7 +210,9 @@ float GetDensityGrid(vec3 worldPos)
         }
     }
 
-    return density;
+    // scale by factors
+    density  *=  1; // poly6Factor;
+    gradient *= -6; // poly6GradFactor;
 }
 
 void main()
@@ -224,40 +232,42 @@ void main()
     // compute pixel-camera normal (model space)
     vec3 pixelCamNorm = normalize(cameraPos - modelPos);
     
-    // Scan for closest density along camera normal
-    float scanDist = 0.035*4;
-    float scanStep = scanDist / 100;
-    float TargetDensity = 1.0 / 700000000.0;
+    // Select shell target density
+    float TargetDensity = 1.0 / 400000000.0;
     
-    //result = vec4(GetDensity(modelPos), modelPos.x, 0, 1);
-    //return;
-    
-    int   iterations = 0;
-    vec3  currPos = modelPos;
-    float currDensity = 1.0E10;
-    vec3  prevPos = currPos;
-    float prevDensity = currDensity;
-    for (float tp = -scanDist*0.1; tp < scanDist; tp += scanStep)
+    // define variables
+    float density;
+    vec3  gradient = vec3(0);
+
+    // Start scanning for shell sweet spot
+    float tp = 0.0;
+    vec3 shellPos = modelPos;
+    for (int iIter = 0; iIter < 2; iIter++)
     {
-        iterations++;
-        
-        // Compute shifted test point
-        prevPos = currPos;
-        currPos = modelPos + tp * pixelCamNorm;
-        
         // get test point density
-        prevDensity = currDensity;
-        currDensity = GetDensityGrid(currPos);
+        SampleDensityAndGradient(shellPos, density, gradient);
         
-        // Exit when we cross the threshold
-        if (currDensity < TargetDensity)
-            break;
+        // Compute density delta 
+        float densityDelta = density - TargetDensity;
+
+        // Check if we reached the sweet spot
+        //if (abs(densityDelta) < 0.000000000001)
+        //    break;
+
+        // Compute gradient along camera normal
+        float gradientAlongCamNormal = dot(pixelCamNorm, gradient);
+        
+        // Compute step size
+        float stepSize = densityDelta / gradientAlongCamNormal;
+        
+        // update tp
+        tp += stepSize; 
+
+        // Compute shifted test point
+        shellPos = modelPos + tp * pixelCamNorm;
+        
     }
     
-    // Interpolate position
-    float ratio = (TargetDensity - currDensity) / (prevDensity - currDensity);
-    vec3 shellPos = mix(currPos, prevPos, ratio);
-   
     // Convert back to viewspace
     vec3 viewSpaceDepth = (MV_Matrix * vec4(shellPos, 1.0)).xyz;
     
@@ -265,10 +275,5 @@ void main()
     float zbufferDepth = ViewSpaceDepth_to_ZBufferDepth(viewSpaceDepth);
     
     // Compose result
-    result = vec4(zbufferDepth, iterations, 0, 1);
-    
-    // Test: input depth, output depth, vsInput, vsOutput 
-    // float zbufferInput = texelFetch(depthTexture, iuv, 0).x;
-    // vec3 vsPos = uvToViewSpace(iuv);
-    // result = vec4(zbufferInput, zbufferDepth, vsPos.z, viewSpaceDepth.z);
+    result = vec4(zbufferDepth, normalize(gradient));
 }

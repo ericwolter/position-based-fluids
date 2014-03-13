@@ -311,8 +311,11 @@ void CVisual::renderFluidFinal(GLuint depthTexture)
     glUseProgram(g_SelectedProgram = mFluidFinalRenderProgID);
     OGLU_BindTextureToUniform("depthTexture", 0, depthTexture);
     glUniformMatrix4fv(UniformLoc("invProjectionMatrix"), 1, GL_FALSE, glm::value_ptr(mInvProjectionMatrix));
+    glUniformMatrix4fv(UniformLoc("iMV_Matrix"), 1, GL_FALSE, glm::value_ptr(ZPR_InvModelViewMatrix));
+    glUniformMatrix4fv(UniformLoc("MV_Matrix"),  1, GL_FALSE, glm::value_ptr(ZPR_ModelViewMatrix));
     glUniform2f(UniformLoc("depthRange"), 0.1f, 10.0f);
-    
+    glUniform2fv(UniformLoc("invFocalLen"), 1, glm::value_ptr(mInvFocalLen));
+
     OGLU_RenderQuad(0, 0, 1.0, 1.0);
 }
 

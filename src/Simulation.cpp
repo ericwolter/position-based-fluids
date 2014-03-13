@@ -665,7 +665,8 @@ void Simulation::Step()
     this->predictPositions();
 
     // sort particles buffer
-    this->radixsort();
+    if (!bPauseSim)
+        this->radixsort();
 
     // Update cells
     this->updateCells();
