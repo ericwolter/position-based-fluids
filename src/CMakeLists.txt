@@ -55,46 +55,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 add_subdirectory(visual)
 add_subdirectory(ocl)
 
-set(KERNELS
+set(KERNELS_SRC_SHARE
     "${PBF_SOURCE_DIR}/src/hesp.hpp"
     "${PBF_SOURCE_DIR}/src/parameters.hpp"
-    "${PBF_SOURCE_DIR}/src/kernels/utilities.cl"
-    "${PBF_SOURCE_DIR}/src/kernels/apply_viscosity.cl"
-    "${PBF_SOURCE_DIR}/src/kernels/apply_vorticity.cl"
-    "${PBF_SOURCE_DIR}/src/kernels/build_friends_list.cl"
-    "${PBF_SOURCE_DIR}/src/kernels/compute_delta.cl"
-    "${PBF_SOURCE_DIR}/src/kernels/compute_scaling.cl"
-    "${PBF_SOURCE_DIR}/src/kernels/pack_data.cl"
-    "${PBF_SOURCE_DIR}/src/kernels/predict_positions.cl"
-    "${PBF_SOURCE_DIR}/src/kernels/radixsort.cl"
-    "${PBF_SOURCE_DIR}/src/kernels/reset_grid.cl"
-    "${PBF_SOURCE_DIR}/src/kernels/update_cells.cl"
-    "${PBF_SOURCE_DIR}/src/kernels/update_positions.cl"
-    "${PBF_SOURCE_DIR}/src/kernels/update_predicted.cl"
-    "${PBF_SOURCE_DIR}/src/kernels/update_velocities.cl"
-    "${PBF_SOURCE_DIR}/src/kernels/logging.cl"
-)
-
-SET(SHADERS
-    "${PBF_SOURCE_DIR}/src/shaders/particles.vs"
-    "${PBF_SOURCE_DIR}/src/shaders/particles_color.fs"
-    "${PBF_SOURCE_DIR}/src/shaders/standard.vs"
-    "${PBF_SOURCE_DIR}/src/shaders/standard_color.fs"
-    "${PBF_SOURCE_DIR}/src/shaders/standard_copy.fs"
-    "${PBF_SOURCE_DIR}/src/shaders/fluid_depth_smoothing.fs"
-    "${PBF_SOURCE_DIR}/src/shaders/fluid_final_render.fs"
-    "${PBF_SOURCE_DIR}/src/shaders/vis_scan.cms"
-    "${PBF_SOURCE_DIR}/src/shaders/grid_build.cms"
-    "${PBF_SOURCE_DIR}/src/shaders/grid_chain_reset.cms"
-    "${PBF_SOURCE_DIR}/src/shaders/grid_reset.cms"
-)
-
-SET(SCENARIOS
-    "${PBF_SOURCE_DIR}/assets/scenarios/dam_coarse.par"
-)
-
-SET(TEXTURES
-    "${PBF_SOURCE_DIR}/assets/textures/wall.tga"
 )
 
 SET(ANT_TWEAK_BAR_SRC
@@ -117,14 +80,12 @@ if (WIN32)
     )
 endif()
     
-SOURCE_GROUP("_Resources" FILES ${TEXTURES})
-SOURCE_GROUP("_Shaders" FILES ${SHADERS})
 SOURCE_GROUP("_Kernels" FILES ${KERNELS})
 SOURCE_GROUP("_AntTweakBar" FILES ${ANT_TWEAK_BAR_SRC} ${ANT_TWEAK_BAR_SRC_WIN32})
 
 # also headers are not necessary for cmake, 
 # include them here so they appear in IDE like Xcode
-add_executable(pbf ${SOURCE} ${HEADER} ${KERNELS} ${SHADERS} ${SCENARIOS} ${TEXTURES} ${ANT_TWEAK_BAR_SRC} ${ANT_TWEAK_BAR_SRC_WIN32})
+add_executable(pbf ${SOURCE} ${HEADER} ${KERNELS_SRC_SHARE} ${ANT_TWEAK_BAR_SRC} ${ANT_TWEAK_BAR_SRC_WIN32})
 
 if (APPLE)
     target_link_libraries(pbf
@@ -163,47 +124,13 @@ set_target_properties( pbf PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}
 )
 
-foreach(KERNEL ${KERNELS})
-    get_filename_component(FILENAME ${KERNEL} NAME)
-    set(SRC "${KERNEL}")
-    set(DST "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/data/kernels/${FILENAME}")
+foreach(KERNELS_SRC_SHARE ${KERNELS_SRC_SHARE})
+    get_filename_component(FILENAME ${KERNELS_SRC_SHARE} NAME)
+    set(SRC "${KERNELS_SRC_SHARE}")
+    set(DST "${PBF_SOURCE_DIR}/assets/kernels/${FILENAME}")
 
     add_custom_command(
         TARGET pbf POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy ${SRC} ${DST}
         )
 endforeach(KERNEL)
-
-foreach(SHADER ${SHADERS})
-    get_filename_component(FILENAME ${SHADER} NAME)
-    set(SRC "${SHADER}")
-    set(DST "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/data/shaders/${FILENAME}")
-
-    add_custom_command(
-        TARGET pbf POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${SRC} ${DST}
-        )
-endforeach(SHADER)
-
-foreach(SCENARIO ${SCENARIOS})
-    get_filename_component(FILENAME ${SCENARIO} NAME)
-    set(SRC "${SCENARIO}")
-    set(DST "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/data/scenarios/${FILENAME}")
-
-    add_custom_command(
-        TARGET pbf POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${SRC} ${DST}
-        )
-endforeach(SCENARIO)
-
-foreach(TEXTURE ${TEXTURES})
-    get_filename_component(FILENAME ${TEXTURE} NAME)
-    set(SRC "${TEXTURE}")
-    set(DST "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/data/textures/${FILENAME}")
-
-    add_custom_command(
-        TARGET pbf POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy ${SRC} ${DST}
-        )
-endforeach(TEXTURE)
-

@@ -30,8 +30,9 @@ void FindRootDirectory()
 #if defined(_WINDOWS)
     char path[MAX_PATH];
     GetModuleFileName( NULL, path, sizeof(path));
-    PathRemoveFileSpec(path);
-    rootDirectory = path;
+    PathRemoveFileSpec(path); // Remove file name
+    PathRemoveFileSpec(path); // Remove "bin"
+    rootDirectory = path + string("\\assets");
 #else
     char path[PATH_MAX + 1];
     char absolute_path[PATH_MAX + 1];
@@ -45,22 +46,22 @@ void FindRootDirectory()
 
 const string getPathForScenario(const string scenario)
 {
-    return getRootPath() + "/data/scenarios/" + scenario;
+    return getRootPath() + "/scenarios/" + scenario;
 }
 
 const string getPathForKernel(const string kernel)
 {
-    return getRootPath() + "/data/kernels/" + kernel;
+    return getRootPath() + "/kernels/" + kernel;
 }
 
 const string getPathForShader(const string shader)
 {
-    return getRootPath() + "/data/shaders/" + shader;
+    return getRootPath() + "/shaders/" + shader;
 }
 
 const string getPathForTexture(const string texture)
 {
-    return getRootPath() + "/data/textures/" + texture;
+    return getRootPath() + "/textures/" + texture;
 }
 
 const string getRootPath()
