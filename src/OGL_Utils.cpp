@@ -123,16 +123,8 @@ void OGLU_Init()
     CreateQuad();
 }
 
-GLuint OGLU_LoadShader(const string szFilename, unsigned int type)
+GLuint OGLU_LoadShader(const string programName, const string shaderCode, unsigned int type)
 {
-    // Load shader source
-    string shaderCode;
-    ifstream ifs(szFilename, ios::binary);
-    if ( !ifs )
-        throw runtime_error("Could not open file for vertex shader!");
-    shaderCode = string( istreambuf_iterator<char>(ifs), istreambuf_iterator<char>() );
-    ifs.close();
-
     // Create the shaders
     GLuint handle = glCreateShader(type);
 
@@ -154,7 +146,7 @@ GLuint OGLU_LoadShader(const string szFilename, unsigned int type)
         // Report message
         char *errorMsg = new char[errorLoglength + 1];
         glGetShaderInfoLog(handle, errorLoglength, NULL, errorMsg);
-        cerr << "Shader compile error: " << szFilename.c_str() << endl;
+        cerr << "Shader compile error: " << programName.c_str() << endl;
         cerr << errorMsg << endl;
         delete[] errorMsg;
     }
@@ -169,12 +161,12 @@ GLuint OGLU_LoadShader(const string szFilename, unsigned int type)
     return handle;
 }
 
-GLuint OGLU_LoadProgram(const string shaderFile, GLuint type)
+GLuint OGLU_LoadProgram(const string programName, const string shaderCode, GLuint type)
 {
     GLuint programID = 0;
 
     // Load shaders
-    GLuint shaderID   = OGLU_LoadShader(shaderFile, type);
+    GLuint shaderID   = OGLU_LoadShader(programName, shaderCode, type);
 
     // Create Program
     programID = glCreateProgram();
@@ -194,7 +186,7 @@ GLuint OGLU_LoadProgram(const string shaderFile, GLuint type)
         // Report message
         char *errorMsg = new char[errorLoglength + 1];
         glGetProgramInfoLog(programID, errorLoglength, NULL, errorMsg);
-        cerr << "Shader compile " << (result ? "warning(s)" : "error(s)") << ": " << shaderFile.c_str() << endl;
+        cerr << "Shader compile " << (result ? "warning(s)" : "error(s)") << ": " << programName.c_str() << endl;
         cerr << errorMsg << endl;
         delete[] errorMsg;
     }
@@ -211,13 +203,13 @@ GLuint OGLU_LoadProgram(const string shaderFile, GLuint type)
 
     return programID;
 }
-GLuint OGLU_LoadProgram(const string vertexFilename, const string fragmentFilename)
+GLuint OGLU_LoadProgram(const string programName, const string vertexSource, const string fragmentSource)
 {
     GLuint programID = 0;
 
     // Load shaders
-    GLuint vertexShaderID   = OGLU_LoadShader(vertexFilename,   GL_VERTEX_SHADER);
-    GLuint fragmentShaderID = OGLU_LoadShader(fragmentFilename, GL_FRAGMENT_SHADER);
+    GLuint vertexShaderID   = OGLU_LoadShader(programName, vertexSource,   GL_VERTEX_SHADER);
+    GLuint fragmentShaderID = OGLU_LoadShader(programName, fragmentSource, GL_FRAGMENT_SHADER);
 
     // Create Program
     programID = glCreateProgram();
@@ -238,7 +230,7 @@ GLuint OGLU_LoadProgram(const string vertexFilename, const string fragmentFilena
         // Report message
         char *errorMsg = new char[errorLoglength + 1];
         glGetProgramInfoLog(programID, errorLoglength, NULL, errorMsg);
-        cerr << "Shader compile " << (result ? "warning(s)" : "error(s)") << ": " << vertexFilename.c_str() << " and " << fragmentFilename.c_str() << endl;
+        cerr << "Shader compile " << (result ? "warning(s)" : "error(s)") << ": " << programName.c_str() << endl;
         cerr << errorMsg << endl;
         delete[] errorMsg;
     }

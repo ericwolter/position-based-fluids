@@ -183,15 +183,15 @@ bool CVisual::initShaders()
 {
     // Load Shaders
     bool bLoadOK = true;
-    bLoadOK = bLoadOK && (mParticleProgID         = OGLU_LoadProgram(getPathForShader("particles.vs"), getPathForShader("particles_color.fs")));
-    bLoadOK = bLoadOK && (mFluidDepthSmoothProgID = OGLU_LoadProgram(getPathForShader("standard.vs"),  getPathForShader("fluid_depth_smoothing.fs")));
-    bLoadOK = bLoadOK && (mFluidFinalRenderProgID = OGLU_LoadProgram(getPathForShader("standard.vs"),  getPathForShader("fluid_final_render.fs")));
-    bLoadOK = bLoadOK && (mStandardCopyProgID     = OGLU_LoadProgram(getPathForShader("standard.vs"),  getPathForShader("standard_copy.fs")));
-    bLoadOK = bLoadOK && (mStandardColorProgID    = OGLU_LoadProgram(getPathForShader("standard.vs"),  getPathForShader("standard_color.fs")));
-    bLoadOK = bLoadOK && (mVisibleScanProgID      = OGLU_LoadProgram(getPathForShader("vis_scan.cms"), GL_COMPUTE_SHADER));
-    bLoadOK = bLoadOK && (mResetGridProgID        = OGLU_LoadProgram(getPathForShader("grid_reset.cms"), GL_COMPUTE_SHADER));
-    bLoadOK = bLoadOK && (mResetGridChainProgID   = OGLU_LoadProgram(getPathForShader("grid_chain_reset.cms"), GL_COMPUTE_SHADER));
-    bLoadOK = bLoadOK && (mBuildGridProgID        = OGLU_LoadProgram(getPathForShader("grid_build.cms"), GL_COMPUTE_SHADER));
+    bLoadOK = bLoadOK && (mParticleProgID         = OGLU_LoadProgram("Particles",   getShaderSource("particles.vs"), getShaderSource("particles_color.fs")));
+    bLoadOK = bLoadOK && (mFluidDepthSmoothProgID = OGLU_LoadProgram("DepthSmooth", getShaderSource("standard.vs"),  getShaderSource("fluid_depth_smoothing.fs")));
+    bLoadOK = bLoadOK && (mFluidFinalRenderProgID = OGLU_LoadProgram("FluidFinal",  getShaderSource("standard.vs"),  getShaderSource("fluid_final_render.fs")));
+    bLoadOK = bLoadOK && (mStandardCopyProgID     = OGLU_LoadProgram("StdCopy",     getShaderSource("standard.vs"),  getShaderSource("standard_copy.fs")));
+    bLoadOK = bLoadOK && (mStandardColorProgID    = OGLU_LoadProgram("StdColor",    getShaderSource("standard.vs"),  getShaderSource("standard_color.fs")));
+    bLoadOK = bLoadOK && (mVisibleScanProgID      = OGLU_LoadProgram("VisScan",     getShaderSource("vis_scan.cms"), GL_COMPUTE_SHADER));
+    bLoadOK = bLoadOK && (mResetGridProgID        = OGLU_LoadProgram("GridReset",   getShaderSource("grid_reset.cms"), GL_COMPUTE_SHADER));
+    bLoadOK = bLoadOK && (mResetGridChainProgID   = OGLU_LoadProgram("GridChReset", getShaderSource("grid_chain_reset.cms"), GL_COMPUTE_SHADER));
+    bLoadOK = bLoadOK && (mBuildGridProgID        = OGLU_LoadProgram("GridBuild",   getShaderSource("grid_build.cms"), GL_COMPUTE_SHADER));
 
     // Set-up Render-Stange-Inspector
     OGSI_Setup(mStandardCopyProgID);
@@ -374,7 +374,7 @@ void CVisual::renderParticles()
 
     // Smooth fluid depth
     GLuint depthTexture = pPrevTarget->pDepthTextureId;
-    if (UICmd_SmoothDepth)
+    //if (UICmd_SmoothDepth)
     {
         renderFluidSmoothDepth();
         

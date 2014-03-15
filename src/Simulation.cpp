@@ -113,7 +113,7 @@ bool Simulation::InitKernels()
     for (int iSrc = 0; pKernels[iSrc]  != ""; iSrc++)
     {
         // Read source from disk
-        string source = clSetup.readSource(getPathForKernel(pKernels[iSrc]));
+        string source = getKernelSource(pKernels[iSrc]);
 
         // Patch kernel for logging
         if (pKernels[iSrc] != "logging.cl")
