@@ -25,7 +25,7 @@ using namespace std;
 #include <unistd.h>
 #endif
 
-#define USE_INTERNAL_RESOURCES
+//#define USE_INTERNAL_RESOURCES
 
 string rootDirectory;
 
@@ -50,6 +50,7 @@ void FindRootDirectory()
 #endif
 }
 
+#ifdef USE_INTERNAL_RESOURCES
 void loadCodeResources()
 {
     // Done this once
@@ -58,6 +59,7 @@ void loadCodeResources()
 
     #include "code_resource.inc"
 }
+#endif
 
 const string getPathForScenario(const string scenario)
 {

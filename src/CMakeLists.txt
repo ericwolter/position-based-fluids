@@ -133,4 +133,4 @@ foreach(KERNELS_SRC_SHARE ${KERNELS_SRC_SHARE})
         TARGET pbf POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy ${SRC} ${DST}
         )
-endforeach(KERNEL)
+endforeach(KERNELS_SRC_SHARE)
