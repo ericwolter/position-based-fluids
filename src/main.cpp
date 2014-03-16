@@ -81,7 +81,7 @@ void SelectOpenCLDevice(cl::Platform &platform, cl::Device &device)
     // Assign selection
     platform = deviceOptions[BestOption].first;
     device   = deviceOptions[BestOption].second;
-    cout << "Selected device is #" << BestOption << " => " << device.getInfo<CL_DEVICE_NAME>() << endl;
+    cout << "Selected device is #" << (BestOption + 1) << " => " << device.getInfo<CL_DEVICE_NAME>() << endl;
 }
 
 int main()

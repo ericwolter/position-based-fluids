@@ -21,21 +21,18 @@ Parameters Params;
 // A variable that indicates a change in the paramaters
 bool ParametersChanged;
 
-void LoadParameters(string InputFile)
+void LoadParameters(string parameters)
 {
-    string line; // Complete line
-    string parameter; // Parameter found
-
     // Open file
-    ifstream ifs( InputFile.c_str() );
-    if ( !ifs )
-        throw runtime_error("Could not open parameter file!");
+    istringstream ss(parameters);
 
     // Scan all lines
-    while ( getline(ifs, line) )
+    string line; 
+    string parameter;
+    while  (getline(ss, line))
     {
         // Check for errors (don't know why should that happen... but anyways...)
-        if ( !ifs.good() )
+        if ( !ss.good() )
         {
             cerr << "Error parsing parameters file" << endl;
             break;
@@ -93,8 +90,6 @@ void LoadParameters(string InputFile)
         else
             cerr << "Unknown parameter " << parameter << endl << "Leaving it out." << endl;
     }
-
-    ifs.close();
 
     // Compute fields
     Params.h_2 = Params.h * Params.h;

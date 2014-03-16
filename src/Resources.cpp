@@ -25,7 +25,7 @@ using namespace std;
 #include <unistd.h>
 #endif
 
-//#define USE_INTERNAL_RESOURCES
+#define USE_INTERNAL_RESOURCES
 
 string rootDirectory;
 
