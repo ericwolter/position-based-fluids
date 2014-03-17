@@ -70,7 +70,6 @@ public:
     cl::Buffer mVelocitiesBuffer;
     cl::Buffer mDensityBuffer;
     cl::Buffer mDeltaBuffer;
-    cl::Buffer mDeltaVelocityBuffer;
     cl::Buffer mOmegaBuffer;
     cl::Buffer mParameters;
 
@@ -95,7 +94,6 @@ public:
 
     // Private member functions
     void updateCells();
-    void updatePositions();
     void updateVelocities();
     void applyViscosity();
     void applyVorticity();

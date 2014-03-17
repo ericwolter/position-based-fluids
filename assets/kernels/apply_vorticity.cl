@@ -1,7 +1,7 @@
 __kernel void applyVorticity(
     __constant struct Parameters *Params,
     const __global float4 *predicted,
-    __global float4 *deltaVelocities,
+    __global float4 *velocities,
     const __global float4 *omegas,
     const __global int *friends_list,
     const int N)
@@ -66,5 +66,5 @@ __kernel void applyVorticity(
     const float3 vorticityForce = Params->vorticityFactor * cross(eta_N, omegas[i].xyz);
     const float3 vorticityVelocity = vorticityForce * Params->timeStep;
 
-    deltaVelocities[i] += (float4)(vorticityVelocity, 0.0f);
+    velocities[i] += (float4)(vorticityVelocity, 0.0f);
 }

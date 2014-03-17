@@ -1,8 +1,7 @@
 __kernel void applyViscosity(
     __constant struct Parameters *Params,
     const __global float4 *predicted,
-    const __global float4 *velocities,
-    __global float4 *deltaVelocities,
+    __global float4 *velocities,
     __global float4 *omegas,
     const __global int *friends_list,
     const int N)
@@ -70,7 +69,7 @@ __kernel void applyViscosity(
     }
 
     viscosity_sum *= POLY6_FACTOR;
-    deltaVelocities[i] = Params->viscosityFactor * (float4)(viscosity_sum, 0.0f);
+    velocities[i] += Params->viscosityFactor * (float4)(viscosity_sum, 0.0f);
 
     // save omega for later calculation of vorticity
     // cross product is compatible with scalar multiplication

@@ -213,7 +213,6 @@ void Simulation::InitBuffers()
     mPredictedPongBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mVelocitiesBuffer      = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mDeltaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
-    mDeltaVelocityBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mOmegaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mDensityBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.particleCount * sizeof(cl_float));
     mParameters            = cl::Buffer(mCLContext, CL_MEM_READ_ONLY,  sizeof(Params));
@@ -325,28 +324,13 @@ void SaveFile(cl::CommandQueue queue, cl::Buffer buffer, const char *szFilename)
     delete[] buf;
 }
 
-void Simulation::updatePositions()
-{
-    int param = 0;
-    mKernels["updatePositions"].setArg(param++, mPositionsPingBuffer);
-    mKernels["updatePositions"].setArg(param++, mPredictedPingBuffer);
-    mKernels["updatePositions"].setArg(param++, mParticlePosImg);
-    mKernels["updatePositions"].setArg(param++, mVelocitiesBuffer);
-    mKernels["updatePositions"].setArg(param++, mDeltaVelocityBuffer);
-    mKernels["updatePositions"].setArg(param++, Params.particleCount);
-
-    mQueue.enqueueNDRangeKernel(mKernels["updatePositions"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updatePositions"));
-
-    //SaveFile(mQueue, mVelocitiesBuffer, "Velo3");
-    //SaveFile(mQueue, mPositionsPingBuffer, "pos1");
-}
-
 void Simulation::updateVelocities()
 {
     int param = 0;
     mKernels["updateVelocities"].setArg(param++, mParameters);
     mKernels["updateVelocities"].setArg(param++, mPositionsPingBuffer);
     mKernels["updateVelocities"].setArg(param++, mPredictedPingBuffer);
+    mKernels["updateVelocities"].setArg(param++, mParticlePosImg);
     mKernels["updateVelocities"].setArg(param++, mVelocitiesBuffer);
     mKernels["updateVelocities"].setArg(param++, Params.particleCount);
 
@@ -361,7 +345,6 @@ void Simulation::applyViscosity()
     mKernels["applyViscosity"].setArg(param++, mParameters);
     mKernels["applyViscosity"].setArg(param++, mPredictedPingBuffer);
     mKernels["applyViscosity"].setArg(param++, mVelocitiesBuffer);
-    mKernels["applyViscosity"].setArg(param++, mDeltaVelocityBuffer);
     mKernels["applyViscosity"].setArg(param++, mOmegaBuffer);
     mKernels["applyViscosity"].setArg(param++, mFriendsListBuffer);
     mKernels["applyViscosity"].setArg(param++, Params.particleCount);
@@ -377,7 +360,7 @@ void Simulation::applyVorticity()
     int param = 0;
     mKernels["applyVorticity"].setArg(param++, mParameters);
     mKernels["applyVorticity"].setArg(param++, mPredictedPingBuffer);
-    mKernels["applyVorticity"].setArg(param++, mDeltaVelocityBuffer);
+    mKernels["applyVorticity"].setArg(param++, mVelocitiesBuffer);
     mKernels["applyVorticity"].setArg(param++, mOmegaBuffer);
     mKernels["applyVorticity"].setArg(param++, mFriendsListBuffer);
     mKernels["applyVorticity"].setArg(param++, Params.particleCount);
@@ -714,8 +697,6 @@ void Simulation::Step()
     this->applyVorticity();
 
     // Update particle buffers
-    if (!bPauseSim)
-        this->updatePositions();
 
     // [DEBUG] Read back friends information (if needed)
     if (bReadFriendsList || bDumpParticlesData)

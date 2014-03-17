@@ -34,7 +34,7 @@ void SelectOpenCLDevice(cl::Platform &platform, cl::Device &device)
 
         // Get platform devices
         vector<cl::Device> devices;
-        cit->getDevices(CL_DEVICE_TYPE_ALL, &devices);
+        cit->getDevices(CL_DEVICE_TYPE_GPU, &devices);
         for (vector<cl::Device>::const_iterator dit = devices.begin(); dit != devices.end(); dit++)
         {
             // Add to options
