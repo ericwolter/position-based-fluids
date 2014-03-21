@@ -449,7 +449,7 @@ void Simulation::computeScaling(int iterationIndex)
     mKernels["computeScaling"].setArg(param++, mParameters);
     mKernels["computeScaling"].setArg(param++, mPredictedPingBuffer);
     mKernels["computeScaling"].setArg(param++, mDensityBuffer);
-    mKernels["computeScaling"].setArg(param++, mFriendsListBuffer);
+	mKernels["computeScaling"].setArg(param++, mCellsBuffer);
     mKernels["computeScaling"].setArg(param++, Params.particleCount);
 
     // std::cout << "CL_KERNEL_LOCAL_MEM_SIZE = " << mKernels["computeScaling"].getWorkGroupInfo<CL_KERNEL_LOCAL_MEM_SIZE>(NULL) << std::endl;

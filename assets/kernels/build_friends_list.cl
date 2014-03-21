@@ -96,3 +96,68 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
         friends_list[iCircle * MAX_PARTICLES_COUNT + i] = circleParticles[iCircle];
     }
 }
+
+/*
+byte cellToList[27] = 0; 
+int listsCount = 0;
+int listStart[27];
+byte listLength[27];
+
+// Reset cell2List (-1 means no list)
+for (int i=0;i<27;i++)
+  cellToList[i] = -1;
+
+for (int x= -1; x >= +1; x++)
+{
+  for (int y= -1; y >= +1; z++)
+  {
+    for (int z= -1; z >= +1; z++)
+    {
+        // [A] Check if cell was already counted
+        int cubeIndex = x * 9 + y * 6 + z;
+        if (cellToList[cubeIndex] != -1)
+            continue;
+       
+        // Mark cell as used
+        cellToList[cubeIndex] = listsCount;
+           
+        // Get cell hash
+        int cell_hash = morton(x,y,z) % gridsize;
+
+        // [B] Add new list
+        listStart[listsCount] = cell_start_index(cell_hash);
+        listLength[listsCount] = ...;
+        listsCount++;
+        
+        // [C] Check backwards
+        int 
+        while (true)
+        {
+            // Find the cell index of the particle prior to current location
+            vec3 prevParticle = get_particle_pos(listStart[listsCount] - 1);
+            
+            // get grid cell position
+            ivec3 prevGridPos = prevParticle / ...;
+            
+            // [E] Check if in range of current cube (3x3x3)
+            if (!...)
+                break;
+            
+            // [F] Check if already added
+            int prevCubeIndex = out_x * 9 + out_y * 6 + out_z;
+            if (cellToList[prevCubeIndex] != -1)
+            {
+                // [G] add our list to the end of the list
+                listLength[cellToList[prevCubeIndex]] += listLength[listsCount];
+                
+                // Cancel new list
+                listsCount--;
+            }
+        }
+        
+        // Check forward
+        // ...
+    }
+  }
+}
+*/
