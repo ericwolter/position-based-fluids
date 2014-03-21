@@ -9,7 +9,7 @@ __kernel void computeKeys(__constant struct Parameters *Params,
     if (i < numParticles)
     {
         int3 current_cell = convert_int3(positions[i].xyz / Params->h);
-        keys[i] = mortonNumber(current_cell);
+        keys[i] = calcGridHash(current_cell);
     }
     else
     {

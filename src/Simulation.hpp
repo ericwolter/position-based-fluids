@@ -89,8 +89,7 @@ public:
     cl_float4 mCellLength;
 
     // Array for the cells
-    cl_int *mCells;
-    cl_int *mParticlesList;
+    cl_uint *mCells;
 
     // Private member functions
     void updateCells();

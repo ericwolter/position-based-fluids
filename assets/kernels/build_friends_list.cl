@@ -22,8 +22,7 @@
 
 __kernel void buildFriendsList(__constant struct Parameters *Params,
                                const __global float4 *predicted,
-                               const __global int *cells,
-                               const __global int *particles_list,
+                               const __global uint *cells,
                                __global int *friends_list,
                                const int N)
 {
@@ -47,14 +46,14 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
             {
                 uint cell_index = calcGridHash(current_cell + (int3)(x, y, z));
 
-                // Next particle in list
-                int next = cells[cell_index];
-                while (next != END_OF_CELL_LIST)
-                {
-                    // next particle
-                    int j_index = next;
-                    next = particles_list[next];
-
+                // find first and last particle in this cell
+                uint2 cell_boundary = (uint2)(cells[cell_index*2+0],cells[cell_index*2+1]);
+				
+				// skip empty cells
+				if(cell_boundary.x == END_OF_CELL_LIST) continue;
+					
+				// iterate over all particles in this cell
+				for(int j_index = cell_boundary.x; j_index <= cell_boundary.y; ++j_index) {
                     // Skip self
                     if (i == j_index)
                         continue;

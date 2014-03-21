@@ -21,7 +21,6 @@ Simulation::Simulation(const cl::Context &clContext, const cl::Device &clDevice)
     : mCLContext(clContext),
       mCLDevice(clDevice),
       mCells(NULL),
-      mParticlesList(NULL),
       bDumpParticlesData(false),
       mPositions(NULL),
       mVelocities(NULL),
@@ -86,7 +85,6 @@ const std::string *Simulation::KernelFileList()
         "update_velocities.cl",
         "apply_viscosity.cl",
         "apply_vorticity.cl",
-        "update_positions.cl",
         "radixsort.cl",
         ""
     };
@@ -265,25 +263,20 @@ void Simulation::InitBuffers()
 void Simulation::InitCells()
 {
     // Allocate host buffers
-    delete[] mCells;         mCells         = new cl_int[Params.gridBufSize];
-    delete[] mParticlesList; mParticlesList = new cl_int[Params.particleCount];
+
+	// DO NOT use uint2 vector because it causes a race condition the kernel
+	// instead manage the cell boundaries manually
+    delete[] mCells;         mCells         = new cl_uint[Params.gridBufSize*2];
 
     // Init cells
-    for (cl_uint i = 0; i < Params.gridBufSize; ++i)
-        mCells[i] = END_OF_CELL_LIST;
-
-    // Init particles
-    for (cl_uint i = 0; i < Params.particleCount; ++i)
-        mParticlesList[i] = END_OF_CELL_LIST;
+	for (cl_uint i = 0; i < Params.gridBufSize*2; ++i) {
+		mCells[i] = END_OF_CELL_LIST;
+	}
 
     // Write buffer for cells
-    mBufferSizeCells = Params.gridBufSize * sizeof(cl_int);
+    mBufferSizeCells = Params.gridBufSize * 2 * sizeof(cl_uint);
     mCellsBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeCells);
     mQueue.enqueueWriteBuffer(mCellsBuffer, CL_TRUE, 0, mBufferSizeCells, mCells);
-
-    // Write buffer for particles
-    mParticlesListBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticlesList);
-    mQueue.enqueueWriteBuffer(mParticlesListBuffer, CL_TRUE, 0, mBufferSizeParticlesList, mParticlesList);
 
     // Init Friends list buffer
     int BufSize = Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle) * sizeof(cl_uint);
@@ -393,7 +386,6 @@ void Simulation::buildFriendsList()
     mKernels["buildFriendsList"].setArg(param++, mParameters);
     mKernels["buildFriendsList"].setArg(param++, mPredictedPingBuffer);
     mKernels["buildFriendsList"].setArg(param++, mCellsBuffer);
-    mKernels["buildFriendsList"].setArg(param++, mParticlesListBuffer);
     mKernels["buildFriendsList"].setArg(param++, mFriendsListBuffer);
     mKernels["buildFriendsList"].setArg(param++, Params.particleCount);
     mQueue.enqueueNDRangeKernel(mKernels["buildFriendsList"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("buildFriendsList"));
@@ -402,8 +394,7 @@ void Simulation::buildFriendsList()
 
     param = 0;
     mKernels["resetGrid"].setArg(param++, mParameters);
-    mKernels["resetGrid"].setArg(param++, mPredictedPingBuffer);
-    mKernels["resetGrid"].setArg(param++, mParticlesListBuffer);
+	mKernels["resetGrid"].setArg(param++, mInKeysBuffer);
     mKernels["resetGrid"].setArg(param++, mCellsBuffer);
     mKernels["resetGrid"].setArg(param++, Params.particleCount);
     mQueue.enqueueNDRangeKernel(mKernels["resetGrid"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("resetPartList"));
@@ -477,11 +468,10 @@ void Simulation::updateCells()
 
     int param = 0;
     mKernels["updateCells"].setArg(param++, mParameters);
-    mKernels["updateCells"].setArg(param++, mPredictedPingBuffer);
-    mKernels["updateCells"].setArg(param++, mCellsBuffer);
-    mKernels["updateCells"].setArg(param++, mParticlesListBuffer);
+	mKernels["updateCells"].setArg(param++, mInKeysBuffer);
+	mKernels["updateCells"].setArg(param++, mCellsBuffer);
     mKernels["updateCells"].setArg(param++, Params.particleCount);
-    mQueue.enqueueNDRangeKernel(mKernels["updateCells"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updateCells"));
+	mQueue.enqueueNDRangeKernel(mKernels["updateCells"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updateCells"));
 
     //SaveFile(mQueue, mCellsBuffer, "cells");
     //SaveFile(mQueue, mParticlesListBuffer, "friendlist2");
@@ -650,13 +640,13 @@ void Simulation::Step()
     // sort particles buffer
     if (!bPauseSim)
         this->radixsort();
-
-    // Update cells
+	
+	// Update cells
     this->updateCells();
-
-    // Build friends list
-    this->buildFriendsList();
-
+	
+	// Build friends list
+	this->buildFriendsList();
+	
     for (unsigned int i = 0; i < Params.simIterations; ++i)
     {
         // Compute scaling value
