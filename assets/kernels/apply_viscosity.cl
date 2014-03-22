@@ -8,6 +8,9 @@ __kernel void applyViscosity(
 {
     const int i = get_global_id(0);
     if (i >= N) return;
+	
+	__private float4 particle = predicted[i];
+	__private float4 particle_velocity = velocities[i];
 
     float3 viscosity_sum = (float3) 0.0f;
     float3 omega_i = (float3) 0.0f;
@@ -38,8 +41,10 @@ __kernel void applyViscosity(
         {
             // Read friend index from friends_list
             const int j_index = friends_list[baseIndex + iFriend * MAX_PARTICLES_COUNT];
+			
+			__private float4 neighbor = predicted[j_index];
 
-            const float3 r = predicted[i].xyz - predicted[j_index].xyz;
+            const float3 r = particle.xyz - neighbor.xyz;
             const float r_length_2 = (r.x * r.x + r.y * r.y + r.z * r.z);
 
             if (r_length_2 < Params->h_2)
@@ -51,7 +56,7 @@ __kernel void applyViscosity(
                 // because of the division by zero.
                 if (fabs(predicted[j_index].w) > 1e-8f)
                 {
-                    const float3 v = velocities[j_index].xyz - velocities[i].xyz;
+                    const float3 v = velocities[j_index].xyz - particle_velocity.xyz;
                     const float h2_r2_diff = Params->h_2 - r_length_2;
 
                     // equation 15
@@ -62,7 +67,7 @@ __kernel void applyViscosity(
                     // the gradient has to be negated because it is with respect to p_j
                     omega_i += cross(v, gradient_spiky);
 
-                    viscosity_sum += (1.0f / predicted[j_index].w) * v * (h2_r2_diff * h2_r2_diff * h2_r2_diff);
+                    viscosity_sum += (1.0f / neighbor.w) * v * (h2_r2_diff * h2_r2_diff * h2_r2_diff);
                 }
             }
         }
