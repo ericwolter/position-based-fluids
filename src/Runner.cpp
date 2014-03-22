@@ -37,6 +37,8 @@ void Runner::run(Simulation &simulation, CVisual &renderer)
     cl_float waveTime = 0.0f;
     cl_float wavePos  = 0.0f;
 
+	float avg_time = 0.0f;
+	int count = 0;
     do
     {
         // Check file changes
@@ -132,6 +134,28 @@ void Runner::run(Simulation &simulation, CVisual &renderer)
         UIManager_Draw();
         
         renderer.presentToScreen();
+
+		PM_PERFORMANCE_TRACKER *pTracker1 = simulation.PerfData.Trackers[36];
+		PM_PERFORMANCE_TRACKER *pTracker2 = simulation.PerfData.Trackers[39];
+		PM_PERFORMANCE_TRACKER *pTracker3 = simulation.PerfData.Trackers[42];
+		float avg = 0.0f;
+		avg += pTracker1->total_time;
+		avg += pTracker2->total_time;
+		avg += pTracker3->total_time;
+		avg /= 3;
+
+		avg_time = (avg+count*avg_time)/(count+1);
+		count++;
+
+		if(simTime > 10.0f) {
+			std::cout << "scaling average: " << avg_time << std::endl; 
+		 //   for (size_t i = 0; i < simulation.PerfData.Trackers.size(); i++)
+			//{
+			//	PM_PERFORMANCE_TRACKER *pTracker = simulation.PerfData.Trackers[36];
+			//	std::cout << i << ": " << pTracker->eventName << std::endl;
+			//}
+			break;
+		}
 
     }
     while (true);
