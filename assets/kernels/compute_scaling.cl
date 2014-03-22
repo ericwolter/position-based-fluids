@@ -68,7 +68,7 @@ __kernel void computeScaling(__constant struct Parameters *Params,
             //     j_data = predicted[j_index];
 
             const float3 r = predicted[i].xyz - j_data.xyz;
-            const float r_length_2 = dot(r,r);
+            const float r_length_2 = r.x * r.x + r.y * r.y + r.z * r.z;
 
             // Required for numerical stability
             if (r_length_2 < Params->h_2)
@@ -87,7 +87,8 @@ __kernel void computeScaling(__constant struct Parameters *Params,
                 density_sum += h2_r2_diff * h2_r2_diff * h2_r2_diff;
 
                 // equation (9), denominator, if k = j
-                gradient_sum_k += dot(gradient_spiky, gradient_spiky);
+                const float length_gradient_spiky = length(gradient_spiky);
+                gradient_sum_k += length_gradient_spiky * length_gradient_spiky;
 
                 // equation (8), if k = i
                 gradient_sum_k_i += gradient_spiky;
@@ -100,7 +101,7 @@ __kernel void computeScaling(__constant struct Parameters *Params,
     density[i] = density_sum;
 
     // equation (9), denominator, if k = i
-    gradient_sum_k += dot(gradient_sum_k_i, gradient_sum_k_i);
+    gradient_sum_k += length(gradient_sum_k_i) * length(gradient_sum_k_i);
 
     // equation (1)
     float density_constraint = (density_sum / Params->restDensity) - 1.0f;
