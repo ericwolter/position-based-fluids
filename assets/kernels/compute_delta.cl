@@ -22,6 +22,8 @@ __kernel void computeDelta(__constant struct Parameters *Params,
     barrier(CLK_LOCAL_MEM_FENCE);
 #endif
 
+	__private float4 particle = predicted[i];
+
     uint2 randSeed = (uint2)(1 + get_global_id(0), 1);
 
     // Sum of lambdas
@@ -33,8 +35,10 @@ __kernel void computeDelta(__constant struct Parameters *Params,
     const float q_2 = pow(Params->surfaceTenstionDist * h_cache, 2);
     const float poly6_q = pow(h_2_cache - q_2, 3);
 
+#ifdef LOCALMEM
     int localHit =0;
     int localMiss = 0;
+#endif
 
     // read number of friends
     int totalFriends = 0;
@@ -43,6 +47,9 @@ __kernel void computeDelta(__constant struct Parameters *Params,
         totalFriends += circleParticles[j] = friends_list[j * MAX_PARTICLES_COUNT + i];
 
     int proccedFriends = 0;
+	
+	
+	
     for (int iCircle = 0; iCircle < MAX_FRIENDS_CIRCLES; iCircle++)
     {
         // Check if we want to process/skip next friends circle
@@ -83,15 +90,14 @@ __kernel void computeDelta(__constant struct Parameters *Params,
 #endif
 
             // Compute r, length(r) and length(r)^2
-            const float3 r         = predicted[i].xyz - j_data.xyz;
+            const float3 r         = particle.xyz - j_data.xyz;
             const float r_length_2 = dot(r, r);
 
             if (r_length_2 < h_2_cache)
             {
                 const float r_length   = sqrt(r_length_2);
 
-                const float3 gradient_spiky = -1.0f * GRAD_SPIKY_FACTOR *
-                                              r / (r_length) *
+                const float3 gradient_spiky = r / (r_length) *
                                               (h_cache - r_length) *
                                               (h_cache - r_length);
 
@@ -102,16 +108,16 @@ __kernel void computeDelta(__constant struct Parameters *Params,
                 const float s_corr = Params->surfaceTenstionK * r_q_radio * r_q_radio * r_q_radio * r_q_radio;
 
                 // Sum for delta p of scaling factors and grad spiky (equation 12)
-                sum += (predicted[i].w + j_data.w + s_corr) * gradient_spiky;
+                sum += (particle.w + j_data.w + s_corr) * gradient_spiky;
             }
         }
     }
 
     // equation (12)
-    float3 delta_p = sum / Params->restDensity;
+    float3 delta_p = (-GRAD_SPIKY_FACTOR*sum) / Params->restDensity;
 
     float randDist = 0.005f;
-    float3 future = predicted[i].xyz + delta_p;
+    float3 future = particle.xyz + delta_p;
 
     // Prime the random... DO NOT REMOVE
     frand(&randSeed);
@@ -126,7 +132,7 @@ __kernel void computeDelta(__constant struct Parameters *Params,
     else if (future.x > (Params->xMax))  future.x = Params->xMax                  - frand(&randSeed) * randDist;
 
     // Compute delta
-    delta[i].xyz = future - predicted[i].xyz;
+    delta[i].xyz = future - particle.xyz;
 
 //    if(group_id == 0) {
   //      printf("%d: hits: %d vs miss: %d\n", i, localHit,localMiss);
