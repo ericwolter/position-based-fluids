@@ -37,7 +37,7 @@ __kernel void computeScaling(__constant struct Parameters *Params,
 	uint listsCount = friends_list[i];
 	for(int listIndex = 0; listIndex < listsCount; ++listIndex) {
 	
-		int startIndex = MAX_PARTICLES_COUNT + i * (27*2) + listIndex * 2 + 0;
+		int startIndex = MAX_PARTICLES_COUNT + listIndex * 2 * MAX_PARTICLES_COUNT + i * 2 + 0;
 		int lengthIndex = startIndex + 1;
 		
 		uint start = friends_list[startIndex];

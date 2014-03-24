@@ -9,10 +9,10 @@
 //     
 // Access patterns
 //		listsCount[ParticleIndex]             			==> Data[ParticleIndex];
-//		lists[ParticleIndex][ListIndex][Start/Length]	==> Data[MAX_PARTICLES_COUNT +          // Skip listsCount block
-//																		ParticleIndex * 27*2 +	// Offset to relevant particle
-//																		ListIndex * 2 +			// Offset to relevant list
-//																		Start/Length];			// Offset to either start/length
+//		lists[ListIndex][ParticleIndex][Start/Length]	==> Data[MAX_PARTICLES_COUNT +          				// Skip listsCount block
+//																		ListIndex * 2 * MAX_PARTICLES_COUNT +	// Offset to relevant particle
+//																		ParticleIndex * 2 +						// Offset to relevant list
+//																		Start/Length];							// Offset to either start/length
 
 #define CELL_NOT_VISITED (-1)
 #define GET_CUBE_INDEX(x,y,z) (9 * (x+1) + 3 * (y+1) + (z+1))
@@ -29,7 +29,7 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
     if (i >= N) return;
 	
 	// flag array to save already visited cells
-	char cellToList[27];
+	int cellToList[27];
 	
 	// the required number of lists required to map all cells
 	// in an ideal world all 27 neighbor cells would be in sequence in memory
@@ -40,27 +40,54 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
 	int listsStart[27];
 	
 	// contains the number of particles in the sorted particle buffer belonging to the respective list
-	char listsLength[27];
+	int listsLength[27];
 	
-	// initialize all cube cells as unvisited
 	for (int c=0;c<27;++c) {
 		cellToList[c] = CELL_NOT_VISITED;
+		listsStart[c] = CELL_NOT_VISITED;
+		listsLength[c] = CELL_NOT_VISITED;
 	}
 
     // Start grid scan
     int3 current_cell = convert_int3(predicted[i].xyz / Params->h);
-
+	
+	int refNumNeighbors = 0;
     for (int x = -1; x <= 1; ++x)
     {
         for (int y = -1; y <= 1; ++y)
         {
             for (int z = -1; z <= 1; ++z)
             {
+				// {
+					// // reference neighbors
+					// uint cell_index = calcGridHash(current_cell + (int3)(x, y, z));
+
+					// // find first and last particle in this cell
+					// uint2 cell_boundary = (uint2)(cells[cell_index*2+0],cells[cell_index*2+1]);
+					
+					// // skip empty cells
+					// if(cell_boundary.x == END_OF_CELL_LIST) continue;
+						
+					// // iterate over all particles in this cell
+					// for(int j_index = cell_boundary.x; j_index <= cell_boundary.y; ++j_index) {
+						// refNumNeighbors++;
+					// }
+				// }
+			
+				// if (i==PRINT_PARTICLE) {
+					// printf("%d: cube: (%d,%d,%d) cell: (%d,%d,%d)\n",i,x,y,z,current_cell.x,current_cell.y,current_cell.z);
+				// }
 				int cubeIndex = GET_CUBE_INDEX(x,y,z);
+				// if (i==PRINT_PARTICLE) {
+					// printf("%d: cube: (%d,%d,%d) index: %d\n",i,x,y,z,cubeIndex);
+				// }
 				
 				// skip cell which was already visited and thus already included
 				// in the lists
 				if(cellToList[cubeIndex] != CELL_NOT_VISITED) {
+					// if (i==PRINT_PARTICLE) {
+						// printf("%d: cube cell already visited\n",i);
+					// }
 					continue;
 				}
 				
@@ -69,6 +96,10 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
                 uint cell_index = calcGridHash(current_cube_cell);
 				// find first and last particle in this cell
                 uint2 cell_boundary = (uint2)(cells[cell_index*2+0],cells[cell_index*2+1]);
+				// if (i==PRINT_PARTICLE) {
+					// //printf("%d: cell: (%d,%d,%d) index: %d\n",i,current_cube_cell.x,current_cube_cell.y,current_cube_cell.z,cell_index);
+					// printf("%d: cell: (%d,%d,%d) boundary: (%d,%d)\n",i,current_cube_cell.x,current_cube_cell.y,current_cube_cell.z,cell_boundary.x,cell_boundary.y);
+				// }
 				
 				// skip empty cells
 				if(cell_boundary.x == END_OF_CELL_LIST) continue;
@@ -90,8 +121,18 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
 				// check backwards
 				int prevStep = 0;
 				while(true) {
+					// if (i==PRINT_PARTICLE) {
+						// printf("%d: prevStep: %d\n",i,prevStep);
+					// }
+					// if (i==PRINT_PARTICLE) {
+						// printf("%d: currentListIndex: %d\n",i,currentListIndex);
+					// }
+				
 					// find cell index of the particle right before the current list starts
 					int particleIndexBefore = listsStart[currentListIndex] - 1;
+					// if (i==PRINT_PARTICLE) {
+						// printf("%d: particleIndexBefore: %d\n",i,particleIndexBefore);
+					// }
 					
 					// check for special case if the current start particle has index 0
 					// which would result in the previous particle having an invalid index of -1
@@ -102,22 +143,46 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
 					
 					// get grid cell position
 					int3 cellBefore = convert_int3(particleBefore.xyz / Params->h);
+					// if (i==PRINT_PARTICLE) {
+						// printf("%d: cellBefore: (%d,%d,%d)\n",i,cellBefore.x,cellBefore.y,cellBefore.z);
+					// }
 					
 					// check if cell belongs to the current cube
 					int3 cellDifference = cellBefore - current_cell;
+					// if (i==PRINT_PARTICLE) {
+						// printf("%d: cellDifference: (%d,%d,%d)\n",i,cellDifference.x,cellDifference.y,cellDifference.z);
+					// }
+					
 					if(abs(cellDifference.x) > 1 || abs(cellDifference.y) > 1 || abs(cellDifference.z) > 1) {
+						// if (i==PRINT_PARTICLE) {
+							// printf("%d: cell does not belong to current cube\n",i);
+						// }
 						break;
 					}
 					
 					int cubeIndexBefore = GET_CUBE_INDEX(cellDifference.x, cellDifference.y, cellDifference.z);
+					// if (i==PRINT_PARTICLE) {
+						// printf("%d: cubeIndexBefore: %d\n",i,cubeIndexBefore);
+					// }
 					
 					// if the cell was already visited and has thus an associated list
 					// merge it with the current cells list
 					int listIndexBefore = cellToList[cubeIndexBefore];
 					if(listIndexBefore != CELL_NOT_VISITED) {
+						
+						// if (i==PRINT_PARTICLE) {
+							// printf("%d: cell already visited, listIndexBefore: %d\n",i,listIndexBefore);
+							// printf("%d: old listsLength: %d\n",i,listsLength[listIndexBefore]);
+							// printf("%d: current listsLength: %d\n",i,listsLength[currentListIndex]);
+						// }
+					
 						// add current list to the already existing list
 						listsLength[listIndexBefore] += listsLength[currentListIndex];
 						
+						// if (i==PRINT_PARTICLE) {
+							// printf("%d: new listsLength: %d\n",i,listsLength[listIndexBefore]);
+						// }
+                
 						// remove assumed new list
 						listsStart[currentListIndex] = -2;
 						listsLength[currentListIndex] = -2;
@@ -128,10 +193,16 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
 					} else {
 						// the cell before has not been iterated over yet by the 3x3x3 cube
 						// so in order to avoid checking forward as well just add the cell right here
+						// if (i==PRINT_PARTICLE) {
+							// printf("%d: cell not yet visited\n",i);
+						// }
 						
 						// get the boundaries for the previous (not yet iterated) cell
 						uint cellHashBefore = calcGridHash(cellBefore);
 						uint2 cellBoundaryBefore = (uint2)(cells[cellHashBefore*2+0],cells[cellHashBefore*2+1]);
+						// if (i==PRINT_PARTICLE) {
+							// printf("%d: cellBefore: (%d,%d,%d) boundary: (%d,%d)\n",i,cellBefore.x,cellBefore.y,cellBefore.z,cellBoundaryBefore.x,cellBoundaryBefore.y);
+						// }
 						
 						// add list before to the current list
 						listsStart[currentListIndex] = cellBoundaryBefore.x;
@@ -144,17 +215,46 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
 					
 					prevStep++;
 				}
+				
+				// int testNumNeighbors = 0;
+				// for (int c=0;c<27;++c) {
+					// if (i==PRINT_PARTICLE) {
+						// printf("%d: list %d: (%d,%d)\n",i,c,listsStart[c],listsLength[c]);
+					// }
+					// testNumNeighbors += listsLength[c] < 0 ? 0 : listsLength[c];
+				// }
+				// if (i==PRINT_PARTICLE) {
+					// printf("%d: during neighbors %d = %d\n",i,refNumNeighbors,testNumNeighbors);
+					// printf("%d: listsCount: %d\n",i,listsCount);
+				// }  
 			}
         }
     }
 	
+	// int testNumNeighbors = 0;
 	friends_list[i] = listsCount;
+	// if (i==PRINT_PARTICLE) {
+		// printf("%d: friend list count %d:\n",i,listsCount);
+	// }
 	for (int listIndex=0;listIndex<listsCount;++listIndex) {
-		int startIndex = MAX_PARTICLES_COUNT + i * (27*2) + listIndex * 2 + 0;
+		// if (i==PRINT_PARTICLE) {
+			// printf("%d: friend list %d: (%d,%d)\n",i,listIndex,listsStart[listIndex],listsLength[listIndex]);
+		// }
+		// testNumNeighbors += listsLength[listIndex] < 0 ? 0 : listsLength[listIndex];
+		
+		int startIndex = MAX_PARTICLES_COUNT + listIndex * 2 * MAX_PARTICLES_COUNT + i * 2 + 0;
 		int lengthIndex = startIndex + 1;
 		friends_list[startIndex] = listsStart[listIndex];
 		friends_list[lengthIndex] = listsLength[listIndex];
+		
+		// if (i==PRINT_PARTICLE) {
+			// printf("%d: friend list indices %d: (%d,%d)\n",i,listIndex,startIndex,lengthIndex);
+		// }
 	}
+	
+	// if (i==PRINT_PARTICLE) {
+		// printf("%d: neighbors %d = %d\n",i,refNumNeighbors,testNumNeighbors);
+	// }
 }
 
 /*
