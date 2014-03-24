@@ -188,7 +188,7 @@ void Simulation::InitBuffers()
     delete[] mVelocities;  mVelocities  = new cl_float4[Params.particleCount];
     delete[] mPredictions; mPredictions = new cl_float4[Params.particleCount]; // (used for debugging)
     delete[] mDeltas;      mDeltas      = new cl_float4[Params.particleCount]; // (used for debugging)
-    delete[] mFriendsList; mFriendsList = new cl_uint  [Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle)]; // (used for debugging)
+    delete[] mFriendsList; mFriendsList = new cl_uint  [Params.particleCount + Params.particleCount * (27 * 2)]; // (used for debugging)
 
     // Position particles
     CreateParticles();
@@ -279,7 +279,7 @@ void Simulation::InitCells()
     mQueue.enqueueWriteBuffer(mCellsBuffer, CL_TRUE, 0, mBufferSizeCells, mCells);
 
     // Init Friends list buffer
-    int BufSize = Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle) * sizeof(cl_uint);
+	int BufSize = (Params.particleCount + Params.particleCount * (27 * 2)) * sizeof(cl_uint);
     memset(mFriendsList, 0, BufSize);
     mFriendsListBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, BufSize);
     mQueue.enqueueWriteBuffer(mFriendsListBuffer, CL_TRUE, 0, BufSize, mFriendsList);
@@ -380,6 +380,16 @@ void Simulation::predictPositions()
     //SaveFile(mQueue, mPredictedPingBuffer, "PredPosPing");
 }
 
+void Simulation::resetGrid()
+{
+	int param = 0;
+    mKernels["resetGrid"].setArg(param++, mParameters);
+	mKernels["resetGrid"].setArg(param++, mInKeysBuffer);
+    mKernels["resetGrid"].setArg(param++, mCellsBuffer);
+    mKernels["resetGrid"].setArg(param++, Params.particleCount);
+    mQueue.enqueueNDRangeKernel(mKernels["resetGrid"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("resetGrid"));
+}
+
 void Simulation::buildFriendsList()
 {
     int param = 0;
@@ -391,13 +401,6 @@ void Simulation::buildFriendsList()
     mQueue.enqueueNDRangeKernel(mKernels["buildFriendsList"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("buildFriendsList"));
 
     //SaveFile(mQueue, mFriendsListBuffer, "FriendList");
-
-    param = 0;
-    mKernels["resetGrid"].setArg(param++, mParameters);
-	mKernels["resetGrid"].setArg(param++, mInKeysBuffer);
-    mKernels["resetGrid"].setArg(param++, mCellsBuffer);
-    mKernels["resetGrid"].setArg(param++, Params.particleCount);
-    mQueue.enqueueNDRangeKernel(mKernels["resetGrid"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("resetPartList"));
 }
 
 void Simulation::updatePredicted(int iterationIndex)
@@ -676,21 +679,23 @@ void Simulation::Step()
         this->updatePredicted(i);
     }
 
+	this->resetGrid();
+
     // Place density in "mPredictedPingBuffer[x].w"
-    this->packData(mPredictedPingBuffer, mDensityBuffer, -1);
+    //this->packData(mPredictedPingBuffer, mDensityBuffer, -1);
 
     // Recompute velocities
     this->updateVelocities();
 
     // Update vorticity and Viscosity
-    this->applyViscosity();
-    this->applyVorticity();
+    //this->applyViscosity();
+    //this->applyVorticity();
 
     // Update particle buffers
 
     // [DEBUG] Read back friends information (if needed)
     if (bReadFriendsList || bDumpParticlesData)
-        mQueue.enqueueReadBuffer(mFriendsListBuffer, CL_TRUE, 0, sizeof(cl_uint) * Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle), mFriendsList);
+        mQueue.enqueueReadBuffer(mFriendsListBuffer, CL_TRUE, 0, sizeof(cl_uint) * (Params.particleCount + Params.particleCount * (27 * 2)), mFriendsList);
 
     // [DEBUG] Do we need to dump particle data
     if (bDumpParticlesData)

@@ -1,100 +1,160 @@
-// Important: below arrays are Row Major (http://en.wikipedia.org/wiki/Row-major_order)
 // friendsData = struct
 // {
-//     Uint32 friendsCount[MAX_FRIENDS_CIRCLES][MAX_PARTICLES_COUNT];
-//     Uint32 friendIndex[MAX_FRIENDS_CIRCLES][MAX_FRIENDS_IN_CIRCLE][MAX_PARTICLES_COUNT];
+//		Uint32 listsCount[MAX_PARTICLES_COUNT];
+//		Uint32 lists[MAX_PARTICLES_COUNT*27*2];
 // }
 // 
 // Related defines
-//     MAX_PARTICLES_COUNT          Defines how many particles exists in the simulation
-//     MAX_FRIENDS_CIRCLES          Defines how many friends circle are we going to scan for
-//     MAX_FRIENDS_IN_CIRCLE        Defines the max number of particles per cycle
+//		MAX_PARTICLES_COUNT          Defines how many particles exists in the simulation
 //     
-// Cached values
-//     FRIENDS_BLOCK_SIZE = MAX_PARTICLES_COUNT * MAX_FRIENDS_CIRCLES;
-// 
 // Access patterns
-//     friendsCount[CircleIndex][ParticleIndex]             ==> Data[CircleIndex * MAX_PARTICLES_COUNT + ParticleIndex];
-//     friendIndex[CircleIndex][FriendIndex][ParticleIndex] ==> Data[FRIENDS_BLOCK_SIZE +                                             // Skip friendsCount block
-//                                                                   CircleIndex * (MAX_PARTICLES_COUNT * MAX_FRIENDS_IN_CIRCLE) +    // Offset to relevent circle
-//                                                                   FriendIndex * (MAX_PARTICLES_COUNT)                              // Offset to relevent friend_index
-//                                                                   ParticleIndex];                                                  // Offset to particle_index
+//		listsCount[ParticleIndex]             			==> Data[ParticleIndex];
+//		lists[ParticleIndex][ListIndex][Start/Length]	==> Data[MAX_PARTICLES_COUNT +          // Skip listsCount block
+//																		ParticleIndex * 27*2 +	// Offset to relevant particle
+//																		ListIndex * 2 +			// Offset to relevant list
+//																		Start/Length];			// Offset to either start/length
+
+#define CELL_NOT_VISITED (-1)
+#define GET_CUBE_INDEX(x,y,z) (9 * (x+1) + 3 * (y+1) + (z+1))
+
+#define PRINT_PARTICLE (12167)
 
 __kernel void buildFriendsList(__constant struct Parameters *Params,
                                const __global float4 *predicted,
                                const __global uint *cells,
-                               __global int *friends_list,
+                               __global uint *friends_list,
                                const int N)
 {
     const int i = get_global_id(0);
     if (i >= N) return;
-    
-    const float MIN_R = 0.3f * Params->h;
-
-    // Define circle particle counter varible
-    __private int circleParticles[MAX_FRIENDS_CIRCLES];
-    for (int j = 0; j < MAX_FRIENDS_CIRCLES; j++)
-        circleParticles[j] = 0;
+	
+	// flag array to save already visited cells
+	char cellToList[27];
+	
+	// the required number of lists required to map all cells
+	// in an ideal world all 27 neighbor cells would be in sequence in memory
+	// and thus can all be collapsed into a single list
+	int listsCount = 0;
+	
+	// contains the pointer into the sorted particle buffer where the respective list start
+	int listsStart[27];
+	
+	// contains the number of particles in the sorted particle buffer belonging to the respective list
+	char listsLength[27];
+	
+	// initialize all cube cells as unvisited
+	for (int c=0;c<27;++c) {
+		cellToList[c] = CELL_NOT_VISITED;
+	}
 
     // Start grid scan
     int3 current_cell = convert_int3(predicted[i].xyz / Params->h);
+
     for (int x = -1; x <= 1; ++x)
     {
         for (int y = -1; y <= 1; ++y)
         {
             for (int z = -1; z <= 1; ++z)
             {
-                uint cell_index = calcGridHash(current_cell + (int3)(x, y, z));
-
-                // find first and last particle in this cell
+				int cubeIndex = GET_CUBE_INDEX(x,y,z);
+				
+				// skip cell which was already visited and thus already included
+				// in the lists
+				if(cellToList[cubeIndex] != CELL_NOT_VISITED) {
+					continue;
+				}
+				
+				// calculate the hash value of the current cell in the cube
+				int3 current_cube_cell = current_cell + (int3)(x, y, z);
+                uint cell_index = calcGridHash(current_cube_cell);
+				// find first and last particle in this cell
                 uint2 cell_boundary = (uint2)(cells[cell_index*2+0],cells[cell_index*2+1]);
 				
 				// skip empty cells
 				if(cell_boundary.x == END_OF_CELL_LIST) continue;
+
+				// mark cell as visited
+				cellToList[cubeIndex] = listsCount;
+				
+				// add a new list
+				listsStart[listsCount] = cell_boundary.x;
+				
+				// cell boundaries are inclusive so +1 is needed to obtain
+				// the number of particles in this cell
+				listsLength[listsCount] = cell_boundary.y - cell_boundary.x + 1;
+				int currentListIndex = listsCount;
+				
+				// by default assume worst case and start new list
+				listsCount++;
+				
+				// check backwards
+				int prevStep = 0;
+				while(true) {
+					// find cell index of the particle right before the current list starts
+					int particleIndexBefore = listsStart[currentListIndex] - 1;
 					
-				// iterate over all particles in this cell
-				for(int j_index = cell_boundary.x; j_index <= cell_boundary.y; ++j_index) {
-                    // Skip self
-                    if (i == j_index)
-                        continue;
-
-                    // Ignore unfriendly particles (r > h)
-                    const float3 r = predicted[i].xyz - predicted[j_index].xyz;
-                    const float  r_length_2 = dot(r, r);
-                    if (r_length_2 >= Params->h_2)
-                        continue;
-
-                    // Find particle circle
-                    const float adjusted_r = max(0.0f, (sqrt(r_length_2) - MIN_R) / (Params->h - MIN_R));
-                    const int j_circle = min(convert_int(adjusted_r * adjusted_r * adjusted_r * MAX_FRIENDS_CIRCLES), MAX_FRIENDS_CIRCLES - 1);
-
-                    // Make sure particle doesn't have too many friends
-                    if (circleParticles[j_circle] >= MAX_FRIENDS_IN_CIRCLE)
-                    {
-                        // printf("Damn! we need a bigger MAX_FRIENDS_IN_CIRCLE\n");
-                        continue;
-                    }
-
-                    // Increments friends in circle counter
-                    int friendIndex = circleParticles[j_circle]++;
-
-                    // Add friend to relevent circle
-                    int index = FRIENDS_BLOCK_SIZE +                                          // Skip friendsCount block
-                                j_circle    * (MAX_PARTICLES_COUNT * MAX_FRIENDS_IN_CIRCLE) + // Offset to relevent circle
-                                friendIndex * (MAX_PARTICLES_COUNT) +                         // Offset to relevent friend_index
-                                i;                                                            // Offset to particle_index                    
-                    
-                    friends_list[index] = j_index;
-                }
-            }
+					// check for special case if the current start particle has index 0
+					// which would result in the previous particle having an invalid index of -1
+					if(particleIndexBefore < 0) {
+						break;
+					}
+					float4 particleBefore = predicted[particleIndexBefore];
+					
+					// get grid cell position
+					int3 cellBefore = convert_int3(particleBefore.xyz / Params->h);
+					
+					// check if cell belongs to the current cube
+					int3 cellDifference = cellBefore - current_cell;
+					if(abs(cellDifference.x) > 1 || abs(cellDifference.y) > 1 || abs(cellDifference.z) > 1) {
+						break;
+					}
+					
+					int cubeIndexBefore = GET_CUBE_INDEX(cellDifference.x, cellDifference.y, cellDifference.z);
+					
+					// if the cell was already visited and has thus an associated list
+					// merge it with the current cells list
+					int listIndexBefore = cellToList[cubeIndexBefore];
+					if(listIndexBefore != CELL_NOT_VISITED) {
+						// add current list to the already existing list
+						listsLength[listIndexBefore] += listsLength[currentListIndex];
+						
+						// remove assumed new list
+						listsStart[currentListIndex] = -2;
+						listsLength[currentListIndex] = -2;
+						cellToList[cubeIndex] = listIndexBefore;
+						currentListIndex = listIndexBefore;
+						
+						listsCount--;
+					} else {
+						// the cell before has not been iterated over yet by the 3x3x3 cube
+						// so in order to avoid checking forward as well just add the cell right here
+						
+						// get the boundaries for the previous (not yet iterated) cell
+						uint cellHashBefore = calcGridHash(cellBefore);
+						uint2 cellBoundaryBefore = (uint2)(cells[cellHashBefore*2+0],cells[cellHashBefore*2+1]);
+						
+						// add list before to the current list
+						listsStart[currentListIndex] = cellBoundaryBefore.x;
+						listsLength[currentListIndex] += cellBoundaryBefore.y - cellBoundaryBefore.x + 1;
+						
+						// mark the cell before as visited so when the 3x3x3 cube iteration tries
+						// to check it again it will be skipped
+						cellToList[cubeIndexBefore] = currentListIndex;
+					}
+					
+					prevStep++;
+				}
+			}
         }
     }
-
-    // Save counters
-    for (int iCircle = 0; iCircle < MAX_FRIENDS_CIRCLES; iCircle++)
-    {
-        friends_list[iCircle * MAX_PARTICLES_COUNT + i] = circleParticles[iCircle];
-    }
+	
+	friends_list[i] = listsCount;
+	for (int listIndex=0;listIndex<listsCount;++listIndex) {
+		int startIndex = MAX_PARTICLES_COUNT + i * (27*2) + listIndex * 2 + 0;
+		int lengthIndex = startIndex + 1;
+		friends_list[startIndex] = listsStart[listIndex];
+		friends_list[lengthIndex] = listsLength[listIndex];
+	}
 }
 
 /*

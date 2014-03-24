@@ -98,6 +98,7 @@ public:
     void applyVorticity();
     void predictPositions();
     void buildFriendsList();
+	void resetGrid();
     void updatePredicted(int iterationIndex);
     void computeScaling(int iterationIndex);
     void computeDelta(int iterationIndex);

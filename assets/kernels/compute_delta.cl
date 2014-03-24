@@ -2,7 +2,7 @@ __kernel void computeDelta(__constant struct Parameters *Params,
                            volatile __global int *debugBuf,
                            __global float4 *delta,
                            const __global float4 *predicted, // xyz=predicted, w=scaling
-                           const __global int *friends_list,
+                           const __global uint *friends_list,
                            const float wave_generator,
                            const int N)
 {
@@ -40,77 +40,64 @@ __kernel void computeDelta(__constant struct Parameters *Params,
     int localMiss = 0;
 #endif
 
-    // read number of friends
-    int totalFriends = 0;
-    int circleParticles[MAX_FRIENDS_CIRCLES];
-    for (int j = 0; j < MAX_FRIENDS_CIRCLES; j++)
-        totalFriends += circleParticles[j] = friends_list[j * MAX_PARTICLES_COUNT + i];
+    // Start grid scan
+	uint listsCount = friends_list[i];
+	for(int listIndex = 0; listIndex < listsCount; ++listIndex) {
+		
+		int startIndex = MAX_PARTICLES_COUNT + i * (27*2) + listIndex * 2 + 0;
+		int lengthIndex = startIndex + 1;
+		
+		uint start = friends_list[startIndex];
+		uint length = friends_list[lengthIndex];
+		uint end = start + length;
+		
+		// iterate over all particles in this cell
+		for(int j_index = start; j_index < end; ++j_index) {
+			// Skip self
+			if (i == j_index)
+				continue;
 
-    int proccedFriends = 0;
-	
-	
-	
-    for (int iCircle = 0; iCircle < MAX_FRIENDS_CIRCLES; iCircle++)
-    {
-        // Check if we want to process/skip next friends circle
-        if (((float)proccedFriends) / totalFriends > 0.5f)
-            continue;
-
-        // Add next circle to process count
-        proccedFriends += circleParticles[iCircle];
-
-        // Compute friends start offset
-        int baseIndex = FRIENDS_BLOCK_SIZE +                                      // Skip friendsCount block
-                        iCircle * (MAX_PARTICLES_COUNT * MAX_FRIENDS_IN_CIRCLE) + // Offset to relevent circle
-                        i;   
-
-        // Process friends in circle
-        for (int iFriend = 0; iFriend < circleParticles[iCircle]; iFriend++)
-        {
-            // Read friend index from friends_list
-            const int j_index = friends_list[baseIndex + iFriend * MAX_PARTICLES_COUNT];
-
-            // Get j particle data
+			// Get j particle data
 #ifdef LOCALMEM
-            float4 j_data;
-            if (j_index / local_size == group_id)
-            {
-                j_data = loc_predicted[j_index % local_size];
-            //     localHit++;
-            //     atomic_inc(&stats[0]);
-            }
-            else
-            {
-                j_data = predicted[j_index];
-            //     localMiss++;
-            //     atomic_inc(&stats[1]);
-            }
+			float4 j_data;
+			if (j_index / local_size == group_id)
+			{
+				j_data = loc_predicted[j_index % local_size];
+			//     localHit++;
+			//     atomic_inc(&stats[0]);
+			}
+			else
+			{
+				j_data = predicted[j_index];
+			//     localMiss++;
+			//     atomic_inc(&stats[1]);
+			}
 #else
-            const float4 j_data = predicted[j_index];
+			const float4 j_data = predicted[j_index];
 #endif
 
-            // Compute r, length(r) and length(r)^2
-            const float3 r         = particle.xyz - j_data.xyz;
-            const float r_length_2 = dot(r, r);
+			// Compute r, length(r) and length(r)^2
+			const float3 r         = particle.xyz - j_data.xyz;
+			const float r_length_2 = dot(r, r);
 
-            if (r_length_2 < h_2_cache)
-            {
-                const float r_length   = sqrt(r_length_2);
+			if (r_length_2 < h_2_cache)
+			{
+				const float r_length   = sqrt(r_length_2);
 
-                const float3 gradient_spiky = r / (r_length) *
-                                              (h_cache - r_length) *
-                                              (h_cache - r_length);
+				const float3 gradient_spiky = r / (r_length) *
+											  (h_cache - r_length) *
+											  (h_cache - r_length);
 
-                const float r_2_diff = h_2_cache - r_length_2;
-                const float poly6_r = r_2_diff * r_2_diff * r_2_diff;
+				const float r_2_diff = h_2_cache - r_length_2;
+				const float poly6_r = r_2_diff * r_2_diff * r_2_diff;
 
-                const float r_q_radio = poly6_r / poly6_q;
-                const float s_corr = Params->surfaceTenstionK * r_q_radio * r_q_radio * r_q_radio * r_q_radio;
+				const float r_q_radio = poly6_r / poly6_q;
+				const float s_corr = Params->surfaceTenstionK * r_q_radio * r_q_radio * r_q_radio * r_q_radio;
 
-                // Sum for delta p of scaling factors and grad spiky (equation 12)
-                sum += (particle.w + j_data.w + s_corr) * gradient_spiky;
-            }
-        }
+				// Sum for delta p of scaling factors and grad spiky (equation 12)
+				sum += (particle.w + j_data.w + s_corr) * gradient_spiky;
+			}
+		}
     }
 
     // equation (12)
