@@ -38,6 +38,7 @@ void FindRootDirectory()
     GetModuleFileName( NULL, path, sizeof(path));
     PathRemoveFileSpec(path); // Remove file name
     PathRemoveFileSpec(path); // Remove "bin"
+    PathRemoveFileSpec(path); // Remove "build"
     rootDirectory = path + string("\\assets");
 #else
     char path[PATH_MAX + 1];
