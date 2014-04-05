@@ -34,7 +34,7 @@ void SelectOpenCLDevice(cl::Platform &platform, cl::Device &device)
 
         // Get platform devices
         vector<cl::Device> devices;
-        cit->getDevices(CL_DEVICE_TYPE_GPU, &devices);
+        cit->getDevices(CL_DEVICE_TYPE_ALL, &devices);
         for (vector<cl::Device>::const_iterator dit = devices.begin(); dit != devices.end(); dit++)
         {
             // Add to options
@@ -48,13 +48,16 @@ void SelectOpenCLDevice(cl::Platform &platform, cl::Device &device)
             bool support_gl_sharing = extenstions.find(" cl_khr_gl_sharing ") != string::npos;
 #endif
 
+            // Check device type
+            cl_int devType = dit->getInfo<CL_DEVICE_TYPE>();
+
             // Check clock
             cl_int clockFreq    = dit->getInfo<CL_DEVICE_MAX_CLOCK_FREQUENCY>();
             cl_int computeUnits = dit->getInfo<CL_DEVICE_MAX_COMPUTE_UNITS>();
             cl_int TotalClock   = clockFreq * computeUnits;
 
             // Check agaist "best" option
-            if (support_gl_sharing && (BestOption_Clocks < TotalClock))
+            if (support_gl_sharing && (BestOption_Clocks < TotalClock) && (devType == CL_DEVICE_TYPE_GPU))
             {
                 BestOption = deviceOptions.size() - 1;
                 BestOption_Clocks = TotalClock;
@@ -64,7 +67,7 @@ void SelectOpenCLDevice(cl::Platform &platform, cl::Device &device)
             cout << "    #" << deviceOptions.size() << " => " << dit->getInfo<CL_DEVICE_NAME>() << ":" << endl;
             cout << "          Support OpenGL sharing: " << support_gl_sharing << endl;
             cout << "          TotalClocks=" << TotalClock << " (Clock=" << clockFreq << " Units=" << computeUnits << ")" << endl;
-            //cout << "          EXT: " << dit->getInfo<CL_DEVICE_EXTENSIONS>() << endl;
+            cout << "          DeviceType=" << devType << " (2=CPU 4=GPU)" <<endl;
         }
 
         cout << endl;

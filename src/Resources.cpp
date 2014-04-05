@@ -34,12 +34,23 @@ map<string, string> g_code_resources;
 void FindRootDirectory()
 {
 #if defined(_WINDOWS)
+    bool bFolderFound;
     char path[MAX_PATH];
     GetModuleFileName( NULL, path, sizeof(path));
-    PathRemoveFileSpec(path); // Remove file name
-    PathRemoveFileSpec(path); // Remove "bin"
-    PathRemoveFileSpec(path); // Remove "build"
-    rootDirectory = path + string("\\assets");
+    do
+    {
+        // Remove to part
+        if (!PathRemoveFileSpec(path))
+            throw runtime_error("Could not find assets folder");
+
+        // Compose new path
+        rootDirectory = path + string("\\assets");
+
+        // Check if exists
+        DWORD dwAttrib = GetFileAttributes(rootDirectory.c_str());
+        bFolderFound = ((dwAttrib != INVALID_FILE_ATTRIBUTES) && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY));
+
+    } while (!bFolderFound);
 #else
     char path[PATH_MAX + 1];
     char absolute_path[PATH_MAX + 1];
