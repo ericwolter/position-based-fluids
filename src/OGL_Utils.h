@@ -3,6 +3,8 @@
 #include "Precomp_OpenGL.h"
 #include <glm/glm.hpp>
 
+#include <list>
+#include <string>
 #include <vector>
 using namespace std;
 
@@ -30,6 +32,31 @@ GLuint OGLU_GenerateTexture(int Width, int Height, GLint InternalFormat, GLenum 
 void OGLU_BindTextureToUniform(const char *szUniform, GLuint nTextureUnit, GLuint nTextureID);
 void OGLU_CheckCoreError(const char* szTitle);
 
+//
+// Timing related
+//
+#define TIMING_HISTORY_DEPTH 4
+
+typedef struct
+{
+    string  sectionName;
+    GLuint  queryObject[TIMING_HISTORY_DEPTH];
+    GLuint  queryInprogress;
+    int     currentQOIndex;
+    GLint64 total_time_nano;   
+    double  total_time_ms;
+    int     tag;
+} OGLU_PERFORMANCE_TRACKER;
+
+extern list<OGLU_PERFORMANCE_TRACKER*> g_OGL_Timings;
+
+void OGLU_StartTimingSection(const char* szSectionTitle);
+void OGLU_EndTimingSection();
+void OGLU_CollectTimings();
+
+//
+// Help classes
+//
 class CopyTextureToHost
 {
 public:

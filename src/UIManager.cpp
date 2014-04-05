@@ -25,6 +25,7 @@ CVisual    *mRenderer;
 Simulation *mSim;
 TwBar      *mTweakBar;
 double      mTotalSimTime;
+double      mTotalRenderTime;
 float       mMousePosX;
 float       mMousePosY;
 
@@ -155,7 +156,8 @@ void UIManager_Init(GLFWwindow *window, CVisual *pRenderer, Simulation *pSim)
     TwAddVarRW(mTweakBar, "InspectionStage", enumInstStage, &UIM_SelectedInspectionStage, "label='Inspection Stage' group='View Debugging'");
 
     // Timing
-    TwAddVarRO(mTweakBar, "Total sim time", TW_TYPE_DOUBLE, &mTotalSimTime, "precision=2 group=Stats");
+    TwAddVarRO(mTweakBar, "Total sim time", TW_TYPE_DOUBLE, &mTotalSimTime, "precision=2 group=OCL_Timings");
+    TwAddVarRO(mTweakBar, "Total render time", TW_TYPE_DOUBLE, &mTotalRenderTime, "precision=2 group=OGL_Timings");
 
     // Init drawing ATB
     g_TwMgr->m_GraphAPI = TW_OPENGL_CORE;
@@ -301,6 +303,23 @@ void DrawFriendsHistogram()
 
 void DrawAntTweakBar()
 {
+    // Create performance rows (for OpenGL)
+    list<OGLU_PERFORMANCE_TRACKER*>::iterator iter;
+    for (iter = g_OGL_Timings.begin(); iter != g_OGL_Timings.end(); iter++)
+    {
+        // Check if already setup
+        if ((*iter)->tag == 1)
+            continue;
+
+        // Remember that ATB row was created
+        (*iter)->tag = 1;
+
+        // create row
+        string title = "  " + (*iter)->sectionName;
+        void* pValue = &(*iter)->total_time_ms;
+        TwAddVarRO(mTweakBar, title.c_str(),  TW_TYPE_DOUBLE,  pValue, "precision=2 group=OGL_Timings");
+    }
+
     if (mIsFirstCycle)
     {
         // Create performance rows
@@ -309,11 +328,12 @@ void DrawAntTweakBar()
             // create row
             string title = "  " + mSim->PerfData.Trackers[i]->eventName;
             void* pValue = &mSim->PerfData.Trackers[i]->total_time;
-            TwAddVarRO(mTweakBar, title.c_str(),  TW_TYPE_DOUBLE,  pValue, "precision=2 group=Stats");
+            TwAddVarRO(mTweakBar, title.c_str(),  TW_TYPE_DOUBLE,  pValue, "precision=2 group=OCL_Timings");
         }
 
         // Make sure Stats group is folded
-        TwDefine(" PBFTweak/Stats opened=false ");
+        TwDefine(" PBFTweak/OCL_Timings opened=false ");
+        TwDefine(" PBFTweak/OGL_Timings opened=false ");
     }
 
     // Check if we need to refresh OGSI stage list
@@ -340,6 +360,13 @@ void DrawAntTweakBar()
     mTotalSimTime = 0;
     for (size_t i = 0; i < mSim->PerfData.Trackers.size(); i++)
         mTotalSimTime += mSim->PerfData.Trackers[i]->total_time;
+
+    mTotalRenderTime = 0.0;
+    for (iter = g_OGL_Timings.begin(); iter != g_OGL_Timings.end(); iter++)
+        mTotalRenderTime += (*iter)->total_time_ms;
+
+    // Measure UI drawing time
+    OGLU_StartTimingSection("UI Drawing");
 
     // Make sure bar refresh it's values
     TwRefreshBar(mTweakBar);
@@ -368,6 +395,9 @@ void processGLFWEvents()
 void UIManager_Draw()
 {
     processGLFWEvents();
+
+    // Collect OpenGL timings
+    OGLU_CollectTimings();
 
     DrawAntTweakBar();
 

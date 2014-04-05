@@ -344,11 +344,13 @@ void CVisual::renderParticles()
     // Clear target
     pNextTarget->SetAsDrawTarget();
 
+    OGLU_StartTimingSection("Clear FBO");
     glClearColor(0, 0, 0, 0);
     glClearDepth(1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Setup Particle drawing
+    OGLU_StartTimingSection("Draw Particles");
     glUseProgram(g_SelectedProgram = mParticleProgID);
 
     // Setup uniforms
@@ -379,29 +381,36 @@ void CVisual::renderParticles()
     if (OGSI_InspectTexture(pPrevTarget->pDepthTextureId,     "Draw Particles [depth]",   4, -3)) return;
     if (OGSI_InspectTexture(mSimulation->mSharedParticlesPos, "ParticlePos",   1, 0)) return;
 
-    // Scan for visible particles
-    scanForVisible(pPrevTarget->pColorTextureId[0]);
-    if (OGSI_InspectTexture(mImgParticleVisible,    "VisImg",   1, 0)) return;
-    
-    // Build grid
-    buildGrid();
-
     // Smooth fluid depth
     GLuint depthTexture = pPrevTarget->pDepthTextureId;
     if (UICmd_RenderMode == 0/*Smooth*/)
     {
+        // Scan for visible particles
+        OGLU_StartTimingSection("Scan for visible");
+        scanForVisible(pPrevTarget->pColorTextureId[0]);
+        if (OGSI_InspectTexture(mImgParticleVisible,    "VisImg",   1, 0)) return;
+
+        // Build grid
+        OGLU_StartTimingSection("Build visual grid");
+        buildGrid();
+
+        // Render depth
+        OGLU_StartTimingSection("Render Depth Smooth");
         renderFluidSmoothDepth();
-        
         if (OGSI_InspectTexture(pPrevTarget->pColorTextureId[0], "DepthSmooth [texture]", 1, 0)) return;
 
         // Change next step input to smoothed depth
         depthTexture = pPrevTarget->pColorTextureId[0];
 
         // Final fluid render
+        OGLU_StartTimingSection("Final Render");
         renderFluidFinal(depthTexture);
     }
     else
     {
+        // Copy to screen
+        OGLU_StartTimingSection("Copy to Screen");
+
         // Select output
         g_ScreenFBO.SetAsDrawTarget();
 

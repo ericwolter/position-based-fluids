@@ -4,10 +4,96 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+
+#include <map>
 #include <fstream>
 #include <iostream>
 using namespace std;
 
+//
+// OpenGL timing
+//
+string CurrentTimingSection;
+map<string, OGLU_PERFORMANCE_TRACKER> TimingsMap;
+list<OGLU_PERFORMANCE_TRACKER*> g_OGL_Timings;
+
+void OGLU_StartTimingSection(const char* szSectionTitle)
+{
+    // Check if we need to close last section
+    if (CurrentTimingSection.length())
+        OGLU_EndTimingSection();
+
+    // Check if needs to create section
+    CurrentTimingSection = szSectionTitle;
+    if (!TimingsMap.count(CurrentTimingSection))
+    {
+        // Create new tracker object
+        OGLU_PERFORMANCE_TRACKER tracker;
+        memset(&tracker, 0, sizeof(tracker));
+        glGenQueries(TIMING_HISTORY_DEPTH, tracker.queryObject);
+        tracker.sectionName = CurrentTimingSection;
+
+        // Add new map entry
+        TimingsMap[CurrentTimingSection] = tracker;
+
+        // Add list entry
+        g_OGL_Timings.push_back(&TimingsMap[CurrentTimingSection]);
+    }
+
+    // Setup query
+    OGLU_PERFORMANCE_TRACKER* pTracker = &TimingsMap[CurrentTimingSection];
+    pTracker->queryInprogress = true;
+    pTracker->currentQOIndex = (pTracker->currentQOIndex + 1) % TIMING_HISTORY_DEPTH;
+    glBeginQuery(GL_TIME_ELAPSED, pTracker->queryObject[pTracker->currentQOIndex]);
+}
+
+void OGLU_EndTimingSection()
+{
+    // Do nothign if we're out of section
+    if (CurrentTimingSection.length() == 0)
+        return;
+
+    // End timing
+    glEndQuery (GL_TIME_ELAPSED);
+
+    // Clear current section
+    CurrentTimingSection.clear();
+}
+
+void OGLU_CollectTimings()
+{
+    list<OGLU_PERFORMANCE_TRACKER*>::iterator iter;
+    for (iter = g_OGL_Timings.begin(); iter != g_OGL_Timings.end(); ++iter)
+    {
+        // Skip if query was not started
+        if (!(*iter)->queryInprogress)
+        {
+            (*iter)->total_time_nano = 0;
+            (*iter)->total_time_ms = 0;
+            continue;
+        }
+
+        // Compute the index of the oldest item
+        int oldestIndex = ((*iter)->currentQOIndex + TIMING_HISTORY_DEPTH - 1) % TIMING_HISTORY_DEPTH;
+
+        // Skip non-valid queries
+        if (!glIsQuery((*iter)->queryObject[oldestIndex]))
+            continue;
+
+        // Get result
+        glGetQueryObjecti64v ((*iter)->queryObject[oldestIndex], GL_QUERY_RESULT, &(*iter)->total_time_nano);
+
+        // Convert to millisec
+        (*iter)->total_time_ms = (*iter)->total_time_nano / 1000000.0;
+
+        // Reset QueryInprogress
+        (*iter)->queryInprogress = false;
+    }
+}
+
+//
+// OpenGL texture creation flags
+//
 
 #define FMT_TABLE_INDEX          0
 #define FMT_TABLE_INTFMT         1
