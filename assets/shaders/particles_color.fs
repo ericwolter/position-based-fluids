@@ -3,6 +3,7 @@
 uniform mat4  projectionMatrix;
 uniform float pointSize;
 uniform int   particleCount;
+uniform int   renderMethod;
 
 // inputs from vertex shader
 in float      frag_color;
@@ -66,10 +67,17 @@ void main()
     cosAngIncidence = clamp(cosAngIncidence, 0.0, 1.0);
 
     // [DEBUG] Color according to index
-    // vec3 dif_color = colorscale(float(frag_particleIndex) / particleCount);
-    // colorOut = vec4(dif_color, 1.0) * cosAngIncidence;    
+    if (renderMethod == 1)
+    {
+        vec3 dif_color = colorscale(float(frag_particleIndex) / particleCount);
+        colorOut = vec4(dif_color, 1.0) * cosAngIncidence;    
+    }
     
     // [DEBUG] Color according to velocity
-    // vec3 dif_color = vec3(frag_velocity, frag_velocity, 1.0);
-    // colorOut = vec4(dif_color, 1.0) * cosAngIncidence;    
+    if (renderMethod == 2)
+    {
+        
+        vec3 dif_color = vec3(frag_velocity, frag_velocity, 1.0);
+        colorOut = vec4(dif_color, 1.0) * cosAngIncidence;    
+    }
 }

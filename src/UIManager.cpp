@@ -128,7 +128,7 @@ void UIManager_Init(GLFWwindow *window, CVisual *pRenderer, Simulation *pSim)
     TwDefine(" PBFTweak size='240 400' "); 
 
     // Define enums
-    TwType enumRenderViewMode = TwDefineEnumFromString("enumRenderViewMode", "Velocity,Sorting");
+    TwType enumRenderViewMode = TwDefineEnumFromString("enumRenderViewMode", "Smooth,Velocity,Sorting");
     TwType enumInstStage      = TwDefineEnum("enumInspectionStages", NULL, 0);
 
     // Sim related
@@ -138,8 +138,7 @@ void UIManager_Init(GLFWwindow *window, CVisual *pRenderer, Simulation *pSim)
 
     // View related
     TwAddButton(mTweakBar, "View Reset",             View_Reset,         mRenderer,                     "group='View Controls' key=Z");
-    TwAddVarRW (mTweakBar, "Depth Smoothing",        TW_TYPE_BOOLCPP,    &mRenderer->UICmd_SmoothDepth, "group='View Controls' key=S");
-    TwAddVarRW (mTweakBar, "Render Mode",            enumRenderViewMode, &mRenderer->UICmd_DrawMode,    "group='View Controls'");
+    TwAddVarRW (mTweakBar, "Render Mode",            enumRenderViewMode, &mRenderer->UICmd_RenderMode,    "group='View Controls' key=M");
 
     // Sim debugging related
     TwAddVarRW (mTweakBar, "Friends Histogram",      TW_TYPE_BOOLCPP,   &mRenderer->UICmd_FriendsHistogarm, "group='Sim Debugging'");

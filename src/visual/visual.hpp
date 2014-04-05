@@ -75,6 +75,8 @@ public:
 
     void renderParticles();
 
+    void drawFullScreenTexture(GLuint textureID);
+
     void presentToScreen();
 
     GLuint createSharingBuffer(const GLsizei size) const;
@@ -88,8 +90,7 @@ public:
     bool UICmd_ResetSimulation;
     bool UICmd_PauseSimulation;
     bool UICmd_FriendsHistogarm;
-    int  UICmd_DrawMode;
-    bool UICmd_SmoothDepth;
+    int  UICmd_RenderMode;
 
 private:
     // Window stuff

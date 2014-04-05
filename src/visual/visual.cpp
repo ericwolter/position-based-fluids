@@ -35,8 +35,7 @@ CVisual::CVisual (const int windowWidth, const int windowHeight)
       UICmd_ResetSimulation(false),
       UICmd_PauseSimulation(false),
       UICmd_FriendsHistogarm(false),
-      UICmd_DrawMode(0),
-      UICmd_SmoothDepth(false),
+      UICmd_RenderMode(0),
       mWindowWidth(windowWidth),
       mWindowHeight(windowHeight),
       mCycleID(0),
@@ -270,6 +269,21 @@ void CVisual::renderFluidSmoothDepth()
     swapTargets();
 }
 
+void CVisual::drawFullScreenTexture(GLuint textureID)
+{
+        // Select shader
+        glUseProgram(g_SelectedProgram = mStandardCopyProgID);
+
+        // Update uniforms
+        OGLU_BindTextureToUniform("ImageSrc", 0, textureID);
+        glUniform1f(UniformLoc("offset"), 0.0f);
+        glUniform1f(UniformLoc("gain"),   1.0f);
+    
+        // render quad
+        OGLU_RenderQuad(0, 0, 1.0, 1.0);
+
+}
+
 void CVisual::scanForVisible(GLuint inputTexture)
 {
     // Setup program
@@ -341,7 +355,7 @@ void CVisual::renderParticles()
     glUniformMatrix4fv(UniformLoc("projectionMatrix"), 1, GL_FALSE, glm::value_ptr(mProjectionMatrix));
     glUniformMatrix4fv(UniformLoc("modelViewMatrix"),  1, GL_FALSE, glm::value_ptr(ZPR_ModelViewMatrix));
     glUniform1i(UniformLoc("particleCount"),    Params.particleCount);
-    glUniform1i(UniformLoc("colorMethod"),      UICmd_DrawMode);
+    glUniform1i(UniformLoc("renderMethod"),     UICmd_RenderMode);
     glUniform1f(UniformLoc("widthOfNearPlane"), mWidthOfNearPlane);
     glUniform1f(UniformLoc("pointSize"),        Params.particleRenderSize);
 
@@ -374,7 +388,7 @@ void CVisual::renderParticles()
 
     // Smooth fluid depth
     GLuint depthTexture = pPrevTarget->pDepthTextureId;
-    //if (UICmd_SmoothDepth)
+    if (UICmd_RenderMode == 0/*Smooth*/)
     {
         renderFluidSmoothDepth();
         
@@ -382,10 +396,18 @@ void CVisual::renderParticles()
 
         // Change next step input to smoothed depth
         depthTexture = pPrevTarget->pColorTextureId[0];
-    }
 
-    // Final fluid render
-    renderFluidFinal(depthTexture);
+        // Final fluid render
+        renderFluidFinal(depthTexture);
+    }
+    else
+    {
+        // Select output
+        g_ScreenFBO.SetAsDrawTarget();
+
+        // Copy texture
+        drawFullScreenTexture(pPrevTarget->pColorTextureId[0]);
+    }
 
     // Unselect shader
     glUseProgram(0);
