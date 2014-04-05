@@ -132,9 +132,8 @@ void Runner::run(Simulation &simulation, CVisual &renderer)
         UIManager_Draw();
         
         renderer.presentToScreen();
-
     }
-    while (true);
+    while (!UIManager_WindowShouldClose());
 
 #if defined(MAKE_VIDEO)
     pclose(ffmpeg);

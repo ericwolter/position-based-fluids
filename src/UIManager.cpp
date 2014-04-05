@@ -379,3 +379,8 @@ void UIManager_Draw()
     mIsFirstCycle = false;
 }
 
+bool UIManager_WindowShouldClose()
+{
+    return glfwWindowShouldClose(mWindow);
+}
+
