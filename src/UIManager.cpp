@@ -29,6 +29,9 @@ double      mTotalRenderTime;
 float       mMousePosX;
 float       mMousePosY;
 
+double      mFPS;
+__int64     mFPS_LastQPC;
+
 int  UIM_SelectedInspectionStage;
 bool UIM_SaveInspectionStage = false;
 int  UIM_RenderMode;
@@ -126,7 +129,7 @@ void UIManager_Init(GLFWwindow *window, CVisual *pRenderer, Simulation *pSim)
     mDisplayFont = mWindowWidth < mFrameWidth? g_DefaultNormalFont : g_DefaultSmallFont;
 
     mTweakBar = TwNewBar("PBFTweak");
-    TwDefine(" PBFTweak size='240 400' "); 
+    TwDefine(" PBFTweak size='240 500' "); 
 
     // Define enums
     TwType enumRenderViewMode = TwDefineEnumFromString("enumRenderViewMode", "Smooth,Velocity,Sorting");
@@ -158,6 +161,10 @@ void UIManager_Init(GLFWwindow *window, CVisual *pRenderer, Simulation *pSim)
     // Timing
     TwAddVarRO(mTweakBar, "Total sim time", TW_TYPE_DOUBLE, &mTotalSimTime, "precision=2 group=OCL_Timings");
     TwAddVarRO(mTweakBar, "Total render time", TW_TYPE_DOUBLE, &mTotalRenderTime, "precision=2 group=OGL_Timings");
+
+    TwAddVarRO(mTweakBar, "Sim time", TW_TYPE_DOUBLE, &mTotalSimTime, "precision=2 group=General_Timings");
+    TwAddVarRO(mTweakBar, "Render time", TW_TYPE_DOUBLE, &mTotalRenderTime, "precision=2 group=General_Timings");
+    TwAddVarRO(mTweakBar, "FPS", TW_TYPE_DOUBLE, &mFPS, "precision=2 group=General_Timings");
 
     // Init drawing ATB
     g_TwMgr->m_GraphAPI = TW_OPENGL_CORE;
@@ -365,9 +372,6 @@ void DrawAntTweakBar()
     for (iter = g_OGL_Timings.begin(); iter != g_OGL_Timings.end(); iter++)
         mTotalRenderTime += (*iter)->total_time_ms;
 
-    // Measure UI drawing time
-    OGLU_StartTimingSection("UI Drawing");
-
     // Make sure bar refresh it's values
     TwRefreshBar(mTweakBar);
 
@@ -395,6 +399,14 @@ void processGLFWEvents()
 void UIManager_Draw()
 {
     processGLFWEvents();
+
+    // Measure FPS
+    __int64 newQPC;
+    __int64 QPFreq;
+    QueryPerformanceCounter((LARGE_INTEGER*)&newQPC);
+    QueryPerformanceFrequency((LARGE_INTEGER*)&QPFreq);
+    mFPS = 1.0 / ((double)(newQPC - mFPS_LastQPC) / QPFreq);
+    mFPS_LastQPC = newQPC;
 
     // Collect OpenGL timings
     OGLU_CollectTimings();

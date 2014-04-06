@@ -129,9 +129,14 @@ void Runner::run(Simulation &simulation, CVisual &renderer)
         renderer.renderParticles();
 
         // Draw UI
+        OGLU_StartTimingSection("Draw UI");
         UIManager_Draw();
-        
+        OGLU_EndTimingSection();
+
+        // Transfer to screen
+        OGLU_StartTimingSection("Present-To-Screen");
         renderer.presentToScreen();
+        OGLU_EndTimingSection();
     }
     while (!UIManager_WindowShouldClose());
 
