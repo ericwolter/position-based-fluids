@@ -54,6 +54,9 @@ public:
     cl::NDRange mGlobalRange;
     cl::NDRange mLocalRange;
 
+	// Compute Shader buffers
+	GLuint mGLPositionsPingBuffer;
+
     // OCL buffer sizes
     size_t mBufferSizeParticles;
     size_t mBufferSizeCells;

@@ -9,8 +9,7 @@
 #include <math.h>
 #include <cmath>
 #include <sstream>
-#include <algorithm>
-
+#include <algorithm>
 using namespace std;
 
 unsigned int _NKEYS = 0;
@@ -258,6 +257,11 @@ void Simulation::InitBuffers()
     stats[1] = 0;
     mQueue.enqueueWriteBuffer(mStatsBuffer, CL_TRUE, 0, sizeof(cl_uint) * 2, stats);
     mQueue.finish();
+
+	glGenBuffers(1, &mGLPositionsPingBuffer);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, mGLPositionsPingBuffer);
+	glBufferStorage(GL_SHADER_STORAGE_BUFFER, 4 * sizeof(float) * Params.particleCount, &mPositions[0], 0);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
 void Simulation::InitCells()
