@@ -5,16 +5,16 @@
 #include "ParamUtils.hpp"
 #include "ocl/OCLUtils.hpp"
 
-#define _USE_MATH_DEFINES
-#include <math.h>
-#include <cmath>
 #include <sstream>
 #include <algorithm>
+
 using namespace std;
 
 unsigned int _NKEYS = 0;
 
 #define DivCeil(num, divider) ((num + divider - 1) / divider) 
+
+#define  M_PI   3.14159265358979323846	/* pi */
 
 Simulation::Simulation(const cl::Context &clContext, const cl::Device &clDevice)
     : mCLContext(clContext),
@@ -42,8 +42,11 @@ Simulation::~Simulation()
 
 void Simulation::CreateParticles()
 {
+    // Choose between 2D and 3D
+    float dim = 3.0;
+
     // Compute particle count per axis
-    int ParticlesPerAxis = (int)ceil(pow(Params.particleCount, 1 / 3.0));
+    int ParticlesPerAxis = (int)ceil(pow(Params.particleCount, 1 / dim));
 
     // Build particles blcok
     float d = Params.h * Params.setupSpacing;
@@ -52,14 +55,14 @@ void Simulation::CreateParticles()
     float offsetZ = (1.0f - ParticlesPerAxis * d) / 2.0f;
     for (cl_uint i = 0; i < Params.particleCount; i++)
     {
-        cl_uint x = ((cl_uint)(i / pow(ParticlesPerAxis, 1)) % ParticlesPerAxis);
-        cl_uint y = ((cl_uint)(i / pow(ParticlesPerAxis, 0)) % ParticlesPerAxis);
-        cl_uint z = ((cl_uint)(i / pow(ParticlesPerAxis, 2)) % ParticlesPerAxis);
+        cl_uint x = ((cl_uint)(i / pow(ParticlesPerAxis, 1.0f)) % ParticlesPerAxis);
+        cl_uint y = ((cl_uint)(i / pow(ParticlesPerAxis, 0.0f)) % ParticlesPerAxis);
+        cl_uint z = ((cl_uint)(i / pow(ParticlesPerAxis, 2.0f)) % ParticlesPerAxis)  * (dim == 3);
 
-        mPositions[i].s[0] = offsetX + (x /*+ (y % 2) * .5*/) * d;
-        mPositions[i].s[1] = offsetY + (y) * d;
-        mPositions[i].s[2] = offsetZ + (z /*+ (y % 2) * .5*/) * d;
-        mPositions[i].s[3] = 0;
+        mPositions[i][0] = offsetX + x * d;
+        mPositions[i][1] = offsetY + y * d;
+        mPositions[i][2] = offsetZ + z * d;
+        mPositions[i][3] = 0;
     }
 
     // random_shuffle(&mPositions[0],&mPositions[Params.particleCount-1]);
@@ -183,11 +186,11 @@ void Simulation::InitBuffers()
     mBufferSizeParticlesList  = Params.particleCount * sizeof(cl_int);
 
     // Allocate CPU buffers
-    delete[] mPositions;   mPositions   = new cl_float4[Params.particleCount];
-    delete[] mVelocities;  mVelocities  = new cl_float4[Params.particleCount];
-    delete[] mPredictions; mPredictions = new cl_float4[Params.particleCount]; // (used for debugging)
-    delete[] mDeltas;      mDeltas      = new cl_float4[Params.particleCount]; // (used for debugging)
-    delete[] mFriendsList; mFriendsList = new cl_uint  [Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle)]; // (used for debugging)
+    delete[] mPositions;   mPositions   = new vec4[Params.particleCount];
+    delete[] mVelocities;  mVelocities  = new vec4[Params.particleCount];
+    delete[] mPredictions; mPredictions = new vec4[Params.particleCount]; // (used for debugging)
+    delete[] mDeltas;      mDeltas      = new vec4[Params.particleCount]; // (used for debugging)
+    delete[] mFriendsList; mFriendsList = new uint[Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle)]; // (used for debugging)
 
     // Position particles
     CreateParticles();
@@ -195,10 +198,10 @@ void Simulation::InitBuffers()
     // Initialize particle speed arrays
     for (cl_uint i = 0; i < Params.particleCount; ++i)
     {
-        mVelocities[i].s[0] = 0;
-        mVelocities[i].s[1] = 0;
-        mVelocities[i].s[2] = 0;
-        mVelocities[i].s[3] = 1; // <= "m" == 1?
+        mVelocities[i][0] = 0;
+        mVelocities[i][1] = 0;
+        mVelocities[i][2] = 0;
+        mVelocities[i][3] = 1; // <= "m" == 1?
     }
 
     // Create buffers
@@ -258,10 +261,10 @@ void Simulation::InitBuffers()
     mQueue.enqueueWriteBuffer(mStatsBuffer, CL_TRUE, 0, sizeof(cl_uint) * 2, stats);
     mQueue.finish();
 
-	glGenBuffers(1, &mGLPositionsPingBuffer);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, mGLPositionsPingBuffer);
-	glBufferStorage(GL_SHADER_STORAGE_BUFFER, 4 * sizeof(float) * Params.particleCount, &mPositions[0], 0);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    glGenBuffers(1, &mGLPositionsPingBuffer);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, mGLPositionsPingBuffer);
+    glBufferStorage(GL_SHADER_STORAGE_BUFFER, 4 * sizeof(float) * Params.particleCount, &mPositions[0], 0);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
 void Simulation::InitCells()
@@ -644,13 +647,13 @@ void Simulation::Step()
     // sort particles buffer
     if (!bPauseSim)
         this->radixsort();
-	
-	// Update cells
+
+    // Update cells
     this->updateCells();
-	
-	// Build friends list
-	this->buildFriendsList();
-	
+
+    // Build friends list
+    this->buildFriendsList();
+
     for (unsigned int i = 0; i < Params.simIterations; ++i)
     {
         // Compute scaling value
@@ -724,7 +727,7 @@ void Simulation::Step()
     oclLog.CycleExecute(mQueue);
 }
 
-void Simulation::dumpData(cl_float4 * (&positions), cl_float4 * (&velocities))
+void Simulation::dumpData(vec4 * (&positions), vec4 * (&velocities))
 {
     mQueue.enqueueReadBuffer(mPositionsPingBuffer, CL_TRUE, 0, mBufferSizeParticles, mPositions);
     mQueue.enqueueReadBuffer(mVelocitiesBuffer, CL_TRUE, 0, mBufferSizeParticles, mVelocities);

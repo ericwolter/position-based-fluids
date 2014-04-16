@@ -1,5 +1,5 @@
 # Simulation settings
-ParticleCount           100000
+ParticleCount           1000
 SetupSpacing            0.55
 ResetSimOnChange        0
 

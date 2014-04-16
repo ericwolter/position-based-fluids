@@ -8,10 +8,12 @@ __kernel void predictPositions(__constant struct Parameters *Params,
     const uint i = get_global_id(0);
     if (i >= N) return;
 
-    // Append gravity (if simulation isn't pause)
     if (pauseSim == 0)
+    {
+        // Append gravity (if simulation isn't pause)
         velocities[i].xyz = velocities[i].xyz + Params->timeStep * (float3)(0.0f, -Params->garvity, 0.0f);
         
-    // Compute new predicted position
-    predicted[i].xyz  = positions[i].xyz  + Params->timeStep * velocities[i].xyz;
+       // Compute new predicted position
+       predicted[i].xyz  = positions[i].xyz  + Params->timeStep * velocities[i].xyz;
+    }
 }

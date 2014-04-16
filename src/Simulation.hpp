@@ -18,6 +18,9 @@
 
 #include <GLFW/glfw3.h>
 
+#include <glm\glm.hpp>
+using namespace glm;
+
 // Macro used for the end of cell list
 static const int END_OF_CELL_LIST = -1;
 
@@ -36,7 +39,7 @@ private:
     void CreateParticles();
 
     // Copy current positions and velocities
-    void dumpData( cl_float4 * (&positions), cl_float4 * (&velocities) );
+    void dumpData(vec4 * (&positions), vec4 * (&velocities) );
 
 public:
 
@@ -54,8 +57,8 @@ public:
     cl::NDRange mGlobalRange;
     cl::NDRange mLocalRange;
 
-	// Compute Shader buffers
-	GLuint mGLPositionsPingBuffer;
+    // Compute Shader buffers
+    GLuint mGLPositionsPingBuffer;
 
     // OCL buffer sizes
     size_t mBufferSizeParticles;
@@ -152,11 +155,11 @@ public:
     cl_float  fWavePos;
 
     // debug buffers (placed in host memory)
-    cl_float4 *mPositions;
-    cl_float4 *mVelocities;
-    cl_float4 *mPredictions;
-    cl_float4 *mDeltas;
-    cl_uint   *mFriendsList;
+    vec4 *mPositions;
+    vec4 *mVelocities;
+    vec4 *mPredictions;
+    vec4 *mDeltas;
+    uint *mFriendsList;
 };
 
 #endif // __SIMULATION_HPP
