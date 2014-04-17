@@ -189,6 +189,7 @@ const string *Simulation::ShaderFileList()
     static const string shaders[] =
     {
         "predict_positions.cms",
+        "compute_keys.cms",
         ""
     };
 
@@ -287,8 +288,12 @@ void Simulation::InitBuffers()
     {
         _NKEYS = Params.particleCount + (_ITEMS * _GROUPS) - Params.particleCount % (_ITEMS * _GROUPS);
     }
-    mInKeysBuffer          = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _NKEYS);
-    mInPermutationBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _NKEYS);
+    /*!*/mInKeysBuffer          = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _NKEYS);
+    mInKeysSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _NKEYS, NULL);
+    mInKeysTBO = GenTextureBuffer(GL_R32UI, mInKeysSBO);
+    /*!*/mInPermutationBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _NKEYS);
+    mInPermutationSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _NKEYS, NULL);
+    mInPermutationTBO = GenTextureBuffer(GL_R32UI, mInPermutationTBO);
     mOutKeysBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _NKEYS);
     mOutPermutationBuffer  = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _NKEYS);
     mHistogramBuffer       = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _RADIX * _GROUPS * _ITEMS);
@@ -423,6 +428,26 @@ void Simulation::applyVorticity()
     mQueue.enqueueNDRangeKernel(mKernels["applyVorticity"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("applyVorticity"));
 
     //SaveFile(mQueue, mDeltaVelocityBuffer, "Omega");
+}
+
+void CompareIntBuffers(cl::CommandQueue queue, cl::Buffer clBuf, GLuint glBuf)
+{
+    CopyBufferToHost gl(GL_SHADER_STORAGE_BUFFER, glBuf);
+    OCL_CopyBufferToHost cl(queue, clBuf);
+
+    if (gl.size != cl.size)
+        throw "Size does not match";
+
+    for (int i = 0; i < cl.size / 4; i++) {
+        int clv = cl.pIntegers[i];
+        int glv = gl.pIntegers[i];
+
+        if (clv - glv != 0)
+        {
+            _asm nop;
+            break;
+        };
+    }
 }
 
 void CompareFloatBuffers(cl::CommandQueue queue, cl::Buffer clBuf, GLuint glBuf)
@@ -569,13 +594,25 @@ void Simulation::updateCells()
 
 void Simulation::radixsort()
 {
-    int param = 0;
-    mKernels["computeKeys"].setArg(param++, mParameters);
-    mKernels["computeKeys"].setArg(param++, mPredictedPingBuffer);
-    mKernels["computeKeys"].setArg(param++, mInKeysBuffer);
-    mKernels["computeKeys"].setArg(param++, mInPermutationBuffer);
-    mKernels["computeKeys"].setArg(param++, Params.particleCount);
-    mQueue.enqueueNDRangeKernel(mKernels["computeKeys"], 0, cl::NDRange(_NKEYS), mLocalRange, NULL, PerfData.GetTrackerEvent("computeKeys"));
+    // Setup
+    glUseProgram(g_SelectedProgram = mPrograms["compute_keys"]);
+    glBindImageTexture(0, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA32F);
+    glBindImageTexture(1, mInKeysTBO, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32UI);
+    glBindImageTexture(2, mInPermutationTBO, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32UI);
+
+    // Execute shader
+    glDispatchCompute(_NKEYS, 1, 1);
+
+    /*!*/int param = 0;
+    /*!*/mKernels["computeKeys"].setArg(param++, mParameters);
+    /*!*/mKernels["computeKeys"].setArg(param++, mPredictedPingBuffer);
+    /*!*/mKernels["computeKeys"].setArg(param++, mInKeysBuffer);
+    /*!*/mKernels["computeKeys"].setArg(param++, mInPermutationBuffer);
+    /*!*/mKernels["computeKeys"].setArg(param++, Params.particleCount);
+    /*!*/mQueue.enqueueNDRangeKernel(mKernels["computeKeys"], 0, cl::NDRange(_NKEYS), mLocalRange, NULL, PerfData.GetTrackerEvent("computeKeys"));
+
+    /*!*/CompareIntBuffers(mQueue, mInKeysBuffer, mInKeysSBO);
+    /*!*/CompareIntBuffers(mQueue, mInPermutationBuffer, mInPermutationSBO);
 
     // // DEBUG
     // cl_uint *keys = new cl_uint[_NKEYS];
