@@ -10,11 +10,14 @@
 
 void Runner::run(Simulation &simulation, CVisual &renderer)
 {
-    // Create resource tracking file list (Kernels)
+    // Create resource tracking file list (Shaders)
     time_t defaultTime = 0;
-    const string *pKernels = simulation.KernelFileList();
-    for (int iSrc = 0; pKernels[iSrc] != ""; iSrc++)
-        mKernelFilesTracker.push_back(make_pair(getPathForKernel(pKernels[iSrc]), defaultTime));
+    const string *pCShaders = simulation.ShaderFileList();
+    for (int iSrc = 0; pCShaders[iSrc] != ""; iSrc++)
+        mKernelFilesTracker.push_back(make_pair(getPathForKernel(pCShaders[iSrc]), defaultTime));
+    /*!*/const string *pKernels = simulation.CL_KernelFileList();
+    /*!*/for (int iSrc = 0; pKernels[iSrc] != ""; iSrc++)
+    /*!*/    mKernelFilesTracker.push_back(make_pair(getPathForKernel(pKernels[iSrc]), defaultTime));
 
     // Append parameter file to resource tracking file list
     mKernelFilesTracker.push_back(make_pair(getPathForScenario("dam_coarse.par"), defaultTime));
@@ -71,7 +74,8 @@ void Runner::run(Simulation &simulation, CVisual &renderer)
             simulation.InitCells();
 
             // Init kernels
-            KernelBuildOk = simulation.InitKernels();
+            KernelBuildOk = simulation.InitShaders();
+            /*!*/KernelBuildOk = KernelBuildOk && simulation.CL_InitKernels();
 
             // Reset wavee
             waveTime = 0.0f;

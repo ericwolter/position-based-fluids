@@ -43,3 +43,14 @@ ostream &operator<<(ostream &os, const cl::Platform &platform);
 // Stream operator for device.
 ostream &operator<<(ostream &os, const cl::Device &device);
 
+class OCL_CopyBufferToHost
+{
+public:
+    cl_uint size;
+    byte* pBytes;
+    float* pFloats;
+    int* pIntegers;
+
+    OCL_CopyBufferToHost(cl::CommandQueue queue, cl::Buffer buffer);
+    ~OCL_CopyBufferToHost();
+};

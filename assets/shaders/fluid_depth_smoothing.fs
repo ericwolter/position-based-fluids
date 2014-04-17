@@ -233,7 +233,7 @@ void main()
     vec3 pixelCamNorm = normalize(cameraPos - modelPos);
     
     // Select shell target density
-    float TargetDensity = 1.0 / 400000000.0;
+    float TargetDensity = 1.0 / 1100000000.0;
     
     // define variables
     float density;
@@ -249,10 +249,6 @@ void main()
         
         // Compute density delta 
         float densityDelta = density - TargetDensity;
-
-        // Check if we reached the sweet spot
-        //if (abs(densityDelta) < 0.000000000001)
-        //    break;
 
         // Compute gradient along camera normal
         float gradientAlongCamNormal = dot(pixelCamNorm, gradient);

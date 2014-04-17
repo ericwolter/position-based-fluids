@@ -47,8 +47,9 @@ public:
     const cl::Context &mCLContext;
     const cl::Device &mCLDevice;
 
-    // holds all OpenCL kernels required for the simulation
-    map<string, cl::Kernel> mKernels;
+    // holds all shader programs used by simulation
+    map<string, GLuint> mPrograms;
+    /*!*/map<string, cl::Kernel> mKernels;
 
     // command queue all OpenCL calls are run on
     cl::CommandQueue mQueue;
@@ -56,9 +57,6 @@ public:
     // ranges used for executing the kernels
     cl::NDRange mGlobalRange;
     cl::NDRange mLocalRange;
-
-    // Compute Shader buffers
-    GLuint mGLPositionsPingBuffer;
 
     // OCL buffer sizes
     size_t mBufferSizeParticles;
@@ -69,14 +67,21 @@ public:
     cl::Buffer mCellsBuffer;
     cl::Buffer mParticlesListBuffer;
     cl::Buffer mFriendsListBuffer;
-    cl::BufferGL mPositionsPingBuffer;
+    GLuint            mPositionsPingSBO;
+    GLuint            mPositionsPingTBO;
+    /*!*/cl::BufferGL mPositionsPingBuffer;
     cl::BufferGL mPositionsPongBuffer;
-    cl::Buffer mPredictedPingBuffer;
+    GLuint            mPredictedPingSBO;
+    GLuint            mPredictedPingTBO;
+    /*!*/cl::Buffer   mPredictedPingBuffer;
     cl::Buffer mPredictedPongBuffer;
-    cl::Buffer mVelocitiesBuffer;
+    GLuint            mVelocitiesSBO;
+    GLuint            mVelocitiesTBO;
+    cl::Buffer        mVelocitiesBuffer;
     cl::Buffer mDensityBuffer;
     cl::Buffer mDeltaBuffer;
     cl::Buffer mOmegaBuffer;
+    GLuint   mGLParametersUBO;
     cl::Buffer mParameters;
 
     cl::Image2DGL mParticlePosImg;
@@ -123,14 +128,16 @@ public:
     // Init Grid
     void InitCells();
 
-    // Load and build kernels
-    bool InitKernels();
+    // Load and build shaders
+    bool InitShaders();
+    /*!*/bool CL_InitKernels();
 
     // Perform single simulation step
     void Step();
 
     // Get a list of kernel files
-    const std::string *KernelFileList();
+    const std::string *ShaderFileList();
+    /*!*/const std::string *CL_KernelFileList();
 
 public:
 

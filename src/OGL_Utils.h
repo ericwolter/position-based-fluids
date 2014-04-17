@@ -79,6 +79,19 @@ public:
     glm::vec4 GetPixel(float x, float y);
 };
 
+class CopyBufferToHost
+{
+public:
+    GLint size;
+
+    char*  pBytes;
+    float* pFloats;
+    int*   pIntegers;
+
+    CopyBufferToHost(GLenum target, GLuint bufferObject);
+    ~CopyBufferToHost();
+};
+
 // FrameBufferObject class
 class FBO
 {

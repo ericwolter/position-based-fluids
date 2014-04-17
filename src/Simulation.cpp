@@ -4,9 +4,11 @@
 #include "Resources.hpp"
 #include "ParamUtils.hpp"
 #include "ocl/OCLUtils.hpp"
+#include "OGL_Utils.h"
 
 #include <sstream>
-#include <algorithm>
+#include <algorithm>
+
 
 using namespace std;
 
@@ -68,115 +70,177 @@ void Simulation::CreateParticles()
     // random_shuffle(&mPositions[0],&mPositions[Params.particleCount-1]);
 }
 
-const std::string *Simulation::KernelFileList()
+/*!*/const std::string *Simulation::CL_KernelFileList()
+/*!*/{
+/*!*/    static const std::string kernels[] =
+/*!*/    {
+/*!*/        "hesp.hpp",
+/*!*/        "parameters.hpp",
+/*!*/        "logging.cl",
+/*!*/        "utilities.cl",
+/*!*/        "predict_positions.cl",
+/*!*/        "update_cells.cl",
+/*!*/        "build_friends_list.cl",
+/*!*/        "reset_grid.cl",
+/*!*/        "compute_scaling.cl",
+/*!*/        "compute_delta.cl",
+/*!*/        "update_predicted.cl",
+/*!*/        "pack_data.cl",
+/*!*/        "update_velocities.cl",
+/*!*/        "apply_viscosity.cl",
+/*!*/        "apply_vorticity.cl",
+/*!*/        "radixsort.cl",
+/*!*/        ""
+/*!*/    };
+/*!*/
+/*!*/    return kernels;
+/*!*/}
+
+/*!*/bool Simulation::CL_InitKernels()
+/*!*/{
+/*!*/    // Setup OpenCL Ranges
+/*!*/    const cl_uint globalSize = (cl_uint)ceil(Params.particleCount / 32.0f) * 32;
+/*!*/    mGlobalRange = cl::NDRange(globalSize);
+/*!*/    mLocalRange = cl::NullRange;
+/*!*/
+/*!*/    // Notify OCL logging that we're about to start new kernel processing
+/*!*/    oclLog.StartKernelProcessing(mCLContext, mCLDevice, 4096);
+/*!*/
+/*!*/    // setup kernel sources
+/*!*/    OCLUtils clSetup;
+/*!*/    vector<string> kernelSources;
+/*!*/
+/*!*/    // Load kernel sources
+/*!*/    const std::string *pKernels = CL_KernelFileList();
+/*!*/    for (int iSrc = 0; pKernels[iSrc]  != ""; iSrc++)
+/*!*/    {
+/*!*/        // Read source from disk
+/*!*/        string source = getKernelSource(pKernels[iSrc]);
+/*!*/
+/*!*/        // Patch kernel for logging
+/*!*/        if (pKernels[iSrc] != "logging.cl")
+/*!*/            source = oclLog.PatchKernel(source);
+/*!*/
+/*!*/        // Load into compile list
+/*!*/        kernelSources.push_back(source);
+/*!*/    }
+/*!*/
+/*!*/    // Setup kernel compiler flags
+/*!*/    std::ostringstream clflags;
+/*!*/    clflags << "-cl-mad-enable -cl-no-signed-zeros -cl-fast-relaxed-math ";
+/*!*/
+/*!*/    // Vendor related flags
+/*!*/    string devVendor = mCLDevice.getInfo<CL_DEVICE_VENDOR>();
+/*!*/    if (devVendor.find("NVIDIA") != std::string::npos)
+/*!*/        clflags << "-cl-nv-verbose ";
+/*!*/
+/*!*/#ifdef USE_DEBUG
+/*!*/    clflags << "-DUSE_DEBUG ";
+/*!*/#endif // USE_DEBUG
+/*!*/
+/*!*/    clflags << std::showpoint;
+/*!*/
+/*!*/    clflags << "-DCANCEL_RANDOMNESS ";
+/*!*/
+/*!*/    clflags << "-DLOG_SIZE="                    << (int)1024 << " ";
+/*!*/    clflags << "-DEND_OF_CELL_LIST="            << (int)(-1)         << " ";
+/*!*/
+/*!*/    clflags << "-DMAX_PARTICLES_COUNT="         << (int)(Params.particleCount)      << " ";  
+/*!*/    clflags << "-DMAX_FRIENDS_CIRCLES="         << (int)(Params.friendsCircles)     << " ";  
+/*!*/    clflags << "-DMAX_FRIENDS_IN_CIRCLE="       << (int)(Params.particlesPerCircle) << " ";  
+/*!*/    clflags << "-DFRIENDS_BLOCK_SIZE="          << (int)(Params.particleCount * Params.friendsCircles) << " ";  
+/*!*/
+/*!*/    clflags << "-DGRID_BUF_SIZE="     << (int)(Params.gridBufSize) << " ";
+/*!*/
+/*!*/    clflags << "-DPOLY6_FACTOR="      << 315.0f / (64.0f * M_PI * pow(Params.h, 9)) << "f ";
+/*!*/    clflags << "-DGRAD_SPIKY_FACTOR=" << 45.0f / (M_PI * pow(Params.h, 6)) << "f ";
+/*!*/
+/*!*/    // Compile kernels
+/*!*/    cl::Program program = clSetup.createProgram(kernelSources, mCLContext, mCLDevice, clflags.str());
+/*!*/    if (program() == 0)
+/*!*/        return false;
+/*!*/
+/*!*/    // save BuildLog
+/*!*/    string buildLog = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(mCLDevice);
+/*!*/    ofstream f("build.log", ios::out | ios::trunc);
+/*!*/    f << buildLog;
+/*!*/    f.close();
+/*!*/
+/*!*/    // Build kernels table
+/*!*/    mKernels = clSetup.createKernelsMap(program);
+/*!*/
+/*!*/    // Write kernel info
+/*!*/    cout << "CL_KERNEL_WORK_GROUP_SIZE=" << mKernels["computeDelta"].getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(mCLDevice) << endl;
+/*!*/    cout << "CL_KERNEL_LOCAL_MEM_SIZE =" << mKernels["computeDelta"].getWorkGroupInfo<CL_KERNEL_LOCAL_MEM_SIZE>(mCLDevice) << endl;
+/*!*/
+/*!*/    // Copy Params (Host) => mParams (GPU)
+/*!*/    mQueue = cl::CommandQueue(mCLContext, mCLDevice, CL_QUEUE_PROFILING_ENABLE);
+/*!*/    mQueue.enqueueWriteBuffer(mParameters, CL_TRUE, 0, sizeof(Params), &Params);
+/*!*/    mQueue.finish();
+/*!*/
+/*!*/    return true;
+/*!*/}
+
+const string *Simulation::ShaderFileList()
 {
-    static const std::string kernels[] =
+    static const string shaders[] =
     {
-        "hesp.hpp",
-        "parameters.hpp",
-        "logging.cl",
-        "utilities.cl",
-        "predict_positions.cl",
-        "update_cells.cl",
-        "build_friends_list.cl",
-        "reset_grid.cl",
-        "compute_scaling.cl",
-        "compute_delta.cl",
-        "update_predicted.cl",
-        "pack_data.cl",
-        "update_velocities.cl",
-        "apply_viscosity.cl",
-        "apply_vorticity.cl",
-        "radixsort.cl",
+        "predict_positions.cms",
         ""
     };
 
-    return kernels;
+    return shaders;
 }
 
-bool Simulation::InitKernels()
+// Define bind points
+#define BP_UBO_PARAMETERS 10
+
+GLuint GenBuffer(GLenum target, int size, void* pData)
 {
-    // Setup OpenCL Ranges
-    const cl_uint globalSize = (cl_uint)ceil(Params.particleCount / 32.0f) * 32;
-    mGlobalRange = cl::NDRange(globalSize);
-    mLocalRange = cl::NullRange;
+    GLuint ret;
+    glGenBuffers(1, &ret);
+    glBindBuffer(target, ret);
+    glBufferData(target, size, pData, GL_DYNAMIC_COPY);
+    glBindBuffer(target, 0);
+    return ret;
+}
 
-    // Notify OCL logging that we're about to start new kernel processing
-    oclLog.StartKernelProcessing(mCLContext, mCLDevice, 4096);
+GLuint GenTextureBuffer(GLenum format, GLuint bufferId)
+{
+    GLuint ret;
+    glGenTextures(1, &ret);
+    glBindTexture(GL_TEXTURE_BUFFER, ret);
+    glTexBuffer(GL_TEXTURE_BUFFER, format, bufferId);
+    glBindTexture(GL_TEXTURE_BUFFER, 0);
+    return ret;
+}
 
-    // setup kernel sources
-    OCLUtils clSetup;
-    vector<string> kernelSources;
-
-    // Load kernel sources
-    const std::string *pKernels = KernelFileList();
-    for (int iSrc = 0; pKernels[iSrc]  != ""; iSrc++)
+bool Simulation::InitShaders()
+{
+    // Load and compile all shaders
+    const string *pShaders = ShaderFileList();
+    for (int iSrc = 0; pShaders[iSrc] != ""; iSrc++)
     {
-        // Read source from disk
-        string source = getKernelSource(pKernels[iSrc]);
+        // Get shader name (no ext)
+        size_t lastdot = pShaders[iSrc].find_last_of(".");
+        string name = pShaders[iSrc].substr(0, lastdot);
 
-        // Patch kernel for logging
-        if (pKernels[iSrc] != "logging.cl")
-            source = oclLog.PatchKernel(source);
-
-        // Load into compile list
-        kernelSources.push_back(source);
+        // compile shader
+        if (!(mPrograms[name] = OGLU_LoadProgram(name,   getKernelSource(pShaders[iSrc]), GL_COMPUTE_SHADER)))
+            return false;
     }
 
-    // Setup kernel compiler flags
-    std::ostringstream clflags;
-    clflags << "-cl-mad-enable -cl-no-signed-zeros -cl-fast-relaxed-math ";
+    // Copy Parameters to GPU (parameters buffer object)
+    mGLParametersUBO = GenBuffer(GL_UNIFORM_BUFFER, sizeof(Params), &Params);
+    glBindBufferRange(GL_UNIFORM_BUFFER, BP_UBO_PARAMETERS, mGLParametersUBO, 0, sizeof(Params));
 
-    // Vendor related flags
-    string devVendor = mCLDevice.getInfo<CL_DEVICE_VENDOR>();
-    if (devVendor.find("NVIDIA") != std::string::npos)
-        clflags << "-cl-nv-verbose ";
+    // Create buffer and load data
+    //GLuint ssbo = GenBuffer(GL_SHADER_STORAGE_BUFFER, 2048, mPositions);
+    //GLuint tex  = GenTextureBuffer(GL_RGBA32F, ssbo);
 
-#ifdef USE_DEBUG
-    clflags << "-DUSE_DEBUG ";
-#endif // USE_DEBUG
-
-    clflags << std::showpoint;
-
-    clflags << "-DCANCEL_RANDOMNESS ";
-
-    clflags << "-DLOG_SIZE="                    << (int)1024 << " ";
-    clflags << "-DEND_OF_CELL_LIST="            << (int)(-1)         << " ";
-
-    clflags << "-DMAX_PARTICLES_COUNT="         << (int)(Params.particleCount)      << " ";  
-    clflags << "-DMAX_FRIENDS_CIRCLES="         << (int)(Params.friendsCircles)     << " ";  
-    clflags << "-DMAX_FRIENDS_IN_CIRCLE="       << (int)(Params.particlesPerCircle) << " ";  
-    clflags << "-DFRIENDS_BLOCK_SIZE="          << (int)(Params.particleCount * Params.friendsCircles) << " ";  
-
-    clflags << "-DGRID_BUF_SIZE="     << (int)(Params.gridBufSize) << " ";
-
-    clflags << "-DPOLY6_FACTOR="      << 315.0f / (64.0f * M_PI * pow(Params.h, 9)) << "f ";
-    clflags << "-DGRAD_SPIKY_FACTOR=" << 45.0f / (M_PI * pow(Params.h, 6)) << "f ";
-
-    // Compile kernels
-    cl::Program program = clSetup.createProgram(kernelSources, mCLContext, mCLDevice, clflags.str());
-    if (program() == 0)
-        return false;
-
-    // save BuildLog
-    string buildLog = program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(mCLDevice);
-    ofstream f("build.log", ios::out | ios::trunc);
-    f << buildLog;
-    f.close();
-
-    // Build kernels table
-    mKernels = clSetup.createKernelsMap(program);
-
-    // Write kernel info
-    cout << "CL_KERNEL_WORK_GROUP_SIZE=" << mKernels["computeDelta"].getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(mCLDevice) << endl;
-    cout << "CL_KERNEL_LOCAL_MEM_SIZE =" << mKernels["computeDelta"].getWorkGroupInfo<CL_KERNEL_LOCAL_MEM_SIZE>(mCLDevice) << endl;
-
-    // Copy Params (Host) => mParams (GPU)
-    mQueue = cl::CommandQueue(mCLContext, mCLDevice, CL_QUEUE_PROFILING_ENABLE);
-    mQueue.enqueueWriteBuffer(mParameters, CL_TRUE, 0, sizeof(Params), &Params);
-    mQueue.finish();
 
     return true;
+
 }
 
 void Simulation::InitBuffers()
@@ -201,22 +265,24 @@ void Simulation::InitBuffers()
         mVelocities[i][0] = 0;
         mVelocities[i][1] = 0;
         mVelocities[i][2] = 0;
-        mVelocities[i][3] = 1; // <= "m" == 1?
+        mVelocities[i][3] = 1; 
     }
 
     // Create buffers
-    mPositionsPingBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharedPingBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
+    /*!*/mPositionsPingBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharedPingBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
     mPositionsPongBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharedPongBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
     mParticlePosImg        = cl::Image2DGL(mCLContext, CL_MEM_READ_WRITE, GL_TEXTURE_2D, 0, mSharedParticlesPos);
 
-    mPredictedPingBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
+    mPredictedPingSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(vec4) * Params.particleCount, &mPositions[0]);
+    mPredictedPingTBO = GenTextureBuffer(GL_RGBA32F, mPredictedPingSBO);
+    /**/mPredictedPingBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mPredictedPongBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
-    mVelocitiesBuffer      = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
+    /*!*/mVelocitiesBuffer      = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mDeltaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mOmegaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mDensityBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.particleCount * sizeof(cl_float));
-    mParameters            = cl::Buffer(mCLContext, CL_MEM_READ_ONLY,  sizeof(Params));
-    mStatsBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * 2);
+    /*!*/mParameters            = cl::Buffer(mCLContext, CL_MEM_READ_ONLY,  sizeof(Params));
+    /*!*/mStatsBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * 2);
 
     // Radix buffers
     if (Params.particleCount % (_ITEMS * _GROUPS) == 0)
@@ -235,50 +301,45 @@ void Simulation::InitBuffers()
     mGlobSumBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _HISTOSPLIT);
     mHistoTempBuffer       = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _HISTOSPLIT);
 
-    if (mQueue() != 0)
-        mQueue.flush();
+    /*!*/if (mQueue() != 0)
+    /*!*/    mQueue.flush();
 
-    // Copy mPositions (Host) => mPositionsPingBuffer (GPU) (we have to lock the shared buffer)
-    vector<cl::Memory> sharedBuffers;
-    sharedBuffers.push_back(mPositionsPingBuffer);
-    mQueue = cl::CommandQueue(mCLContext, mCLDevice);
-    mQueue.enqueueAcquireGLObjects(&sharedBuffers);
-    mQueue.enqueueWriteBuffer(mPositionsPingBuffer, CL_TRUE, 0, mBufferSizeParticles, mPositions);
-    mQueue.enqueueReleaseGLObjects(&sharedBuffers);
-    mQueue.finish();
-
-    // Copy mVelocities (Host) => mVelocitiesBuffer (GPU)
-    mQueue.enqueueWriteBuffer(mVelocitiesBuffer, CL_TRUE, 0, mBufferSizeParticles, mVelocities);
-    mQueue.finish();
+    // Copy mPositions (Host) => mPositionsPingBuffer (GPU) 
+    mPositionsPingSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(vec4) * Params.particleCount, &mPositions[0]);
+    mPositionsPingTBO = GenTextureBuffer(GL_RGBA32F, mPositionsPingSBO);
+    /*!*/vector<cl::Memory> sharedBuffers;
+    /*!*/sharedBuffers.push_back(mPositionsPingBuffer);
+    /*!*/mQueue = cl::CommandQueue(mCLContext, mCLDevice);
+    /*!*/mQueue.enqueueAcquireGLObjects(&sharedBuffers);
+    /*!*/mQueue.enqueueWriteBuffer(mPositionsPingBuffer, CL_TRUE, 0, mBufferSizeParticles, mPositions);
+    /*!*/mQueue.enqueueReleaseGLObjects(&sharedBuffers);
+    /*!*/mQueue.finish();
 
     // Copy mVelocities (Host) => mVelocitiesBuffer (GPU)
-    mQueue.enqueueWriteBuffer(mVelocitiesBuffer, CL_TRUE, 0, mBufferSizeParticles, mVelocities);
-    mQueue.finish();
+    mVelocitiesSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(vec4) * Params.particleCount, &mVelocities[0]);
+    mVelocitiesTBO = GenTextureBuffer(GL_RGBA32F, mVelocitiesSBO);
+    /*!*/mQueue.enqueueWriteBuffer(mVelocitiesBuffer, CL_TRUE, 0, mBufferSizeParticles, mVelocities);
+    /*!*/mQueue.finish();
 
-    cl_uint *stats = new cl_uint[2];
-    stats[0] = 0;
-    stats[1] = 0;
-    mQueue.enqueueWriteBuffer(mStatsBuffer, CL_TRUE, 0, sizeof(cl_uint) * 2, stats);
-    mQueue.finish();
-
-    glGenBuffers(1, &mGLPositionsPingBuffer);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, mGLPositionsPingBuffer);
-    glBufferStorage(GL_SHADER_STORAGE_BUFFER, 4 * sizeof(float) * Params.particleCount, &mPositions[0], 0);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+    /*!*/cl_uint *stats = new cl_uint[2];
+    /*!*/stats[0] = 0;
+    /*!*/stats[1] = 0;
+    /*!*/mQueue.enqueueWriteBuffer(mStatsBuffer, CL_TRUE, 0, sizeof(cl_uint) * 2, stats);
+    /*!*/mQueue.finish();
 }
 
 void Simulation::InitCells()
 {
     // Allocate host buffers
 
-	// DO NOT use uint2 vector because it causes a race condition the kernel
-	// instead manage the cell boundaries manually
-    delete[] mCells;         mCells         = new cl_uint[Params.gridBufSize*2];
+    // DO NOT use uint2 vector because it causes a race condition the kernel
+    // instead manage the cell boundaries manually
+    delete[] mCells;
+    mCells = new cl_uint[Params.gridBufSize*2];
 
     // Init cells
-	for (cl_uint i = 0; i < Params.gridBufSize*2; ++i) {
-		mCells[i] = END_OF_CELL_LIST;
-	}
+    for (cl_uint i = 0; i < Params.gridBufSize*2; ++i)
+        mCells[i] = END_OF_CELL_LIST;
 
     // Write buffer for cells
     mBufferSizeCells = Params.gridBufSize * 2 * sizeof(cl_uint);
@@ -370,21 +431,43 @@ void Simulation::applyVorticity()
     //SaveFile(mQueue, mDeltaVelocityBuffer, "Omega");
 }
 
+void CompareFloatBuffers(cl::CommandQueue queue, cl::Buffer clBuf, GLuint glBuf)
+{
+    CopyBufferToHost gl(GL_SHADER_STORAGE_BUFFER, glBuf);
+    OCL_CopyBufferToHost cl(queue, clBuf);
+
+    if (gl.size != cl.size)
+        throw "Size does not match";
+
+    for (int i = 0; i < cl.size / 4; i++)
+        if (abs(cl.pFloats[i] - gl.pFloats[i]) > 0.01)
+            throw "Values does not match";
+}
+
 void Simulation::predictPositions()
 {
-    int param = 0;
-    mKernels["predictPositions"].setArg(param++, mParameters);
-    mKernels["predictPositions"].setArg(param++, (cl_uint)bPauseSim);
-    mKernels["predictPositions"].setArg(param++, mPositionsPingBuffer);
-    mKernels["predictPositions"].setArg(param++, mPredictedPingBuffer);
-    mKernels["predictPositions"].setArg(param++, mVelocitiesBuffer);
-    mKernels["predictPositions"].setArg(param++, Params.particleCount);
+    // Setup
+    glUseProgram(g_SelectedProgram = mPrograms["predict_positions"]);
+    glBindImageTexture(0, mPositionsPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA32F);
+    glBindImageTexture(1, mPredictedPingTBO, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    glBindImageTexture(2, mVelocitiesTBO,    0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+    glUniform1i(0/*pauseSim*/, bPauseSim);
 
-    mQueue.enqueueNDRangeKernel(mKernels["predictPositions"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("predictPositions"));
+    // Execute shader
+    glDispatchCompute(Params.particleCount, 1, 1);
 
-    //SaveFile(mQueue, mPositionsPingBuffer, "PosPing");
-    //SaveFile(mQueue, mVelocitiesBuffer,    "Velocity");
-    //SaveFile(mQueue, mPredictedPingBuffer, "PredPosPing");
+    /*!*/int param = 0;
+    /*!*/mKernels["predictPositions"].setArg(param++, mParameters);
+    /*!*/mKernels["predictPositions"].setArg(param++, (cl_uint)bPauseSim);
+    /*!*/mKernels["predictPositions"].setArg(param++, mPositionsPingBuffer);
+    /*!*/mKernels["predictPositions"].setArg(param++, mPredictedPingBuffer);
+    /*!*/mKernels["predictPositions"].setArg(param++, mVelocitiesBuffer);
+    /*!*/mKernels["predictPositions"].setArg(param++, Params.particleCount);
+    /*!*/
+    /*!*/mQueue.enqueueNDRangeKernel(mKernels["predictPositions"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("predictPositions"));
+    /*!*/
+    /*!*/CompareFloatBuffers(mQueue, mPredictedPingBuffer, mPredictedPingSBO);
+    /*!*/CompareFloatBuffers(mQueue, mVelocitiesBuffer, mVelocitiesSBO);
 }
 
 void Simulation::buildFriendsList()
@@ -531,7 +614,7 @@ void Simulation::radixsort()
         // ScanHistogram();
         const size_t sh1_nbitems = _RADIX * _GROUPS * _ITEMS / 2;
         const size_t sh1_nblocitems = sh1_nbitems / _HISTOSPLIT ;
-        const int maxmemcache = max(_HISTOSPLIT, _ITEMS * _GROUPS * _RADIX / _HISTOSPLIT);
+        const int maxmemcache = glm::max(_HISTOSPLIT, _ITEMS * _GROUPS * _RADIX / _HISTOSPLIT);
         mKernels["scanhistograms"].setArg(0, mHistogramBuffer);
         mKernels["scanhistograms"].setArg(1, sizeof(cl_uint)* maxmemcache, NULL);
         mKernels["scanhistograms"].setArg(2, mGlobSumBuffer);
@@ -635,11 +718,11 @@ void Simulation::Step()
     glFinish();
 
     // Enqueue GL buffer acquire
-    vector<cl::Memory> sharedBuffers;
-    sharedBuffers.push_back(mPositionsPingBuffer);
-    sharedBuffers.push_back(mPositionsPongBuffer);
-    sharedBuffers.push_back(mParticlePosImg);
-    mQueue.enqueueAcquireGLObjects(&sharedBuffers);
+    /*!*/vector<cl::Memory> sharedBuffers;
+    /*!*/sharedBuffers.push_back(mPositionsPingBuffer);
+    /*!*/sharedBuffers.push_back(mPositionsPongBuffer);
+    /*!*/sharedBuffers.push_back(mParticlePosImg);
+    /*!*/mQueue.enqueueAcquireGLObjects(&sharedBuffers);
 
     // Predicit positions
     this->predictPositions();

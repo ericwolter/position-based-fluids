@@ -177,3 +177,25 @@ string OCLUtils::getBuildLog(const cl::Program &program, const vector<cl::Device
     return ret;
 }
 
+OCL_CopyBufferToHost::OCL_CopyBufferToHost(cl::CommandQueue queue, cl::Buffer buffer)
+{
+    // Get buffer size
+    size = buffer.getInfo<CL_MEM_SIZE>();
+
+    // Allocate buffer
+    pBytes = new byte[size];
+    pFloats = (float*)(void*)pBytes;
+    pIntegers = (int*)(void*)pBytes;
+
+    // Read data from GPU
+    queue.enqueueReadBuffer(buffer, CL_TRUE, 0, size, pBytes);
+    queue.finish();
+}
+
+OCL_CopyBufferToHost::~OCL_CopyBufferToHost()
+{
+    delete[] pBytes;
+    pBytes = NULL;
+    pFloats = NULL;
+    pIntegers = NULL;
+}

@@ -513,6 +513,36 @@ glm::vec4 CopyTextureToHost::GetPixel(float x, float y)
     return ret;
 }
 
+CopyBufferToHost::CopyBufferToHost(GLenum target, GLuint bufferObject)
+{
+    // Get buffer isze
+    glBindBuffer(target, bufferObject);
+    size = 0;
+    glGetBufferParameteriv (target, GL_BUFFER_SIZE, &size);
+
+    // Allocate local buffer 
+    pBytes = new char[size];
+    pIntegers = (int*)(void*)pBytes;
+    pFloats   = (float*)(void*)pBytes;
+
+    // Map buffer to host 
+    float* pMap = (float*)(void*)glMapBufferRange(target, 0, size, GL_MAP_READ_BIT);
+
+    // Copy data
+    memcpy(pBytes, pMap, size);
+
+    // Unmap
+    glUnmapBuffer(target);
+}
+
+CopyBufferToHost::~CopyBufferToHost()
+{
+    delete[] pBytes;
+    pBytes = NULL;
+    pFloats = NULL;
+    pIntegers = NULL;
+}
+
 FBO::FBO()
 {
     Width           = 0;

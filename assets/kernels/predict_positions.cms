@@ -1,0 +1,80 @@
+#version 430
+
+layout (std140, binding = 10) uniform Parameters 
+{
+    // Runner related
+    int  resetSimOnChange;
+
+    // Scene related
+    unsigned int  particleCount;
+    float xMin;
+    float xMax;
+    float yMin;
+    float yMax;
+    float zMin;
+    float zMax;
+
+    float waveGenAmp;
+    float waveGenFreq;
+    float waveGenDuty;
+
+    // Simulation consts
+    float timeStep;
+    unsigned int   simIterations;
+    unsigned int   subSteps;
+    float h;
+    float restDensity;
+    float epsilon;
+    float garvity;
+    float vorticityFactor;
+    float viscosityFactor;
+    float surfaceTenstionK;
+    float surfaceTenstionDist;
+
+    // Grid and friends list
+    unsigned int  friendsCircles;
+    unsigned int  particlesPerCircle;
+    unsigned int  gridBufSize;
+
+    // Setup related
+    float setupSpacing;
+
+    // Sorting
+    unsigned int segmentSize;
+    unsigned int sortIterations;
+
+    // Rendering related
+    float particleRenderSize;
+
+    // Computed fields
+    float h_2;
+};
+
+#define N 1000
+
+layout (local_size_x = 1) in;
+
+layout (binding = 0, rgba32f) uniform readonly  imageBuffer imgPositions;
+layout (binding = 1, rgba32f) uniform writeonly imageBuffer imgPredicted;
+layout (binding = 2, rgba32f) uniform           imageBuffer imgVelocities;
+
+layout (location = 0) uniform bool pauseSim;
+
+void main()                               
+{
+    const int i = int(gl_GlobalInvocationID.x);
+    if (i >= N) return;
+
+    if (!pauseSim)
+    {
+        // read data
+        vec4 velocity = imageLoad(imgVelocities, i);
+        vec4 position = imageLoad(imgPositions, i);
+    
+        // Append gravity (if simulation isn't pause)
+        imageStore(imgVelocities, i, velocity + timeStep * vec4(0, -garvity, 0, 0));
+        
+        // Compute new predicted position
+        imageStore(imgPredicted, i, position + timeStep * velocity);
+    }
+}

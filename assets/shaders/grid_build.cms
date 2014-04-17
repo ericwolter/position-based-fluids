@@ -50,8 +50,8 @@ void main()
 
     // Check if we should skip particle if it's not visible
     uint partCycleID = texelFetch(visParticles, ivec2(gl_GlobalInvocationID.xy), 0).x;
-    if (partCycleID != currentCycleID)
-        return;
+    //if (partCycleID != currentCycleID)
+    //    return;
         
     // Get particle position
     vec3 partPos = GetParticlePos(partIndex);
