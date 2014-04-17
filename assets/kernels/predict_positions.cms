@@ -4,8 +4,8 @@ layout (binding = 0, rgba32f) uniform readonly  imageBuffer imgPositions;
 layout (binding = 1, rgba32f) uniform writeonly imageBuffer imgPredicted;
 layout (binding = 2, rgba32f) uniform           imageBuffer imgVelocities;
 
-layout (location = 0) uniform bool pauseSim;
-layout (location = 1) uniform int  N;
+layout (location = 0) uniform int  N;
+layout (location = 1) uniform bool pauseSim;
 
 void main()                               
 {

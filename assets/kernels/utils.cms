@@ -1,0 +1,19 @@
+int expandBits(int x)
+{
+    x = (x | (x << 16)) & 0x030000FF;
+    x = (x | (x <<  8)) & 0x0300F00F;
+    x = (x | (x <<  4)) & 0x030C30C3;
+    x = (x | (x <<  2)) & 0x09249249;
+
+    return x;
+}
+
+int mortonNumber(ivec3 gridPos)
+{
+    return expandBits(gridPos.x) | (expandBits(gridPos.y) << 1) | (expandBits(gridPos.z) << 2);
+}
+
+int calcGridHash(ivec3 gridPos)
+{
+    return mortonNumber(gridPos) % GRID_BUF_SIZE;
+}

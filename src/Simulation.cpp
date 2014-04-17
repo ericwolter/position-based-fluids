@@ -221,12 +221,13 @@ GLuint GenTextureBuffer(GLenum format, GLuint bufferId)
 
 bool Simulation::InitShaders()
 {
-    // Load shader header
-    string header = "#line 1\n" + getKernelSource("header.cms") + "\n";
+    // Build shader header
+    string header = "#version 430\n#define GLSL_COMPILER\n";
 
     // Add Parameters 
     header += "#line 1\n" + getKernelSource("parameters.hpp") + "\n";
 
+    // Add defines
     std::ostringstream defines;
     defines << "#define END_OF_CELL_LIST      (" << (int)(-1)                                  << ")"  << endl;
     defines << "#define MAX_PARTICLES_COUNT   (" << (int)(Params.particleCount)                << ")"  << endl;
@@ -237,6 +238,9 @@ bool Simulation::InitShaders()
     defines << "#define POLY6_FACTOR          (" << 315.0f / (64.0f * M_PI * pow(Params.h, 9)) << "f)" << endl;
     defines << "#define GRAD_SPIKY_FACTOR     (" << 45.0f / (M_PI * pow(Params.h, 6))          << "f)" << endl;
     header += "#line 1\n" + defines.str();
+
+    // Add Utils
+    header += "#line 1\n" + getKernelSource("utils.cms") + "\n";
 
     // Load and compile all shaders
     const string *pShaders = ShaderFileList();
@@ -307,7 +311,7 @@ void Simulation::InitBuffers()
     mInKeysTBO = GenTextureBuffer(GL_R32UI, mInKeysSBO);
     /*!*/mInPermutationBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _NKEYS);
     mInPermutationSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _NKEYS, NULL);
-    mInPermutationTBO = GenTextureBuffer(GL_R32UI, mInPermutationTBO);
+    mInPermutationTBO = GenTextureBuffer(GL_R32UI, mInPermutationSBO);
     mOutKeysBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _NKEYS);
     mOutPermutationBuffer  = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _NKEYS);
     mHistogramBuffer       = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _RADIX * _GROUPS * _ITEMS);
@@ -487,8 +491,8 @@ void Simulation::predictPositions()
     glBindImageTexture(0, mPositionsPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA32F);
     glBindImageTexture(1, mPredictedPingTBO, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
     glBindImageTexture(2, mVelocitiesTBO,    0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
-    glUniform1i(0/*pauseSim*/, bPauseSim);
-    glUniform1i(1/*N*/,        Params.particleCount);
+    glUniform1i(0/*N*/,        Params.particleCount);
+    glUniform1i(1/*pauseSim*/, bPauseSim);
 
     // Execute shader
     glDispatchCompute(Params.particleCount, 1, 1);
@@ -576,7 +580,7 @@ void Simulation::computeScaling(int iterationIndex)
     mKernels["computeScaling"].setArg(param++, mParameters);
     mKernels["computeScaling"].setArg(param++, mPredictedPingBuffer);
     mKernels["computeScaling"].setArg(param++, mDensityBuffer);
-	mKernels["computeScaling"].setArg(param++, mFriendsListBuffer);
+    mKernels["computeScaling"].setArg(param++, mFriendsListBuffer);
     mKernels["computeScaling"].setArg(param++, Params.particleCount);
 
     // std::cout << "CL_KERNEL_LOCAL_MEM_SIZE = " << mKernels["computeScaling"].getWorkGroupInfo<CL_KERNEL_LOCAL_MEM_SIZE>(NULL) << std::endl;
@@ -595,10 +599,10 @@ void Simulation::updateCells()
 
     int param = 0;
     mKernels["updateCells"].setArg(param++, mParameters);
-	mKernels["updateCells"].setArg(param++, mInKeysBuffer);
-	mKernels["updateCells"].setArg(param++, mCellsBuffer);
+    mKernels["updateCells"].setArg(param++, mInKeysBuffer);
+    mKernels["updateCells"].setArg(param++, mCellsBuffer);
     mKernels["updateCells"].setArg(param++, Params.particleCount);
-	mQueue.enqueueNDRangeKernel(mKernels["updateCells"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updateCells"));
+    mQueue.enqueueNDRangeKernel(mKernels["updateCells"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updateCells"));
 
     //SaveFile(mQueue, mCellsBuffer, "cells");
     //SaveFile(mQueue, mParticlesListBuffer, "friendlist2");
@@ -609,8 +613,10 @@ void Simulation::radixsort()
     // Setup
     glUseProgram(g_SelectedProgram = mPrograms["compute_keys"]);
     glBindImageTexture(0, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA32F);
-    glBindImageTexture(1, mInKeysTBO, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32UI);
+    glBindImageTexture(1, mInKeysTBO,        0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32UI);
     glBindImageTexture(2, mInPermutationTBO, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32UI);
+
+    glUniform1i(0/*N*/, Params.particleCount);
 
     // Execute shader
     glDispatchCompute(_NKEYS, 1, 1);
