@@ -95,7 +95,9 @@ public:
     /*!*/cl::Buffer mInPermutationBuffer;
     cl::Buffer mOutKeysBuffer;
     cl::Buffer mOutPermutationBuffer;
-    cl::Buffer mHistogramBuffer;
+    GLuint mHistogramSBO;
+    GLuint mHistogramTBO;
+    /*!*/cl::Buffer mHistogramBuffer;
     cl::Buffer mGlobSumBuffer;
     cl::Buffer mHistoTempBuffer;
     cl::Buffer mStatsBuffer;
