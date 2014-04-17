@@ -190,6 +190,8 @@ const string *Simulation::ShaderFileList()
     {
         "predict_positions.cms",
         "compute_keys.cms",
+        "histogram.cms",
+
         ""
     };
 
@@ -314,7 +316,9 @@ void Simulation::InitBuffers()
     mInPermutationTBO = GenTextureBuffer(GL_R32UI, mInPermutationSBO);
     mOutKeysBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _NKEYS);
     mOutPermutationBuffer  = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _NKEYS);
-    mHistogramBuffer       = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _RADIX * _GROUPS * _ITEMS);
+    /*!*/mHistogramBuffer       = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _RADIX * _GROUPS * _ITEMS);
+    mHistogramSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _RADIX * _GROUPS * _ITEMS, NULL);
+    mHistogramTBO = GenTextureBuffer(GL_R32UI, mHistogramSBO);
     mGlobSumBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _HISTOSPLIT);
     mHistoTempBuffer       = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _HISTOSPLIT);
 
@@ -658,13 +662,27 @@ void Simulation::radixsort()
         // Histogram(pass);
         const size_t h_nblocitems = _ITEMS;
         const size_t h_nbitems = _GROUPS * _ITEMS;
-        param = 0;
-        mKernels["histogram"].setArg(param++, mInKeysBuffer);
-        mKernels["histogram"].setArg(param++, mHistogramBuffer);
-        mKernels["histogram"].setArg(param++, pass);
-        mKernels["histogram"].setArg(param++, sizeof(cl_uint) * _RADIX * _ITEMS, NULL);
-        mKernels["histogram"].setArg(param++, _NKEYS);
-        mQueue.enqueueNDRangeKernel(mKernels["histogram"], 0, cl::NDRange(h_nbitems), cl::NDRange(h_nblocitems), NULL, PerfData.GetTrackerEvent("histogram", pass));
+
+        // Setup
+        glUseProgram(g_SelectedProgram = mPrograms["histogram"]);
+        glBindImageTexture(0, mInKeysTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_R32UI);
+        glBindImageTexture(1, mHistogramTBO, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32UI);
+        glUniform1i(0, pass);
+        glUniform1i(1, _NKEYS);
+
+        // Execute shader
+        glDispatchCompute(h_nbitems, 1, 1);
+
+        /*!*/param = 0;
+        /*!*/mKernels["histogram"].setArg(param++, mInKeysBuffer);
+        /*!*/mKernels["histogram"].setArg(param++, mHistogramBuffer);
+        /*!*/mKernels["histogram"].setArg(param++, pass);
+        /*!*/mKernels["histogram"].setArg(param++, sizeof(cl_uint) * _RADIX * _ITEMS, NULL);
+        /*!*/mKernels["histogram"].setArg(param++, _NKEYS);
+        /*!*/mQueue.enqueueNDRangeKernel(mKernels["histogram"], 0, cl::NDRange(h_nbitems), cl::NDRange(h_nblocitems), NULL, PerfData.GetTrackerEvent("histogram", pass));
+
+        /*!*/CompareIntBuffers(mQueue, mHistogramBuffer, mHistogramSBO);
+
 
         // ScanHistogram();
         const size_t sh1_nbitems = _RADIX * _GROUPS * _ITEMS / 2;

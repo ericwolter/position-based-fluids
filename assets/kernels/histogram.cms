@@ -1,0 +1,140 @@
+#version 430
+
+layout (std140, binding = 10) uniform Parameters 
+{
+    // Runner related
+    int  resetSimOnChange;
+
+    // Scene related
+    uint  particleCount;
+    float xMin;
+    float xMax;
+    float yMin;
+    float yMax;
+    float zMin;
+    float zMax;
+
+    float waveGenAmp;
+    float waveGenFreq;
+    float waveGenDuty;
+
+    // Simulation consts
+    float timeStep;
+    uint  simIterations;
+    uint  subSteps;
+    float h;
+    float restDensity;
+    float epsilon;
+    float gravity;
+    float vorticityFactor;
+    float viscosityFactor;
+    float surfaceTenstionK;
+    float surfaceTenstionDist;
+
+    // Grid and friends list
+    uint  friendsCircles;
+    uint  particlesPerCircle;
+    uint  gridBufSize;
+
+    // Setup related
+    float setupSpacing;
+
+    // Sorting
+    uint segmentSize;
+    uint sortIterations;
+
+    // Rendering related
+    float particleRenderSize;
+
+    // Computed fields
+    float h_2;
+};
+
+#define N 1000
+
+#define _BITS 5  // number of bits in the radix
+#define _ITEMS  128 // number of items in a group
+#define _GROUPS 16 // the number of virtual processors is _ITEMS * _GROUPS
+#define _RADIX (1 << _BITS) //  radix  = 2^_BITS
+#define TRANSPOSE false  // transpose the initial vector (faster memory access)
+
+layout (local_size_x = _ITEMS) in;
+
+layout (binding = 0, r32ui) uniform readonly  uimageBuffer imgInKeys;
+layout (binding = 1, r32ui) uniform writeonly uimageBuffer imgHistogram;
+
+layout (location = 0) uniform int pass;
+layout (location = 1) uniform int n;
+
+shared uint loc_histo[_RADIX * _ITEMS];
+
+// change of index for the transposition
+int indexTranspose(uint i, uint n)
+{
+    uint ip;
+    if (TRANSPOSE)
+    {
+        uint k, l;
+        k = i / (n / _GROUPS / _ITEMS);
+        l = i % (n / _GROUPS / _ITEMS);
+        ip = l * (_GROUPS * _ITEMS) + k;
+    }
+    else
+    {
+        ip = i;
+    }
+    return int(ip);
+}
+
+void main()                               
+{
+    uint it = gl_LocalInvocationID.x;
+    uint ig = gl_GlobalInvocationID.x;
+
+    uint gr = gl_WorkGroupID.x;
+
+    uint groups = gl_NumWorkGroups.x;
+    uint items = gl_WorkGroupSize.x;
+    
+    
+    memoryBarrierShared( );
+    
+    // set the local histograms to zero
+    for (int ir = 0; ir < _RADIX; ir++)
+    {
+        //d_Histograms[ir * groups * items + items * gr + it]=0;
+        loc_histo[ir * items + it] = 0;
+    }
+
+    memoryBarrierShared( );
+
+
+    // range of keys that are analyzed by the work item
+    //int start= gr * n/groups + it * n/groups/items;
+    uint start = ig * (n / groups / items);
+    uint size = n / groups / items;
+
+    uint key, shortkey;
+
+    for (uint i = start; i < start + size; i++)
+    {
+        key = imageLoad(imgInKeys, indexTranspose(i, n)).x;
+
+        // extract the group of _BITS bits of the pass
+        // the result is in the range 0.._RADIX-1
+        shortkey = (( key >> (pass * _BITS)) & (_RADIX - 1));
+
+        //d_Histograms[shortkey * groups * items + items * gr + it]++;
+        loc_histo[shortkey *  items + it ]++;
+    }
+
+    memoryBarrierShared( );
+
+    // copy the local histogram to the global one
+    for (uint ir = 0; ir < _RADIX; ir++)
+    {
+        imageStore(imgHistogram, int(ir * groups * items + items * gr + it), ivec4(loc_histo[ir * items + it],0,0,0));
+    }
+
+    memoryBarrierShared( );
+}
