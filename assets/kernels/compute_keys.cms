@@ -1,0 +1,98 @@
+#version 430
+
+layout (std140, binding = 10) uniform Parameters 
+{
+    // Runner related
+    int  resetSimOnChange;
+
+    // Scene related
+    uint  particleCount;
+    float xMin;
+    float xMax;
+    float yMin;
+    float yMax;
+    float zMin;
+    float zMax;
+
+    float waveGenAmp;
+    float waveGenFreq;
+    float waveGenDuty;
+
+    // Simulation consts
+    float timeStep;
+    uint  simIterations;
+    uint  subSteps;
+    float h;
+    float restDensity;
+    float epsilon;
+    float gravity;
+    float vorticityFactor;
+    float viscosityFactor;
+    float surfaceTenstionK;
+    float surfaceTenstionDist;
+
+    // Grid and friends list
+    uint  friendsCircles;
+    uint  particlesPerCircle;
+    uint  gridBufSize;
+
+    // Setup related
+    float setupSpacing;
+
+    // Sorting
+    uint segmentSize;
+    uint sortIterations;
+
+    // Rendering related
+    float particleRenderSize;
+
+    // Computed fields
+    float h_2;
+};
+
+#define N 1000
+#define GRID_BUF_SIZE 200000
+
+layout (local_size_x = 1) in;
+
+layout (binding = 0, rgba32f) uniform readonly imageBuffer imgPredicted;
+layout (binding = 1, r32ui)   uniform writeonly uimageBuffer imgInKeys;
+layout (binding = 2, r32ui)   uniform writeonly uimageBuffer imgInPermutation;
+
+int expandBits(int x)
+{
+    x = (x | (x << 16)) & 0x030000FF;
+    x = (x | (x <<  8)) & 0x0300F00F;
+    x = (x | (x <<  4)) & 0x030C30C3;
+    x = (x | (x <<  2)) & 0x09249249;
+
+    return x;
+}
+
+int mortonNumber(ivec3 gridPos)
+{
+    return expandBits(gridPos.x) | (expandBits(gridPos.y) << 1) | (expandBits(gridPos.z) << 2);
+}
+
+int calcGridHash(ivec3 gridPos)
+{
+    return mortonNumber(gridPos) % GRID_BUF_SIZE;
+}
+
+void main()                               
+{
+    const int i = int(gl_GlobalInvocationID.x);
+    if (i < N) {
+        vec4 predicted = imageLoad(imgPredicted, i);
+        
+        ivec3 currentCell = ivec3(predicted.xyz / h);
+        
+        int cellHash = calcGridHash(currentCell);
+        
+        imageStore(imgInKeys, i, ivec4(cellHash,0,0,0));
+    } else {
+        imageStore(imgInKeys, i, ivec4(2147483647 - 1,0,0,0)); //max_int
+    }
+    
+    imageStore(imgInPermutation, i, ivec4(i,0,0,0));
+}

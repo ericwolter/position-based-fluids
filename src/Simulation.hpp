@@ -87,8 +87,12 @@ public:
     cl::Image2DGL mParticlePosImg;
 
     // Radix buffers
-    cl::Buffer mInKeysBuffer;
-    cl::Buffer mInPermutationBuffer;
+    GLuint mInKeysSBO;
+    GLuint mInKeysTBO;
+    /*!*/cl::Buffer mInKeysBuffer;
+    GLuint mInPermutationSBO;
+    GLuint mInPermutationTBO;
+    /*!*/cl::Buffer mInPermutationBuffer;
     cl::Buffer mOutKeysBuffer;
     cl::Buffer mOutPermutationBuffer;
     cl::Buffer mHistogramBuffer;
