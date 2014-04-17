@@ -44,6 +44,9 @@ Simulation::~Simulation()
 
 void Simulation::CreateParticles()
 {
+    // Reset velocities
+    memset(mVelocities, 0, sizeof(mVelocities[0]) * Params.particleCount);
+
     // Choose between 2D and 3D
     float dim = 3.0;
 
@@ -258,15 +261,6 @@ void Simulation::InitBuffers()
 
     // Position particles
     CreateParticles();
-
-    // Initialize particle speed arrays
-    for (cl_uint i = 0; i < Params.particleCount; ++i)
-    {
-        mVelocities[i][0] = 0;
-        mVelocities[i][1] = 0;
-        mVelocities[i][2] = 0;
-        mVelocities[i][3] = 1; 
-    }
 
     // Create buffers
     /*!*/mPositionsPingBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharedPingBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
