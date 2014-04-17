@@ -191,7 +191,6 @@ const string *Simulation::ShaderFileList()
         "predict_positions.cms",
         "compute_keys.cms",
         "histogram.cms",
-
         ""
     };
 

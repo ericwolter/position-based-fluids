@@ -57,3 +57,18 @@ struct Parameters
     // Computed fields
     float h_2;
 };
+
+
+// RADIX SORTING
+#define _ITEMS        (128)  // number of items in a group
+#define _GROUPS        (16)  // the number of virtual processors is _ITEMS * _GROUPS
+#define _HISTOSPLIT   (512)  // number of splits of the histogram
+#define _TOTALBITS     (30)  // number of bits for the integer in the list (max=32)
+#define _BITS           (5)  // number of bits in the radix
+#define _N        (1 << 23)  // maximal size of the list  
+
+#define _RADIX                  (1 << _BITS) //  radix  = 2^_BITS
+#define _PASS             (_TOTALBITS/_BITS) // number of needed passes to sort the list
+#define _HISTOSIZE   (_ITEMS*_GROUPS*_RADIX) // size of the histogram
+#define _MAXINT        (1 << (_TOTALBITS-1)) // maximal value of integers for the sort to be correct
+
