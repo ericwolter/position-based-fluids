@@ -6,7 +6,7 @@ layout (std140, binding = 10) uniform Parameters
     int  resetSimOnChange;
 
     // Scene related
-    unsigned int  particleCount;
+    uint  particleCount;
     float xMin;
     float xMax;
     float yMin;
@@ -20,28 +20,28 @@ layout (std140, binding = 10) uniform Parameters
 
     // Simulation consts
     float timeStep;
-    unsigned int   simIterations;
-    unsigned int   subSteps;
+    uint  simIterations;
+    uint  subSteps;
     float h;
     float restDensity;
     float epsilon;
-    float garvity;
+    float gravity;
     float vorticityFactor;
     float viscosityFactor;
     float surfaceTenstionK;
     float surfaceTenstionDist;
 
     // Grid and friends list
-    unsigned int  friendsCircles;
-    unsigned int  particlesPerCircle;
-    unsigned int  gridBufSize;
+    uint  friendsCircles;
+    uint  particlesPerCircle;
+    uint  gridBufSize;
 
     // Setup related
     float setupSpacing;
 
     // Sorting
-    unsigned int segmentSize;
-    unsigned int sortIterations;
+    uint segmentSize;
+    uint sortIterations;
 
     // Rendering related
     float particleRenderSize;
@@ -72,9 +72,12 @@ void main()
         vec4 position = imageLoad(imgPositions, i);
     
         // Append gravity (if simulation isn't pause)
-        imageStore(imgVelocities, i, velocity + timeStep * vec4(0, -garvity, 0, 0));
+        // ignore last component in calculations so it can store additional related information
+        vec3 newVelocity = velocity.xyz + timeStep * vec3(0,-gravity,0);
+        imageStore(imgVelocities, i, vec4(newVelocity,velocity.w));
         
         // Compute new predicted position
-        imageStore(imgPredicted, i, position + timeStep * velocity);
+        vec3 predictedPosition = position.xyz + timeStep * newVelocity;
+        imageStore(imgPredicted, i, vec4(predictedPosition,position.w));
     }
 }

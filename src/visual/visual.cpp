@@ -363,7 +363,7 @@ void CVisual::renderParticles()
 
     // Bind positions buffer
     glEnableVertexAttribArray(AttribLoc("position"));
-    glBindBuffer(GL_ARRAY_BUFFER, mSimulation->mPositionsPingSBO);
+    glBindBuffer(GL_ARRAY_BUFFER, mSimulation->mSharedPingBufferID);
     glVertexAttribPointer(AttribLoc("position"), 4, GL_FLOAT, GL_FALSE, 0, 0);
 
     glBindFragDataLocation(g_SelectedProgram, 0, "colorOut");
