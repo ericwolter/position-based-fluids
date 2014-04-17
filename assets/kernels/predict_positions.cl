@@ -11,9 +11,9 @@ __kernel void predictPositions(__constant struct Parameters *Params,
     if (pauseSim == 0)
     {
         // Append gravity (if simulation isn't pause)
-        velocities[i].xyz = velocities[i].xyz + Params->timeStep * (float3)(0.0f, -Params->garvity, 0.0f);
+        velocities[i] = velocities[i] + Params->timeStep * (float4)(0.0f, -Params->garvity, 0.0f, 0.0f);
         
         // Compute new predicted position
-        predicted[i].xyz  = positions[i].xyz  + Params->timeStep * velocities[i].xyz;
+        predicted[i]  = positions[i]  + Params->timeStep * velocities[i];
     }
 }

@@ -441,11 +441,17 @@ void CompareFloatBuffers(cl::CommandQueue queue, cl::Buffer clBuf, GLuint glBuf)
 
     for (int i = 0; i < cl.size / 4; i++)
         if (abs(cl.pFloats[i] - gl.pFloats[i]) > 0.01)
-            throw "Values does not match";
+        {
+            _asm nop;
+            break;
+        };
 }
 
 void Simulation::predictPositions()
 {
+    ///*!*/CompareFloatBuffers(mQueue, mPositionsPingBuffer, mPositionsPingSBO);
+    ///*!*/CompareFloatBuffers(mQueue, mVelocitiesBuffer,    mVelocitiesSBO);
+
     // Setup
     glUseProgram(g_SelectedProgram = mPrograms["predict_positions"]);
     glBindImageTexture(0, mPositionsPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA32F);
@@ -484,7 +490,7 @@ void Simulation::buildFriendsList()
 
     param = 0;
     mKernels["resetGrid"].setArg(param++, mParameters);
-	mKernels["resetGrid"].setArg(param++, mInKeysBuffer);
+    mKernels["resetGrid"].setArg(param++, mInKeysBuffer);
     mKernels["resetGrid"].setArg(param++, mCellsBuffer);
     mKernels["resetGrid"].setArg(param++, Params.particleCount);
     mQueue.enqueueNDRangeKernel(mKernels["resetGrid"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("resetPartList"));

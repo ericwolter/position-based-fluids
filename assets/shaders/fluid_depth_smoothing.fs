@@ -233,7 +233,7 @@ void main()
     vec3 pixelCamNorm = normalize(cameraPos - modelPos);
     
     // Select shell target density
-    float TargetDensity = 1.0 / 1100000000.0;
+    float TargetDensity = 1.0 / 400000000.0;
     
     // define variables
     float density;

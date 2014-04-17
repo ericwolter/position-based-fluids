@@ -136,11 +136,6 @@ void CVisual::initImageBuffers()
     mImgParticleVisible = OGLU_GenerateTexture(2048, DivCeil(Params.particleCount, 2048), GL_R32UI);
     mImgGridChain       = OGLU_GenerateTexture(2048, DivCeil(Params.particleCount, 2048), GL_R32I);
     mImgGrid            = OGLU_GenerateTexture(2048, 2048, GL_R32I);
-
-    // Bind texture to an image units (so we can write to it)
-    glBindImageTexture(0, mImgParticleVisible, 0, true, 0,  GL_READ_WRITE, GL_R32UI);
-    glBindImageTexture(1, mImgGridChain,       0, true, 0,  GL_READ_WRITE, GL_R32I);
-    glBindImageTexture(2, mImgGrid,            0, true, 0,  GL_READ_WRITE, GL_R32I);
 }
 
 void CVisual::parametersChanged()
@@ -295,6 +290,11 @@ void CVisual::scanForVisible(GLuint inputTexture)
 
 void CVisual::buildGrid()
 {
+    // Setup Textures to image units
+    glBindImageTexture(0, mImgParticleVisible, 0, true, 0,  GL_READ_WRITE, GL_R32UI);
+    glBindImageTexture(1, mImgGridChain,       0, true, 0,  GL_READ_WRITE, GL_R32I);
+    glBindImageTexture(2, mImgGrid,            0, true, 0,  GL_READ_WRITE, GL_R32I);
+
     // Reset grid
     glUseProgram(g_SelectedProgram = mResetGridProgID);
     glDispatchCompute(2048, 2048, 1);
@@ -363,7 +363,8 @@ void CVisual::renderParticles()
 
     // Bind positions buffer
     glEnableVertexAttribArray(AttribLoc("position"));
-    glBindBuffer(GL_ARRAY_BUFFER, mSimulation->mPositionsPingSBO);
+    //glBindBuffer(GL_ARRAY_BUFFER, mSimulation->mPositionsPingSBO);
+    glBindBuffer(GL_ARRAY_BUFFER, mSimulation->mSharedPingBufferID);
     glVertexAttribPointer(AttribLoc("position"), 4, GL_FLOAT, GL_FALSE, 0, 0);
 
     glBindFragDataLocation(g_SelectedProgram, 0, "colorOut");
