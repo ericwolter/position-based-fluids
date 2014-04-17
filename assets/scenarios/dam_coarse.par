@@ -20,7 +20,7 @@ SubSteps                1
 SimIterations           3
 SmoothLen               0.035
 RestDensity             110000
-Garvity                 0.5
+Gravity                 0.5
 Epsilon                 0.1
 VorticityFactor         0.0000001
 ViscosityFactor         0.1

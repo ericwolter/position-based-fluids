@@ -76,7 +76,7 @@ void LoadParameters(string parameters)
         else if (parameter == "gridbuffersize")      ss >> Params.gridBufSize;
         else if (parameter == "restdensity")         ss >> Params.restDensity;
         else if (parameter == "epsilon")             ss >> Params.epsilon;
-        else if (parameter == "garvity")             ss >> Params.garvity;
+        else if (parameter == "gravity")             ss >> Params.gravity;
         else if (parameter == "vorticityfactor")     ss >> Params.vorticityFactor;
         else if (parameter == "viscosityfactor")     ss >> Params.viscosityFactor;
         else if (parameter == "surfacetenstionk")    ss >> Params.surfaceTenstionK;

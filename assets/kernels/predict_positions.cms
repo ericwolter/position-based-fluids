@@ -1,57 +1,3 @@
-#version 430
-
-layout (std140, binding = 10) uniform Parameters 
-{
-    // Runner related
-    int  resetSimOnChange;
-
-    // Scene related
-    uint  particleCount;
-    float xMin;
-    float xMax;
-    float yMin;
-    float yMax;
-    float zMin;
-    float zMax;
-
-    float waveGenAmp;
-    float waveGenFreq;
-    float waveGenDuty;
-
-    // Simulation consts
-    float timeStep;
-    uint  simIterations;
-    uint  subSteps;
-    float h;
-    float restDensity;
-    float epsilon;
-    float gravity;
-    float vorticityFactor;
-    float viscosityFactor;
-    float surfaceTenstionK;
-    float surfaceTenstionDist;
-
-    // Grid and friends list
-    uint  friendsCircles;
-    uint  particlesPerCircle;
-    uint  gridBufSize;
-
-    // Setup related
-    float setupSpacing;
-
-    // Sorting
-    uint segmentSize;
-    uint sortIterations;
-
-    // Rendering related
-    float particleRenderSize;
-
-    // Computed fields
-    float h_2;
-};
-
-#define N 1000
-
 layout (local_size_x = 1) in;
 
 layout (binding = 0, rgba32f) uniform readonly  imageBuffer imgPositions;
@@ -59,6 +5,7 @@ layout (binding = 1, rgba32f) uniform writeonly imageBuffer imgPredicted;
 layout (binding = 2, rgba32f) uniform           imageBuffer imgVelocities;
 
 layout (location = 0) uniform bool pauseSim;
+layout (location = 1) uniform int  N;
 
 void main()                               
 {
@@ -75,6 +22,7 @@ void main()
         // ignore last component in calculations so it can store additional related information
         vec3 newVelocity = velocity.xyz + timeStep * vec3(0,-gravity,0);
         imageStore(imgVelocities, i, vec4(newVelocity,velocity.w));
+        
         
         // Compute new predicted position
         vec3 predictedPosition = position.xyz + timeStep * newVelocity;

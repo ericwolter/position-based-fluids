@@ -220,6 +220,23 @@ GLuint GenTextureBuffer(GLenum format, GLuint bufferId)
 
 bool Simulation::InitShaders()
 {
+    // Load shader header
+    string header = "#line 1\n" + getKernelSource("header.cms") + "\n";
+
+    // Add Parameters 
+    header += "#line 1\n" + getKernelSource("parameters.hpp") + "\n";
+
+    std::ostringstream defines;
+    defines << "#define END_OF_CELL_LIST      (" << (int)(-1)                                  << ")"  << endl;
+    defines << "#define MAX_PARTICLES_COUNT   (" << (int)(Params.particleCount)                << ")"  << endl;
+    defines << "#define MAX_FRIENDS_CIRCLES   (" << (int)(Params.friendsCircles)               << ")"  << endl;
+    defines << "#define MAX_FRIENDS_IN_CIRCLE (" << (int)(Params.particlesPerCircle)           << ")"  << endl;
+    defines << "#define FRIENDS_BLOCK_SIZE    (" << (int)(Params.particleCount * Params.friendsCircles) << ")" << endl;
+    defines << "#define GRID_BUF_SIZE         (" << (int)(Params.gridBufSize)                  << ")"  << endl;
+    defines << "#define POLY6_FACTOR          (" << 315.0f / (64.0f * M_PI * pow(Params.h, 9)) << "f)" << endl;
+    defines << "#define GRAD_SPIKY_FACTOR     (" << 45.0f / (M_PI * pow(Params.h, 6))          << "f)" << endl;
+    header += "#line 1\n" + defines.str();
+
     // Load and compile all shaders
     const string *pShaders = ShaderFileList();
     for (int iSrc = 0; pShaders[iSrc] != ""; iSrc++)
@@ -228,8 +245,11 @@ bool Simulation::InitShaders()
         size_t lastdot = pShaders[iSrc].find_last_of(".");
         string name = pShaders[iSrc].substr(0, lastdot);
 
+        // Get source
+        string src = header + "#line 1\n" + getKernelSource(pShaders[iSrc]);
+
         // compile shader
-        if (!(mPrograms[name] = OGLU_LoadProgram(name,   getKernelSource(pShaders[iSrc]), GL_COMPUTE_SHADER)))
+        if (!(mPrograms[name] = OGLU_LoadProgram(name, src, GL_COMPUTE_SHADER)))
             return false;
     }
 
@@ -237,13 +257,7 @@ bool Simulation::InitShaders()
     mGLParametersUBO = GenBuffer(GL_UNIFORM_BUFFER, sizeof(Params), &Params);
     glBindBufferRange(GL_UNIFORM_BUFFER, BP_UBO_PARAMETERS, mGLParametersUBO, 0, sizeof(Params));
 
-    // Create buffer and load data
-    //GLuint ssbo = GenBuffer(GL_SHADER_STORAGE_BUFFER, 2048, mPositions);
-    //GLuint tex  = GenTextureBuffer(GL_RGBA32F, ssbo);
-
-
     return true;
-
 }
 
 void Simulation::InitBuffers()
@@ -443,15 +457,13 @@ void CompareFloatBuffers(cl::CommandQueue queue, cl::Buffer clBuf, GLuint glBuf)
 
 void Simulation::predictPositions()
 {
-    ///*!*/CompareFloatBuffers(mQueue, mPositionsPingBuffer, mPositionsPingSBO);
-    ///*!*/CompareFloatBuffers(mQueue, mVelocitiesBuffer,    mVelocitiesSBO);
-
-    // Setup
+    // Setup shader
     glUseProgram(g_SelectedProgram = mPrograms["predict_positions"]);
     glBindImageTexture(0, mPositionsPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA32F);
     glBindImageTexture(1, mPredictedPingTBO, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
     glBindImageTexture(2, mVelocitiesTBO,    0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
     glUniform1i(0/*pauseSim*/, bPauseSim);
+    glUniform1i(1/*N*/,        Params.particleCount);
 
     // Execute shader
     glDispatchCompute(Params.particleCount, 1, 1);

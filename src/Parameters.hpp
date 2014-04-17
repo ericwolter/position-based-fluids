@@ -1,8 +1,14 @@
-#ifndef __OPENCL_VERSION__
+// add "#pragma once" for PC compile only
+#if !defined(__OPENCL_VERSION__) && !defined(GLSL_COMPILER)
     #pragma once
 #endif
 
+// define class header (GLSL is diffrent from C++/OpeCL)
+#ifdef GLSL_COMPILER
+layout (std140, binding = 10) uniform Parameters 
+#else
 struct Parameters
+#endif
 {
     // Runner related
     int  resetSimOnChange;
@@ -27,7 +33,7 @@ struct Parameters
     float h;
     float restDensity;
     float epsilon;
-    float garvity;
+    float gravity;
     float vorticityFactor;
     float viscosityFactor;
     float surfaceTenstionK;
