@@ -197,7 +197,8 @@ const string *Simulation::ShaderFileList()
         "reorder.cms",
         "sort_particles.cms",
         "update_cells.cms",
-        "build_friends_list.cms"
+        "build_friends_list.cms",
+        "reset_grid.cms"
         ""
     };
 
@@ -559,6 +560,7 @@ void Simulation::buildFriendsList()
 
     // Execute shader
     glDispatchCompute(Params.particleCount, 1, 1);
+    glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
     /*!*/int param = 0;
     /*!*/mKernels["buildFriendsList"].setArg(param++, mParameters);
@@ -571,12 +573,25 @@ void Simulation::buildFriendsList()
     /*!*/CompareIntBuffers(mQueue, mFriendsListBuffer, mFriendsListSBO);
     //SaveFile(mQueue, mFriendsListBuffer, "FriendList");
 
-    param = 0;
-    mKernels["resetGrid"].setArg(param++, mParameters);
-    mKernels["resetGrid"].setArg(param++, mInKeysBuffer);
-    mKernels["resetGrid"].setArg(param++, mCellsBuffer);
-    mKernels["resetGrid"].setArg(param++, Params.particleCount);
-    mQueue.enqueueNDRangeKernel(mKernels["resetGrid"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("resetPartList"));
+    // Setup shader
+    glUseProgram(g_SelectedProgram = mPrograms["reset_grid"]);
+    glBindImageTexture(0, mInKeysTBO, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
+    glBindImageTexture(1, mCellsTBO,  0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32I);
+    glUniform1i(0/*N*/,        Params.particleCount);
+
+    // Execute shader
+    glDispatchCompute(Params.particleCount, 1, 1);
+    glMemoryBarrier(GL_ALL_BARRIER_BITS);
+
+    /*!*/param = 0;
+    /*!*/mKernels["resetGrid"].setArg(param++, mParameters);
+    /*!*/mKernels["resetGrid"].setArg(param++, mInKeysBuffer);
+    /*!*/mKernels["resetGrid"].setArg(param++, mCellsBuffer);
+    /*!*/mKernels["resetGrid"].setArg(param++, Params.particleCount);
+    /*!*/mQueue.enqueueNDRangeKernel(mKernels["resetGrid"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("resetPartList"));
+
+    /*!*/CompareIntBuffers(mQueue, mInKeysBuffer, mInKeysSBO);
+    /*!*/CompareIntBuffers(mQueue, mCellsBuffer, mCellsSBO);
 }
 
 void Simulation::updatePredicted(int iterationIndex)

@@ -1,0 +1,19 @@
+layout (local_size_x = 1) in;
+
+layout (binding = 0, r32i) uniform readonly  iimageBuffer imgKeys;
+layout (binding = 1, r32i) uniform writeonly iimageBuffer imgCells;
+
+layout (location = 0) uniform int N;
+
+void main()
+{
+    const int i = int(gl_GlobalInvocationID.x);
+    if (i >= N) return;
+
+    int cell_index = imageLoad(imgKeys,i).x;
+
+    // only reset start index for performance reasons
+    // later this can be used to check and skip empty cells;
+    imageStore(imgCells,cell_index,ivec4(-99,0,0,0));
+    imageStore(imgCells,cell_index+1,ivec4(-99,0,0,0));
+}
