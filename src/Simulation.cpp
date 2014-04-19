@@ -196,7 +196,8 @@ const string *Simulation::ShaderFileList()
         "pastehistograms.cms",
         "reorder.cms",
         "sort_particles.cms",
-        "update_cells.cms"
+        "update_cells.cms",
+        "build_friends_list.cms"
         ""
     };
 
@@ -370,19 +371,23 @@ void Simulation::InitCells()
 {
     // Allocate host buffers
     delete[] mCells;
-    mCells = new cl_uint[Params.gridBufSize * 2];
-    for (cl_uint i = 0; i < Params.gridBufSize * 2; ++i)
+    mCells = new cl_int[Params.gridBufSize * 2];
+    for (cl_int i = 0; i < Params.gridBufSize * 2; ++i)
         mCells[i] = END_OF_CELL_LIST;
 
     // Write buffer for cells
-    mCellsSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, Params.gridBufSize * 2 * sizeof(cl_uint), mCells);
-    mCellsTBO = GenTextureBuffer(GL_R32UI, mCellsSBO);
-    /*!*/mCellsBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.gridBufSize * 2 * sizeof(cl_uint));
-    /*!*/mQueue.enqueueWriteBuffer(mCellsBuffer, CL_TRUE, 0, Params.gridBufSize * 2 * sizeof(cl_uint), mCells);
+    mCellsSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, Params.gridBufSize * 2 * sizeof(cl_int), mCells);
+    mCellsTBO = GenTextureBuffer(GL_R32I, mCellsSBO);
+    /*!*/mCellsBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.gridBufSize * 2 * sizeof(cl_int));
+    /*!*/mQueue.enqueueWriteBuffer(mCellsBuffer, CL_TRUE, 0, Params.gridBufSize * 2 * sizeof(cl_int), mCells);
 
     // Init Friends list buffer
-    int BufSize = Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle) * sizeof(cl_uint);
+    int BufSize = Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle) * sizeof(cl_int);
     memset(mFriendsList, 0, BufSize);
+
+    mFriendsListSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, BufSize, mFriendsList);
+    mFriendsListTBO = GenTextureBuffer(GL_R32UI, mFriendsListSBO);
+
     mFriendsListBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, BufSize);
     mQueue.enqueueWriteBuffer(mFriendsListBuffer, CL_TRUE, 0, BufSize, mFriendsList);
 }
@@ -545,14 +550,25 @@ void Simulation::predictPositions()
 
 void Simulation::buildFriendsList()
 {
-    int param = 0;
-    mKernels["buildFriendsList"].setArg(param++, mParameters);
-    mKernels["buildFriendsList"].setArg(param++, mPredictedPingBuffer);
-    mKernels["buildFriendsList"].setArg(param++, mCellsBuffer);
-    mKernels["buildFriendsList"].setArg(param++, mFriendsListBuffer);
-    mKernels["buildFriendsList"].setArg(param++, Params.particleCount);
-    mQueue.enqueueNDRangeKernel(mKernels["buildFriendsList"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("buildFriendsList"));
+    // Setup shader
+    glUseProgram(g_SelectedProgram = mPrograms["build_friends_list"]);
+    glBindImageTexture(0, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA32F);
+    glBindImageTexture(1, mCellsTBO, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+    glBindImageTexture(2, mFriendsListTBO,    0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32I);
+    glUniform1i(0/*N*/,        Params.particleCount);
 
+    // Execute shader
+    glDispatchCompute(Params.particleCount, 1, 1);
+
+    /*!*/int param = 0;
+    /*!*/mKernels["buildFriendsList"].setArg(param++, mParameters);
+    /*!*/mKernels["buildFriendsList"].setArg(param++, mPredictedPingBuffer);
+    /*!*/mKernels["buildFriendsList"].setArg(param++, mCellsBuffer);
+    /*!*/mKernels["buildFriendsList"].setArg(param++, mFriendsListBuffer);
+    /*!*/mKernels["buildFriendsList"].setArg(param++, Params.particleCount);
+    /*!*/mQueue.enqueueNDRangeKernel(mKernels["buildFriendsList"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("buildFriendsList"));
+
+    /*!*/CompareIntBuffers(mQueue, mFriendsListBuffer, mFriendsListSBO);
     //SaveFile(mQueue, mFriendsListBuffer, "FriendList");
 
     param = 0;
@@ -632,7 +648,7 @@ void Simulation::updateCells()
 
     glUseProgram(g_SelectedProgram = mPrograms["update_cells"]);
     glBindImageTexture(0, mInKeysTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_R32I);
-    glBindImageTexture(1, mCellsTBO,  0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32UI);
+    glBindImageTexture(1, mCellsTBO,  0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32I);
     glUniform1i(0/*N*/, Params.particleCount);
     
     // Execute shader

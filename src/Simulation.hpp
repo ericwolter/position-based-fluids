@@ -68,7 +68,9 @@ public:
     GLuint            mCellsTBO;
     /*!*/cl::Buffer mCellsBuffer;
     cl::Buffer mParticlesListBuffer;
-    cl::Buffer mFriendsListBuffer;
+    GLuint mFriendsListSBO;
+    GLuint mFriendsListTBO;
+    /*!*/cl::Buffer mFriendsListBuffer;
     GLuint            mPositionsPingSBO;
     GLuint            mPositionsPingTBO;
     /*!*/cl::BufferGL mPositionsPingBuffer;
@@ -120,7 +122,7 @@ public:
     cl_float4 mCellLength;
 
     // Array for the cells
-    cl_uint *mCells;
+    cl_int *mCells;
 
     // Private member functions
     void updateCells();
