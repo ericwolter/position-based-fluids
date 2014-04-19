@@ -485,7 +485,7 @@ void CompareIntBuffers(cl::CommandQueue queue, cl::Buffer clBuf, GLuint glBuf)
         if (clv - glv != 0)
         {
             _asm nop;
-            break;
+            //break;
         };
     }
 }
@@ -553,7 +553,7 @@ void Simulation::buildFriendsList()
     // Setup shader
     glUseProgram(g_SelectedProgram = mPrograms["build_friends_list"]);
     glBindImageTexture(0, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA32F);
-    glBindImageTexture(1, mCellsTBO, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+    glBindImageTexture(1, mCellsTBO, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
     glBindImageTexture(2, mFriendsListTBO,    0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32I);
     glUniform1i(0/*N*/,        Params.particleCount);
 
@@ -911,17 +911,33 @@ void Simulation::radixsort()
     //mQueue.enqueueReleaseGLObjects(&sharedBuffers);
 
     // Double buffering of positions and velocity buffers
-    cl::BufferGL tmp1 = mPositionsPingBuffer;
-    mPositionsPingBuffer = mPositionsPongBuffer;
-    mPositionsPongBuffer = tmp1;
+    GLuint tmpGL;
+    
+    tmpGL = mPositionsPingSBO;
+    mPositionsPingSBO = mPositionsPongSBO;
+    mPositionsPongSBO = tmpGL;
+    tmpGL = mPositionsPingTBO;
+    mPositionsPingTBO = mPositionsPongTBO;
+    mPositionsPongTBO = tmpGL;
 
-    cl::Buffer tmp2 = mPredictedPingBuffer;
-    mPredictedPingBuffer = mPredictedPongBuffer;
-    mPredictedPongBuffer = tmp2;
+    tmpGL = mPredictedPingSBO;
+    mPredictedPingSBO = mPredictedPongSBO;
+    mPredictedPongSBO = tmpGL;
+    tmpGL = mPositionsPingTBO;
+    mPredictedPingTBO = mPredictedPongTBO;
+    mPredictedPongTBO = tmpGL;
 
-    GLuint tmp4 = mSharedPingBufferID;
-    mSharedPingBufferID = mSharedPongBufferID;
-    mSharedPongBufferID = tmp4;
+    /*!*/cl::BufferGL tmp1 = mPositionsPingBuffer;
+    /*!*/mPositionsPingBuffer = mPositionsPongBuffer;
+    /*!*/mPositionsPongBuffer = tmp1;
+
+    /*!*/cl::Buffer tmp2 = mPredictedPingBuffer;
+    /*!*/mPredictedPingBuffer = mPredictedPongBuffer;
+    /*!*/mPredictedPongBuffer = tmp2;
+
+    /*!*/GLuint tmp4 = mSharedPingBufferID;
+    /*!*/mSharedPingBufferID = mSharedPongBufferID;
+    /*!*/mSharedPongBufferID = tmp4;
 }
 
 void Simulation::Step()
