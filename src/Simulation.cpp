@@ -193,6 +193,7 @@ const string *Simulation::ShaderFileList()
         "histogram.cms",
         "scanhistograms1.cms",
         "scanhistograms2.cms",
+        "pastehistograms.cms",
         "update_cells.cms"
         ""
     };
@@ -745,7 +746,7 @@ void Simulation::radixsort()
         // TODO: Also why is that even needed at all? Seems like now that we need a second shader anyway
         // because of the compile-time local_size it might be better just to write a different shader
         // which gets rid of this temp buffer completely
-        /*!*/CompareIntBuffers(mQueue, mHistoTempBuffer, mHistoTempSBO);
+        ///*!*/CompareIntBuffers(mQueue, mHistoTempBuffer, mHistoTempSBO);
 
         const size_t ph_nbitems = _RADIX * _GROUPS * _ITEMS / 2;
         const size_t ph_nblocitems = ph_nbitems / _HISTOSPLIT;
