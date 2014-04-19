@@ -219,8 +219,6 @@ __kernel void reorder(const __global int *d_inKeys,
 // see also http://http.developer.nvidia.com/GPUGems3/gpugems3_ch39.html
 __kernel void scanhistograms( __global int *histo, __local int *temp, __global int *globsum)
 {
-
-
     int it = get_local_id(0);
     int ig = get_global_id(0);
     int decale = 1;

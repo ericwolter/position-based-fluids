@@ -100,8 +100,12 @@ public:
     GLuint mHistogramSBO;
     GLuint mHistogramTBO;
     /*!*/cl::Buffer mHistogramBuffer;
-    cl::Buffer mGlobSumBuffer;
-    cl::Buffer mHistoTempBuffer;
+    GLuint mGlobSumSBO;
+    GLuint mGlobSumTBO;
+    /*!*/cl::Buffer mGlobSumBuffer;
+    GLuint mHistoTempSBO;
+    GLuint mHistoTempTBO;
+    /*!*/cl::Buffer mHistoTempBuffer;
     cl::Buffer mStatsBuffer;
 
     // Lengths of each cell in each direction
