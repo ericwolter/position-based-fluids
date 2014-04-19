@@ -1,4 +1,4 @@
-// local size = (_RADIX * _GROUPS * _ITEMS / 2) / _HISTOSPLIT
+// local size = = (_RADIX * _GROUPS * _ITEMS / 2) / _HISTOSPLIT
 // unfortunately no brackets are allowed here... so we have to calculate it manually...
 layout (local_size_x = 64) in;
 
@@ -20,14 +20,12 @@ void main()
     temp[2 * it] = imageLoad(imgHistogram, int(2 * ig)).x;
     temp[2 * it + 1] = imageLoad(imgHistogram, int(2 * ig + 1)).x;
 
+    barrier();  
+
     // parallel prefix sum (algorithm of Blelloch 1990)
     for (uint d = slots >> 1; d > 0; d >>= 1)
     {
-        memoryBarrierShared();
-        memoryBarrierImage();
-        memoryBarrierBuffer();
-        groupMemoryBarrier();
-
+        barrier( );
         if (it < d)
         {
             uint ai = decale * (2 * it + 1) - 1;
@@ -45,19 +43,12 @@ void main()
         imageStore(imgGlobSum, int(gr), ivec4(temp[slots - 1],0,0,0));
         temp[slots - 1] = 0;
     }
-    memoryBarrierShared();
-    memoryBarrierImage();
-    memoryBarrierBuffer();
-    groupMemoryBarrier();  
 
     // down sweep phase
     for (uint d = 1; d < slots; d *= 2)
     {
         decale >>= 1;
-        memoryBarrierShared();
-        memoryBarrierImage();
-        memoryBarrierBuffer();
-        groupMemoryBarrier();  
+        barrier( );
 
         if (it < d)
         {
@@ -70,18 +61,9 @@ void main()
         }
 
     }
-    memoryBarrierShared();
-    memoryBarrierImage();
-    memoryBarrierBuffer();
-    groupMemoryBarrier();  
+    barrier( );
 
     // write results to device memory
     imageStore(imgHistogram, int(2 * ig), ivec4(temp[2 * it],0,0,0));
     imageStore(imgHistogram, int(2 * ig + 1), ivec4(temp[2 * it + 1],0,0,0));
-
-    memoryBarrierShared();
-    memoryBarrierImage();
-    memoryBarrierBuffer();
-    groupMemoryBarrier();  
-
 }
