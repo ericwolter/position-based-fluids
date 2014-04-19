@@ -198,7 +198,8 @@ const string *Simulation::ShaderFileList()
         "sort_particles.cms",
         "update_cells.cms",
         "build_friends_list.cms",
-        "reset_grid.cms"
+        "reset_grid.cms",
+        "compute_scaling.cms",
         ""
     };
 
@@ -306,7 +307,7 @@ void Simulation::InitBuffers()
     mDeltaTBO = GenTextureBuffer(GL_RGBA32F, mDeltaSBO);
     /*!*/mDeltaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mOmegaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
-    mDensitySBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(vec4) * Params.particleCount, NULL);
+    mDensitySBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(float) * Params.particleCount, NULL);
     mDensityTBO = GenTextureBuffer(GL_R32F, mDensitySBO);
     /*!*/mDensityBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.particleCount * sizeof(cl_float));
     /*!*/mParameters            = cl::Buffer(mCLContext, CL_MEM_READ_ONLY,  sizeof(Params));
@@ -490,6 +491,7 @@ void CompareIntBuffers(cl::CommandQueue queue, cl::Buffer clBuf, GLuint glBuf)
         if (clv - glv != 0)
         {
             _asm nop;
+            throw "Invalid entry";
             //break;
         };
     }
@@ -511,6 +513,7 @@ void CompareFloatBuffers(cl::CommandQueue queue, cl::Buffer clBuf, GLuint glBuf)
         if (diff > 0.01)
         {
             _asm nop;
+            throw "Invalid entry";
             break;
         };
     }
@@ -641,21 +644,34 @@ void Simulation::computeDelta(int iterationIndex)
 
 void Simulation::computeScaling(int iterationIndex)
 {
-    int param = 0;
-    mKernels["computeScaling"].setArg(param++, mParameters);
-    mKernels["computeScaling"].setArg(param++, mPredictedPingBuffer);
-    mKernels["computeScaling"].setArg(param++, mDensityBuffer);
-    mKernels["computeScaling"].setArg(param++, mFriendsListBuffer);
-    mKernels["computeScaling"].setArg(param++, Params.particleCount);
+    glUseProgram(g_SelectedProgram = mPrograms["compute_scaling"]);
+    glBindImageTexture(0, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_WRITE,  GL_RGBA32F);
+    glBindImageTexture(1, mDensityTBO,       0, GL_FALSE, 0, GL_WRITE_ONLY,  GL_R32F);
+    glBindImageTexture(2, mFriendsListTBO,   0, GL_FALSE, 0, GL_READ_ONLY,   GL_R32I);
+    glUniform1i(0/*N*/, Params.particleCount);
+    
+    // Execute shader
+    glDispatchCompute(Params.particleCount, 1, 1);
+
+    /*!*/int param = 0;
+    /*!*/mKernels["computeScaling"].setArg(param++, mParameters);
+    /*!*/mKernels["computeScaling"].setArg(param++, mPredictedPingBuffer);
+    /*!*/mKernels["computeScaling"].setArg(param++, mDensityBuffer);
+    /*!*/mKernels["computeScaling"].setArg(param++, mFriendsListBuffer);
+    /*!*/mKernels["computeScaling"].setArg(param++, Params.particleCount);
 
     // std::cout << "CL_KERNEL_LOCAL_MEM_SIZE = " << mKernels["computeScaling"].getWorkGroupInfo<CL_KERNEL_LOCAL_MEM_SIZE>(NULL) << std::endl;
     // std::cout << "CL_KERNEL_PRIVATE_MEM_SIZE = " << mKernels["computeScaling"].getWorkGroupInfo<CL_KERNEL_PRIVATE_MEM_SIZE>(NULL) << std::endl;
 
-    mQueue.enqueueNDRangeKernel(mKernels["computeScaling"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeScaling", iterationIndex));
+    /*!*/mQueue.enqueueNDRangeKernel(mKernels["computeScaling"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeScaling", iterationIndex));
     // mQueue.enqueueNDRangeKernel(mKernels["computeScaling"], 0, cl::NDRange(((Params.particleCount + 399) / 400) * 400), cl::NDRange(400), NULL, PerfData.GetTrackerEvent("computeScaling", iterationIndex));
 
     //SaveFile(mQueue, mPredictedPingBuffer, "pred2");
     //SaveFile(mQueue, mDensityBuffer,       "dens2");
+
+    /*!*/CompareFloatBuffers(mQueue, mDensityBuffer, mDensitySBO);
+    /*!*/CompareFloatBuffers(mQueue, mPredictedPingBuffer, mPredictedPingSBO);
+
 }
 
 void Simulation::updateCells()
