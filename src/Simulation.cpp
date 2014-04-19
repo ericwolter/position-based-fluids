@@ -741,6 +741,10 @@ void Simulation::radixsort()
         /*!*/mQueue.enqueueNDRangeKernel(mKernels["scanhistograms"], 0, cl::NDRange(sh2_nbitems), cl::NDRange(sh2_nblocitems), NULL, PerfData.GetTrackerEvent("scanhistograms2", pass));
 
         /*!*/CompareIntBuffers(mQueue, mGlobSumBuffer, mGlobSumSBO);
+        // The diff here for i>0 should be okay because the rest of the data is never written to
+        // TODO: Also why is that even needed at all? Seems like now that we need a second shader anyway
+        // because of the compile-time local_size it might be better just to write a different shader
+        // which gets rid of this temp buffer completely
         /*!*/CompareIntBuffers(mQueue, mHistoTempBuffer, mHistoTempSBO);
 
         const size_t ph_nbitems = _RADIX * _GROUPS * _ITEMS / 2;
