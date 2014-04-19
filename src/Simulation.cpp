@@ -692,7 +692,6 @@ void Simulation::radixsort()
 
         // Execute shader
         glDispatchCompute(h_nbitems / h_nblocitems, 1, 1);
-        glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
         /*!*/param = 0;
         /*!*/mKernels["histogram"].setArg(param++, mInKeysBuffer);
@@ -716,7 +715,6 @@ void Simulation::radixsort()
 
         // Execute shader
         glDispatchCompute(sh1_nbitems / sh1_nblocitems, 1, 1);
-        glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
         /*!*/mKernels["scanhistograms"].setArg(0, mHistogramBuffer);
         /*!*/mKernels["scanhistograms"].setArg(1, sizeof(cl_uint)* maxmemcache, NULL);
