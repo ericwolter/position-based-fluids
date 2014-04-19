@@ -64,7 +64,9 @@ public:
     size_t mBufferSizeParticlesList;
 
     // The device memory buffers holding the simulation data
-    cl::Buffer mCellsBuffer;
+    GLuint            mCellsSBO;
+    GLuint            mCellsTBO;
+    /*!*/cl::Buffer mCellsBuffer;
     cl::Buffer mParticlesListBuffer;
     cl::Buffer mFriendsListBuffer;
     GLuint            mPositionsPingSBO;

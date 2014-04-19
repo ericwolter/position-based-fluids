@@ -9,7 +9,8 @@ layout (location = 0) uniform int N;
 void main()                               
 {
     const int i = int(gl_GlobalInvocationID.x);
-    if (i < N) {
+    if (i < N) 
+    {
         vec4 predicted = imageLoad(imgPredicted, i);
         
         ivec3 currentCell = ivec3(predicted.xyz / h);
@@ -17,7 +18,8 @@ void main()
         int cellHash = calcGridHash(currentCell);
         
         imageStore(imgInKeys, i, ivec4(cellHash,0,0,0));
-    } else {
+    } else 
+    {
         imageStore(imgInKeys, i, ivec4(2147483647 - 1,0,0,0)); //max_int
     }
     

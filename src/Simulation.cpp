@@ -191,6 +191,7 @@ const string *Simulation::ShaderFileList()
         "predict_positions.cms",
         "compute_keys.cms",
         "histogram.cms",
+        "update_cells.cms"
         ""
     };
 
@@ -351,20 +352,16 @@ void Simulation::InitBuffers()
 void Simulation::InitCells()
 {
     // Allocate host buffers
-
-    // DO NOT use uint2 vector because it causes a race condition the kernel
-    // instead manage the cell boundaries manually
     delete[] mCells;
-    mCells = new cl_uint[Params.gridBufSize*2];
-
-    // Init cells
-    for (cl_uint i = 0; i < Params.gridBufSize*2; ++i)
+    mCells = new cl_uint[Params.gridBufSize * 2];
+    for (cl_uint i = 0; i < Params.gridBufSize * 2; ++i)
         mCells[i] = END_OF_CELL_LIST;
 
     // Write buffer for cells
-    mBufferSizeCells = Params.gridBufSize * 2 * sizeof(cl_uint);
-    mCellsBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeCells);
-    mQueue.enqueueWriteBuffer(mCellsBuffer, CL_TRUE, 0, mBufferSizeCells, mCells);
+    mCellsSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, Params.gridBufSize * 2 * sizeof(cl_uint), mCells);
+    mCellsTBO = GenTextureBuffer(GL_R32UI, mCellsSBO);
+    /*!*/mCellsBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.gridBufSize * 2 * sizeof(cl_uint));
+    /*!*/mQueue.enqueueWriteBuffer(mCellsBuffer, CL_TRUE, 0, Params.gridBufSize * 2 * sizeof(cl_uint), mCells);
 
     // Init Friends list buffer
     int BufSize = Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle) * sizeof(cl_uint);
@@ -487,6 +484,16 @@ void CompareFloatBuffers(cl::CommandQueue queue, cl::Buffer clBuf, GLuint glBuf)
         };
 }
 
+void CL2GL_BufferCopy(cl::CommandQueue queue, cl::Buffer clBuf, GLuint glBuf)
+{
+    OCL_CopyBufferToHost cl(queue, clBuf);
+
+    // Send data to OpenGL
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, glBuf);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, cl.size, cl.pBytes, GL_DYNAMIC_COPY);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+}
+
 void Simulation::predictPositions()
 {
     // Setup shader
@@ -598,17 +605,25 @@ void Simulation::computeScaling(int iterationIndex)
 
 void Simulation::updateCells()
 {
-    //SaveFile(mQueue, mCellsBuffer, "cells_before");
+    /*!*/CL2GL_BufferCopy(mQueue, mInKeysBuffer, mInKeysSBO);
+    /*!*/CL2GL_BufferCopy(mQueue, mCellsBuffer, mCellsSBO);
 
-    int param = 0;
-    mKernels["updateCells"].setArg(param++, mParameters);
-    mKernels["updateCells"].setArg(param++, mInKeysBuffer);
-    mKernels["updateCells"].setArg(param++, mCellsBuffer);
-    mKernels["updateCells"].setArg(param++, Params.particleCount);
-    mQueue.enqueueNDRangeKernel(mKernels["updateCells"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updateCells"));
+    glUseProgram(g_SelectedProgram = mPrograms["update_cells"]);
+    glBindImageTexture(0, mInKeysTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_R32I);
+    glBindImageTexture(1, mCellsTBO,  0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32UI);
+    glUniform1i(0/*N*/, Params.particleCount);
+    
+    // Execute shader
+    glDispatchCompute(Params.particleCount, 1, 1);
 
-    //SaveFile(mQueue, mCellsBuffer, "cells");
-    //SaveFile(mQueue, mParticlesListBuffer, "friendlist2");
+    /*!*/int param = 0;
+    /*!*/mKernels["updateCells"].setArg(param++, mParameters);
+    /*!*/mKernels["updateCells"].setArg(param++, mInKeysBuffer);
+    /*!*/mKernels["updateCells"].setArg(param++, mCellsBuffer);
+    /*!*/mKernels["updateCells"].setArg(param++, Params.particleCount);
+    /*!*/mQueue.enqueueNDRangeKernel(mKernels["updateCells"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updateCells"));
+    /*!*/
+    /*!*/CompareIntBuffers(mQueue, mCellsBuffer, mCellsSBO);
 }
 
 void Simulation::radixsort()
