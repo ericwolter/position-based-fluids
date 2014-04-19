@@ -802,6 +802,22 @@ void Simulation::radixsort()
         /*!*/CompareIntBuffers(mQueue, mOutKeysBuffer, mOutKeysSBO);
         /*!*/CompareIntBuffers(mQueue, mOutPermutationBuffer, mOutPermutationSBO);
 
+        GLuint tmpGL;
+
+        tmpGL = mInKeysSBO;
+        mInKeysSBO = mOutKeysSBO;
+        mOutKeysSBO = tmpGL;
+        tmpGL = mInKeysTBO;
+        mInKeysTBO = mOutKeysTBO;
+        mOutKeysTBO = tmpGL;
+
+        tmpGL = mInPermutationSBO;
+        mInPermutationSBO = mOutPermutationSBO;
+        mOutPermutationSBO = tmpGL;
+        tmpGL = mInPermutationTBO;
+        mInPermutationTBO = mOutPermutationTBO;
+        mOutPermutationTBO = tmpGL;
+
         cl::Buffer tmp = mInKeysBuffer;
         mInKeysBuffer = mOutKeysBuffer;
         mOutKeysBuffer = tmp;
