@@ -202,6 +202,7 @@ const string *Simulation::ShaderFileList()
         "compute_scaling.cms",
         "compute_delta.cms",
         "update_predicted.cms",
+        "pack_data.cms",
         ""
     };
 
@@ -493,8 +494,7 @@ void CompareIntBuffers(cl::CommandQueue queue, cl::Buffer clBuf, GLuint glBuf)
         if (clv - glv != 0)
         {
             _asm nop;
-            throw "Invalid entry";
-            //break;
+            break;
         };
     }
 }
@@ -515,7 +515,6 @@ void CompareFloatBuffers(cl::CommandQueue queue, cl::Buffer clBuf, GLuint glBuf)
         if (diff > 0.01)
         {
             _asm nop;
-            throw "Invalid entry";
             break;
         };
     }
@@ -621,14 +620,24 @@ void Simulation::updatePredicted(int iterationIndex)
     /*!*/CompareFloatBuffers(mQueue, mPredictedPingBuffer, mPredictedPingSBO);
 }
 
-void Simulation::packData(cl::Buffer packTarget, cl::Buffer packSource,  int iterationIndex)
+void Simulation::packData()
 {
-    int param = 0;
-    mKernels["packData"].setArg(param++, packTarget);
-    mKernels["packData"].setArg(param++, packSource);
-    mKernels["packData"].setArg(param++, Params.particleCount);
+    glUseProgram(g_SelectedProgram = mPrograms["pack_data"]);
+    glBindImageTexture(0, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+    glBindImageTexture(1, mDensityTBO,       0, GL_FALSE, 0, GL_READ_ONLY,  GL_R32F);
+    glUniform1i(0/*N*/, Params.particleCount);
+    
+    // Execute shader
+    glDispatchCompute(Params.particleCount, 1, 1);
 
-    mQueue.enqueueNDRangeKernel(mKernels["packData"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("packData", iterationIndex));
+    /*!*/int param = 0;
+    /*!*/mKernels["packData"].setArg(param++, mPredictedPingBuffer);
+    /*!*/mKernels["packData"].setArg(param++, mDensityBuffer);
+    /*!*/mKernels["packData"].setArg(param++, Params.particleCount);
+
+    /*!*/mQueue.enqueueNDRangeKernel(mKernels["packData"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("packData"));
+
+    /*!*/CompareFloatBuffers(mQueue, mPredictedPingBuffer, mPredictedPingSBO);
 }
 
 void Simulation::computeDelta(int iterationIndex)
@@ -1054,7 +1063,7 @@ void Simulation::Step()
     }
 
     // Place density in "mPredictedPingBuffer[x].w"
-    this->packData(mPredictedPingBuffer, mDensityBuffer, -1);
+    this->packData();
 
     // Recompute velocities
     this->updateVelocities();
