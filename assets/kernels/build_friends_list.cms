@@ -37,39 +37,42 @@ void main()
                 if(cell_boundary.x == END_OF_CELL_LIST) continue;
                     
                 // iterate over all particles in this cell
-                for(int j_index = cell_boundary.x; j_index <= cell_boundary.y; ++j_index) {
+                for(int j_index = cell_boundary.x; j_index <= cell_boundary.y; ++j_index) 
+                {
                     // Skip self
-                    if (i == j_index)
-                        continue;
-
-                    vec4 predicted_j = imageLoad(imgPredicted, j_index);
-                    // Ignore unfriendly particles (r > h)
-                    const vec3 r = predicted.xyz - predicted_j.xyz;
-                    const float r_length_2 = dot(r, r);
-                    if (r_length_2 >= h_2)
-                        continue;
-
-                    // Find particle circle
-                    const float adjusted_r = max(0.0f, (sqrt(r_length_2) - MIN_R) / (h - MIN_R));
-                    const int j_circle = min(int(adjusted_r * adjusted_r * adjusted_r * MAX_FRIENDS_CIRCLES), MAX_FRIENDS_CIRCLES - 1);
-
-                    // Make sure particle doesn't have too many friends
-                    if (circleParticles[j_circle] >= MAX_FRIENDS_IN_CIRCLE)
+                    if (i != j_index)
                     {
-                        // printf("Damn! we need a bigger MAX_FRIENDS_IN_CIRCLE\n");
-                        continue;
+                        // Get j particle position
+                        vec4 predicted_j = imageLoad(imgPredicted, j_index);
+                        
+                        // Ignore unfriendly particles (r > h)
+                        const vec3 r = predicted.xyz - predicted_j.xyz;
+                        const float r_length_2 = dot(r, r);
+                        if (r_length_2 >= h_2)
+                            continue;
+
+                        // Find particle circle
+                        const float adjusted_r = max(0.0f, (sqrt(r_length_2) - MIN_R) / (h - MIN_R));
+                        const int j_circle = min(int(adjusted_r * adjusted_r * adjusted_r * MAX_FRIENDS_CIRCLES), MAX_FRIENDS_CIRCLES - 1);
+
+                        // Make sure particle doesn't have too many friends
+                        if (circleParticles[j_circle] >= MAX_FRIENDS_IN_CIRCLE)
+                        {
+                            // printf("Damn! we need a bigger MAX_FRIENDS_IN_CIRCLE\n");
+                            continue;
+                        }
+
+                        // Increments friends in circle counter
+                        int friendIndex = circleParticles[j_circle]++;
+
+                        // Add friend to relevent circle
+                        int index = FRIENDS_BLOCK_SIZE +                                          // Skip friendsCount block
+                                    j_circle    * (MAX_PARTICLES_COUNT * MAX_FRIENDS_IN_CIRCLE) + // Offset to relevent circle
+                                    friendIndex * (MAX_PARTICLES_COUNT) +                         // Offset to relevent friend_index
+                                    i;                                                            // Offset to particle_index                    
+                        
+                        imageStore(imgFriendsList, index, ivec4(j_index,0,0,0));
                     }
-
-                    // Increments friends in circle counter
-                    int friendIndex = circleParticles[j_circle]++;
-
-                    // Add friend to relevent circle
-                    int index = FRIENDS_BLOCK_SIZE +                                          // Skip friendsCount block
-                                j_circle    * (MAX_PARTICLES_COUNT * MAX_FRIENDS_IN_CIRCLE) + // Offset to relevent circle
-                                friendIndex * (MAX_PARTICLES_COUNT) +                         // Offset to relevent friend_index
-                                i;                                                            // Offset to particle_index                    
-                    
-                    imageStore(imgFriendsList, index, ivec4(j_index,0,0,0));
                 }
             }
         }

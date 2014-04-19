@@ -553,6 +553,48 @@ void Simulation::predictPositions()
     /*!*/CompareFloatBuffers(mQueue, mVelocitiesBuffer, mVelocitiesSBO);
 }
 
+void DumpFriendsList(uint* friendList, float* position, char* szFilename)
+{
+    ofstream fdmp(szFilename);
+
+    // Compute histogram data
+    int FriendsCountBlockSize = Params.particleCount * Params.friendsCircles;
+    for (unsigned int iPart = 0; iPart < Params.particleCount; iPart++)
+    {
+        fdmp << "Particle #" << iPart << ":" << endl;
+        for (unsigned int iCircle = 0; iCircle < Params.friendsCircles; iCircle++)
+        {
+            int circleFriends = friendList[iCircle * Params.particleCount + iPart];
+            float px = position[iPart * 4 + 0];
+            float py = position[iPart * 4 + 1];
+            float pz = position[iPart * 4 + 2];
+
+            // Write circle header
+            fdmp << "  C" << iCircle << " [" << circleFriends << "]: ";
+
+            // Make sure circleFriends is not bigger than Params.particlesPerCircle
+            if (circleFriends > Params.particlesPerCircle)
+                circleFriends = Params.particlesPerCircle;
+
+            // Print friends IDs
+            for (int iFriend = 0; iFriend < circleFriends; iFriend++)
+            {
+                int friendIndex = friendList[FriendsCountBlockSize + 
+                                             iCircle * (Params.particleCount * Params.particlesPerCircle) +  
+                                             iFriend * (Params.particleCount) + 
+                                             iPart];
+                float dx = position[friendIndex * 4 + 0] - px;
+                float dy = position[friendIndex * 4 + 1] - py;
+                float dz = position[friendIndex * 4 + 2] - pz;
+                fdmp << friendIndex << "(" << sqrt(dx*dx+dy*dy+dz*dz) / Params.h << ") ";
+            }
+
+            fdmp << endl;
+        }
+        fdmp << endl;
+    }
+}
+
 void Simulation::buildFriendsList()
 {
     // Setup shader
@@ -572,9 +614,16 @@ void Simulation::buildFriendsList()
     /*!*/mKernels["buildFriendsList"].setArg(param++, mFriendsListBuffer);
     /*!*/mKernels["buildFriendsList"].setArg(param++, Params.particleCount);
     /*!*/mQueue.enqueueNDRangeKernel(mKernels["buildFriendsList"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("buildFriendsList"));
-
+    /*!*/
+    /*!*///CopyBufferToHost pos(GL_SHADER_STORAGE_BUFFER, mPredictedPingSBO);
+    /*!*/
+    /*!*///OCL_CopyBufferToHost cl_flist(mQueue, mFriendsListBuffer);
+    /*!*///DumpFriendsList((uint*)cl_flist.pIntegers, pos.pFloats, "CL_FriendsList.txt");
+    /*!*/
+    /*!*///CopyBufferToHost gl_flist(GL_SHADER_STORAGE_BUFFER, mFriendsListSBO);
+    /*!*///DumpFriendsList((uint*)gl_flist.pIntegers, pos.pFloats, "GL_FriendsList.txt");
+    /*!*/
     /*!*/CompareIntBuffers(mQueue, mFriendsListBuffer, mFriendsListSBO);
-    //SaveFile(mQueue, mFriendsListBuffer, "FriendList");
 
     // Setup shader
     glUseProgram(g_SelectedProgram = mPrograms["reset_grid"]);
