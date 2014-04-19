@@ -5,7 +5,7 @@ __kernel void updatePredicted(__global float4 *predicted,
     const uint i = get_global_id(0);
     if (i >= N) return;
 
-    predicted[i].xyz = predicted[i].xyz + delta[i].xyz;
+    predicted[i] = predicted[i] + delta[i];
 
     // #if defined(USE_DEBUG)
     //     // printf("UPDATE_PREDICTED: %d: predict:[%f,%f,%f]\n",

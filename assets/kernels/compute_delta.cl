@@ -132,7 +132,7 @@ __kernel void computeDelta(__constant struct Parameters *Params,
     else if (future.x > (Params->xMax))  future.x = Params->xMax                  - frand(&randSeed) * randDist;
 
     // Compute delta
-    delta[i].xyz = future - particle.xyz;
+    delta[i] = (float4)(future - particle.xyz,0);
 
 //    if(group_id == 0) {
   //      printf("%d: hits: %d vs miss: %d\n", i, localHit,localMiss);

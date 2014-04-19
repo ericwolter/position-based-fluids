@@ -1,0 +1,131 @@
+layout (local_size_x = 1) in;
+
+layout (binding = 0, rgba32f) uniform readonly  imageBuffer  imgPredicted;
+layout (binding = 1, rgba32f) uniform writeonly imageBuffer  imgDelta;
+layout (binding = 2, r32i)    uniform readonly  iimageBuffer imgFriendsList;
+
+layout (location = 0) uniform int N;
+layout (location = 1) uniform float wave_generator;
+
+//http://amindforeverprogramming.blogspot.de/2013/07/random-floats-in-glsl-330.html
+uint hash( uint x ) {
+    x += ( x << 10u );
+    x ^= ( x >>  6u );
+    x += ( x <<  3u );
+    x ^= ( x >> 11u );
+    x += ( x << 15u );
+    return x;
+}
+
+float frand(inout float seed ) {
+    const uint mantissaMask = 0x007FFFFFu;
+    const uint one          = 0x3F800000u;
+    
+    uint h = hash( floatBitsToUint( seed ) );
+    h &= mantissaMask;
+    h |= one;
+    
+    float result = uintBitsToFloat( h ) - 1.0;
+    seed = result;
+    return result;
+}
+
+void main()                               
+{
+    // Scaling = lambda
+    const int i = int(gl_GlobalInvocationID.x);
+    if (i >= N) return;
+
+    vec4 predicted = imageLoad(imgPredicted, i);
+    float randSeed = float(1+i);
+
+    // Sum of lambdas
+    vec3 sum = vec3(0.0f);
+    const float h_2_cache = Parameters.h_2;
+    const float h_cache = Parameters.h;
+
+    // equation (13)
+    const float q_2 = pow(Parameters.surfaceTenstionDist * h_cache, 2);
+    const float poly6_q = pow(h_2_cache - q_2, 3);
+
+    // read number of friends
+    int totalFriends = 0;
+    int circleParticles[MAX_FRIENDS_CIRCLES];
+    for (int j = 0; j < MAX_FRIENDS_CIRCLES; j++) 
+    {
+        totalFriends += circleParticles[j] = imageLoad(imgFriendsList, j * MAX_PARTICLES_COUNT + i).x;
+    }
+
+    int proccedFriends = 0;
+    
+    for (int iCircle = 0; iCircle < MAX_FRIENDS_CIRCLES; iCircle++)
+    {
+        // Check if we want to process/skip next friends circle
+        if (float(proccedFriends) / totalFriends > 0.6f)
+        {
+            continue;
+        }
+
+        // Add next circle to process count
+        proccedFriends += circleParticles[iCircle];
+
+        // Compute friends start offset
+        int baseIndex = FRIENDS_BLOCK_SIZE +                                      // Skip friendsCount block
+                        iCircle * (MAX_PARTICLES_COUNT * MAX_FRIENDS_IN_CIRCLE) + // Offset to relevent circle
+                        i;   
+
+        // Process friends in circle
+        for (int iFriend = 0; iFriend < circleParticles[iCircle]; iFriend++)
+        {
+            // Read friend index from friends_list
+            const int j_index = imageLoad(imgFriendsList,baseIndex + iFriend * MAX_PARTICLES_COUNT).x;
+
+            // Get j particle data
+            vec4 j_data = imageLoad(imgPredicted, j_index);
+
+            // Compute r, length(r) and length(r)^2
+            vec3 r         = predicted.xyz - j_data.xyz;
+            const float r_length_2 = dot(r, r);
+
+            if (r_length_2 < h_2_cache)
+            {
+                const float r_length   = sqrt(r_length_2);
+
+                vec3 gradient_spiky = r / (r_length) *
+                                              (h_cache - r_length) *
+                                              (h_cache - r_length);
+
+                const float r_2_diff = h_2_cache - r_length_2;
+                const float poly6_r = r_2_diff * r_2_diff * r_2_diff;
+
+                const float r_q_radio = poly6_r / poly6_q;
+                const float s_corr = Parameters.surfaceTenstionK * r_q_radio * r_q_radio * r_q_radio * r_q_radio;
+
+                // Sum for delta p of scaling factors and grad spiky (equation 12)
+                sum += (predicted.w + j_data.w + s_corr) * gradient_spiky;
+            }
+        }
+    }
+
+    // equation (12)
+    vec3 delta_p = (-GRAD_SPIKY_FACTOR*sum) / Parameters.restDensity;
+
+    float randDist = 0.005f;
+    vec3 future = predicted.xyz + delta_p;
+
+    // Prime the random... DO NOT REMOVE
+    frand(randSeed);
+    frand(randSeed);
+    frand(randSeed);
+
+    // Clamp Y
+    if (future.y < Parameters.yMin) future.y = Parameters.yMin + frand(randSeed) * randDist;
+    if (future.z < Parameters.zMin) future.z = Parameters.zMin + frand(randSeed) * randDist;
+    else if (future.z > Parameters.zMax) future.z = Parameters.zMax - frand(randSeed) * randDist;
+    if (future.x < (Parameters.xMin + wave_generator))  future.x = Parameters.xMin + wave_generator + frand(randSeed) * randDist;
+    else if (future.x > (Parameters.xMax))  future.x = Parameters.xMax                  - frand(randSeed) * randDist;
+
+    // Compute delta
+    imageStore(imgDelta, i, vec4(future - predicted.xyz,0));
+
+}
