@@ -5,13 +5,10 @@
 
 // define class header (GLSL is diffrent from C++/OpeCL)
 #ifdef GLSL_COMPILER
-layout (std140, binding = 10) uniform Parameters 
-#else
-struct Parameters
-#endif
+layout (std140, binding = 10) uniform Parameters
 {
     // Runner related
-    int  resetSimOnChange;
+    int resetSimOnChange;
 
     // Scene related
     uint  particleCount;
@@ -57,6 +54,58 @@ struct Parameters
     // Computed fields
     float h_2;
 };
+#else
+struct Parameters
+{
+    // Runner related
+    int  resetSimOnChange;
+
+    // Scene related
+    unsigned int  particleCount;
+    float xMin;
+    float xMax;
+    float yMin;
+    float yMax;
+    float zMin;
+    float zMax;
+
+    float waveGenAmp;
+    float waveGenFreq;
+    float waveGenDuty;
+
+    // Simulation consts
+    float timeStep;
+    unsigned int  simIterations;
+    unsigned int  subSteps;
+    float h;
+    float restDensity;
+    float epsilon;
+    float gravity;
+    float vorticityFactor;
+    float viscosityFactor;
+    float surfaceTenstionK;
+    float surfaceTenstionDist;
+
+    // Grid and friends list
+    unsigned int  friendsCircles;
+    unsigned int  particlesPerCircle;
+    unsigned int  gridBufSize;
+
+    // Setup related
+    float setupSpacing;
+
+    // Sorting
+    unsigned int  segmentSize;
+    unsigned int  sortIterations;
+
+    // Rendering related
+    float particleRenderSize;
+
+    // Computed fields
+    float h_2;
+};
+#endif
+
 
 
 // RADIX SORTING
@@ -73,3 +122,4 @@ struct Parameters
 #define _HISTOSIZE   (_ITEMS*_GROUPS*_RADIX) // size of the histogram
 #define _MAXINT        (1 << (_TOTALBITS-1)) // maximal value of integers for the sort to be correct
 
+#define _MEMCACHE (_ITEMS * _GROUPS * _RADIX / _HISTOSPLIT) // max(_HISTOSPLIT, _ITEMS * _GROUPS * _RADIX / _HISTOSPLIT)
