@@ -692,6 +692,7 @@ void Simulation::radixsort()
 
         // Execute shader
         glDispatchCompute(h_nbitems / h_nblocitems, 1, 1);
+        glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
         /*!*/param = 0;
         /*!*/mKernels["histogram"].setArg(param++, mInKeysBuffer);
@@ -715,6 +716,7 @@ void Simulation::radixsort()
 
         // Execute shader
         glDispatchCompute(sh1_nbitems / sh1_nblocitems, 1, 1);
+        glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
         /*!*/mKernels["scanhistograms"].setArg(0, mHistogramBuffer);
         /*!*/mKernels["scanhistograms"].setArg(1, sizeof(cl_uint)* maxmemcache, NULL);
@@ -745,10 +747,21 @@ void Simulation::radixsort()
 
         const size_t ph_nbitems = _RADIX * _GROUPS * _ITEMS / 2;
         const size_t ph_nblocitems = ph_nbitems / _HISTOSPLIT;
-        param = 0;
-        mKernels["pastehistograms"].setArg(param++, mHistogramBuffer);
-        mKernels["pastehistograms"].setArg(param++, mGlobSumBuffer);
-        mQueue.enqueueNDRangeKernel(mKernels["pastehistograms"], 0, cl::NDRange(ph_nbitems), cl::NDRange(ph_nblocitems), NULL, PerfData.GetTrackerEvent("pastehistograms", pass));
+
+        // Setup
+        glUseProgram(g_SelectedProgram = mPrograms["pastehistograms"]);
+        glBindImageTexture(0, mHistogramTBO, 0, GL_FALSE, 0, GL_READ_WRITE,  GL_R32UI);
+        glBindImageTexture(1, mGlobSumTBO, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32UI);
+
+        // Execute shader
+        glDispatchCompute(ph_nbitems / ph_nblocitems, 1, 1);
+
+        /*!*/param = 0;
+        /*!*/mKernels["pastehistograms"].setArg(param++, mHistogramBuffer);
+        /*!*/mKernels["pastehistograms"].setArg(param++, mGlobSumBuffer);
+        /*!*/mQueue.enqueueNDRangeKernel(mKernels["pastehistograms"], 0, cl::NDRange(ph_nbitems), cl::NDRange(ph_nblocitems), NULL, PerfData.GetTrackerEvent("pastehistograms", pass));
+
+        /*!*/CompareIntBuffers(mQueue, mHistogramBuffer, mHistogramSBO);
 
         // Reorder(pass);
         const size_t r_nblocitems = _ITEMS;

@@ -1,0 +1,26 @@
+// local size = (_RADIX * _GROUPS * _ITEMS / 2) / _HISTOSPLIT
+// unfortunately no brackets are allowed here... so we have to calculate it manually...
+layout (local_size_x = 64) in;
+
+layout (binding = 0, r32ui) uniform           uimageBuffer imgHistogram;
+layout (binding = 1, r32ui) uniform readonly  uimageBuffer imgGlobSum;
+
+void main()                               
+{   
+    uint ig = gl_GlobalInvocationID.x;
+    uint gr = gl_WorkGroupID.x;
+
+    uint s = imageLoad(imgGlobSum,int(gr)).x;
+
+    // write results to device memory
+    uint temp;
+    
+    temp = imageLoad(imgHistogram, int(2*ig)).x;
+    temp += s;
+    imageStore(imgHistogram, int(2*ig), ivec4(temp,0,0,0));
+
+    temp = imageLoad(imgHistogram, int(2*ig+1)).x;
+    temp += s;
+    imageStore(imgHistogram, int(2*ig+1), ivec4(temp,0,0,0));
+
+}

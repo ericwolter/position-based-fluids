@@ -122,4 +122,4 @@ struct Parameters
 #define _HISTOSIZE   (_ITEMS*_GROUPS*_RADIX) // size of the histogram
 #define _MAXINT        (1 << (_TOTALBITS-1)) // maximal value of integers for the sort to be correct
 
-#define _MEMCACHE (_ITEMS * _GROUPS * _RADIX / _HISTOSPLIT) // max(_HISTOSPLIT, _ITEMS * _GROUPS * _RADIX / _HISTOSPLIT)
+#define _MEMCACHE (_HISTOSPLIT) // max(_HISTOSPLIT, _ITEMS * _GROUPS * _RADIX / _HISTOSPLIT)

@@ -225,6 +225,8 @@ __kernel void scanhistograms( __global int *histo, __local int *temp, __global i
     int n = get_local_size(0) * 2 ;
     int gr = get_group_id(0);
 
+    printf("%d,%d,%d,%d,%d\n",it,ig,decale,n,gr);
+
     // load input into local memory
     // up sweep phase
     temp[2 * it] = histo[2 * ig];
@@ -284,8 +286,6 @@ __kernel void scanhistograms( __global int *histo, __local int *temp, __global i
 // each work item updates two values
 __kernel void pastehistograms( __global int *histo, __global int *globsum)
 {
-
-
     int ig = get_global_id(0);
     int gr = get_group_id(0);
 
