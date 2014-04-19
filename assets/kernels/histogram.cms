@@ -75,7 +75,7 @@ void main()
     // copy the local histogram to the global one
     for (uint ir = 0; ir < _RADIX; ir++)
     {
-        imageStore(imgHistogram, int(ir * groups * items + items * gr + it), ivec4(loc_histo[ir * items + it],0,0,0));
+        imageStore(imgHistogram, int(ir * groups * items + items * gr + it), uvec4(loc_histo[ir * items + it],0,0,0));
     }
 
     memoryBarrierShared( );

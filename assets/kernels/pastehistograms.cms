@@ -17,10 +17,10 @@ void main()
     
     temp = imageLoad(imgHistogram, int(2*ig)).x;
     temp += s;
-    imageStore(imgHistogram, int(2*ig), ivec4(temp,0,0,0));
+    imageStore(imgHistogram, int(2*ig), uvec4(temp,0,0,0));
 
     temp = imageLoad(imgHistogram, int(2*ig+1)).x;
     temp += s;
-    imageStore(imgHistogram, int(2*ig+1), ivec4(temp,0,0,0));
+    imageStore(imgHistogram, int(2*ig+1), uvec4(temp,0,0,0));
 
 }

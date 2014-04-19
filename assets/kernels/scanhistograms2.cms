@@ -40,7 +40,7 @@ void main()
     // clear the last element
     if (it == 0)
     {
-        imageStore(imgGlobSum, int(gr), ivec4(temp[slots - 1],0,0,0));
+        imageStore(imgGlobSum, int(gr), uvec4(temp[slots - 1],0,0,0));
         temp[slots - 1] = 0;
     }
 
@@ -64,6 +64,6 @@ void main()
     barrier( );
 
     // write results to device memory
-    imageStore(imgHistogram, int(2 * ig), ivec4(temp[2 * it],0,0,0));
-    imageStore(imgHistogram, int(2 * ig + 1), ivec4(temp[2 * it + 1],0,0,0));
+    imageStore(imgHistogram, int(2 * ig), uvec4(temp[2 * it],0,0,0));
+    imageStore(imgHistogram, int(2 * ig + 1), uvec4(temp[2 * it + 1],0,0,0));
 }
