@@ -14,6 +14,6 @@ void main()
 
     // only reset start index for performance reasons
     // later this can be used to check and skip empty cells;
-    imageStore(imgCells,cell_index,ivec4(-99,0,0,0));
-    imageStore(imgCells,cell_index+1,ivec4(-99,0,0,0));
+    imageStore(imgCells,cell_index * 2 + 0,ivec4(END_OF_CELL_LIST,0,0,0));
+    imageStore(imgCells,cell_index * 2 + 1,ivec4(END_OF_CELL_LIST,0,0,0));
 }
