@@ -923,7 +923,7 @@ void Simulation::radixsort()
     tmpGL = mPredictedPingSBO;
     mPredictedPingSBO = mPredictedPongSBO;
     mPredictedPongSBO = tmpGL;
-    tmpGL = mPositionsPingTBO;
+    tmpGL = mPredictedPingTBO;
     mPredictedPingTBO = mPredictedPongTBO;
     mPredictedPongTBO = tmpGL;
 
