@@ -685,7 +685,7 @@ void Simulation::radixsort()
         glUniform1i(1, _NKEYS);
 
         // Execute shader
-        glDispatchCompute(_GROUPS, 1, 1);
+        glDispatchCompute(h_nbitems / h_nblocitems, 1, 1);
 
         /*!*/param = 0;
         /*!*/mKernels["histogram"].setArg(param++, mInKeysBuffer);
