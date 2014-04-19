@@ -685,7 +685,7 @@ void Simulation::radixsort()
         glUniform1i(1, _NKEYS);
 
         // Execute shader
-        glDispatchCompute(h_nbitems, 1, 1);
+        glDispatchCompute(_GROUPS, 1, 1);
 
         /*!*/param = 0;
         /*!*/mKernels["histogram"].setArg(param++, mInKeysBuffer);
@@ -696,7 +696,6 @@ void Simulation::radixsort()
         /*!*/mQueue.enqueueNDRangeKernel(mKernels["histogram"], 0, cl::NDRange(h_nbitems), cl::NDRange(h_nblocitems), NULL, PerfData.GetTrackerEvent("histogram", pass));
 
         /*!*/CompareIntBuffers(mQueue, mHistogramBuffer, mHistogramSBO);
-
 
         // ScanHistogram();
         const size_t sh1_nbitems = _RADIX * _GROUPS * _ITEMS / 2;

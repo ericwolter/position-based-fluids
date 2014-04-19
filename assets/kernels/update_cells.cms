@@ -17,7 +17,7 @@ void main()
         int prev_cell_index = imageLoad(imgKeys, i - 1).x;
         
         // compare previous cell in sorted
-        if(prev_cell_index != cell_index) 
+        if(prev_cell_index != cell_index)
         {
             imageStore(imgCells, cell_index * 2 + 0, uvec4(i,0,0,0));
             imageStore(imgCells, prev_cell_index * 2 + 1, uvec4(i - 1,0,0,0));

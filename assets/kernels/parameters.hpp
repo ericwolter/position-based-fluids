@@ -14,7 +14,7 @@ struct Parameters
     int  resetSimOnChange;
 
     // Scene related
-    unsigned int  particleCount;
+    uint  particleCount;
     float xMin;
     float xMax;
     float yMin;
@@ -28,8 +28,8 @@ struct Parameters
 
     // Simulation consts
     float timeStep;
-    unsigned int   simIterations;
-    unsigned int   subSteps;
+    uint  simIterations;
+    uint  subSteps;
     float h;
     float restDensity;
     float epsilon;
@@ -40,16 +40,16 @@ struct Parameters
     float surfaceTenstionDist;
 
     // Grid and friends list
-    unsigned int  friendsCircles;
-    unsigned int  particlesPerCircle;
-    unsigned int  gridBufSize;
+    uint  friendsCircles;
+    uint  particlesPerCircle;
+    uint  gridBufSize;
 
     // Setup related
     float setupSpacing;
 
     // Sorting
-    unsigned int segmentSize;
-    unsigned int sortIterations;
+    uint  segmentSize;
+    uint  sortIterations;
 
     // Rendering related
     float particleRenderSize;
@@ -60,7 +60,8 @@ struct Parameters
 
 
 // RADIX SORTING
-#define _ITEMS        (128)  // number of items in a group
+// NOTE: Brackets can't be used to define local size in compute shaders
+#define _ITEMS          128  // number of items in a group 
 #define _GROUPS        (16)  // the number of virtual processors is _ITEMS * _GROUPS
 #define _HISTOSPLIT   (512)  // number of splits of the histogram
 #define _TOTALBITS     (30)  // number of bits for the integer in the list (max=32)
