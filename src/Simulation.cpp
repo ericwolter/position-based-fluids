@@ -553,8 +553,8 @@ void Simulation::buildFriendsList()
     // Setup shader
     glUseProgram(g_SelectedProgram = mPrograms["build_friends_list"]);
     glBindImageTexture(0, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA32F);
-    glBindImageTexture(1, mCellsTBO, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
-    glBindImageTexture(2, mFriendsListTBO,    0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32I);
+    glBindImageTexture(1, mCellsTBO,         0, GL_FALSE, 0, GL_READ_ONLY,  GL_R32I);
+    glBindImageTexture(2, mFriendsListTBO,   0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32I);
     glUniform1i(0/*N*/,        Params.particleCount);
 
     // Execute shader
