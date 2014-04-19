@@ -191,8 +191,6 @@ const string *Simulation::ShaderFileList()
         "predict_positions.cms",
         "compute_keys.cms",
         "histogram.cms",
-        "scanhistograms1.cms",
-        "scanhistograms2.cms",
         "update_cells.cms"
         ""
     };
@@ -321,12 +319,8 @@ void Simulation::InitBuffers()
     /*!*/mHistogramBuffer       = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _RADIX * _GROUPS * _ITEMS);
     mHistogramSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _RADIX * _GROUPS * _ITEMS, NULL);
     mHistogramTBO = GenTextureBuffer(GL_R32UI, mHistogramSBO);
-    /*!*/mGlobSumBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _HISTOSPLIT);
-    mGlobSumSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _HISTOSPLIT, NULL);
-    mGlobSumTBO = GenTextureBuffer(GL_R32UI, mGlobSumSBO);
-    /*!*/mHistoTempBuffer       = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _HISTOSPLIT);
-    mHistoTempSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _HISTOSPLIT, NULL);
-    mHistoTempTBO = GenTextureBuffer(GL_R32UI, mHistoTempSBO);
+    mGlobSumBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _HISTOSPLIT);
+    mHistoTempBuffer       = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _HISTOSPLIT);
 
     /*!*/if (mQueue() != 0)
     /*!*/    mQueue.flush();
@@ -707,41 +701,17 @@ void Simulation::radixsort()
         const size_t sh1_nbitems = _RADIX * _GROUPS * _ITEMS / 2;
         const size_t sh1_nblocitems = sh1_nbitems / _HISTOSPLIT ;
         const int maxmemcache = glm::max(_HISTOSPLIT, _ITEMS * _GROUPS * _RADIX / _HISTOSPLIT);
-
-        // Setup
-        glUseProgram(g_SelectedProgram = mPrograms["scanhistograms1"]);
-        glBindImageTexture(0, mHistogramTBO, 0, GL_FALSE, 0, GL_READ_WRITE,  GL_R32UI);
-        glBindImageTexture(1, mGlobSumTBO, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
-
-        // Execute shader
-        glDispatchCompute(sh1_nbitems / sh1_nblocitems, 1, 1);
-
-        /*!*/mKernels["scanhistograms"].setArg(0, mHistogramBuffer);
-        /*!*/mKernels["scanhistograms"].setArg(1, sizeof(cl_uint)* maxmemcache, NULL);
-        /*!*/mKernels["scanhistograms"].setArg(2, mGlobSumBuffer);
-        /*!*/mQueue.enqueueNDRangeKernel(mKernels["scanhistograms"], 0, cl::NDRange(sh1_nbitems), cl::NDRange(sh1_nblocitems), NULL, PerfData.GetTrackerEvent("scanhistograms1", pass));
-        /*!*/mQueue.finish();
-
-        /*!*/CompareIntBuffers(mQueue, mHistogramBuffer, mHistogramSBO);
-        /*!*/CompareIntBuffers(mQueue, mGlobSumBuffer, mGlobSumSBO);
+        mKernels["scanhistograms"].setArg(0, mHistogramBuffer);
+        mKernels["scanhistograms"].setArg(1, sizeof(cl_uint)* maxmemcache, NULL);
+        mKernels["scanhistograms"].setArg(2, mGlobSumBuffer);
+        mQueue.enqueueNDRangeKernel(mKernels["scanhistograms"], 0, cl::NDRange(sh1_nbitems), cl::NDRange(sh1_nblocitems), NULL, PerfData.GetTrackerEvent("scanhistograms1", pass));
+        mQueue.finish();
 
         const size_t sh2_nbitems = _HISTOSPLIT / 2;
         const size_t sh2_nblocitems = sh2_nbitems;
-
-        // Setup
-        glUseProgram(g_SelectedProgram = mPrograms["scanhistograms2"]);
-        glBindImageTexture(0, mGlobSumTBO, 0, GL_FALSE, 0, GL_READ_WRITE,  GL_R32UI);
-        glBindImageTexture(1, mHistoTempTBO, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32UI);
-
-        // Execute shader
-        glDispatchCompute(sh2_nbitems / sh2_nblocitems, 1, 1);
-
-        /*!*/mKernels["scanhistograms"].setArg(0, mGlobSumBuffer);
-        /*!*/mKernels["scanhistograms"].setArg(2, mHistoTempBuffer);
-        /*!*/mQueue.enqueueNDRangeKernel(mKernels["scanhistograms"], 0, cl::NDRange(sh2_nbitems), cl::NDRange(sh2_nblocitems), NULL, PerfData.GetTrackerEvent("scanhistograms2", pass));
-
-        /*!*/CompareIntBuffers(mQueue, mGlobSumBuffer, mGlobSumSBO);
-        /*!*/CompareIntBuffers(mQueue, mHistoTempBuffer, mHistoTempSBO);
+        mKernels["scanhistograms"].setArg(0, mGlobSumBuffer);
+        mKernels["scanhistograms"].setArg(2, mHistoTempBuffer);
+        mQueue.enqueueNDRangeKernel(mKernels["scanhistograms"], 0, cl::NDRange(sh2_nbitems), cl::NDRange(sh2_nblocitems), NULL, PerfData.GetTrackerEvent("scanhistograms2", pass));
 
         const size_t ph_nbitems = _RADIX * _GROUPS * _ITEMS / 2;
         const size_t ph_nblocitems = ph_nbitems / _HISTOSPLIT;
