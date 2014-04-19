@@ -200,6 +200,7 @@ const string *Simulation::ShaderFileList()
         "build_friends_list.cms",
         "reset_grid.cms",
         "compute_scaling.cms",
+        "compute_delta.cms",
         ""
     };
 
@@ -621,23 +622,35 @@ void Simulation::packData(cl::Buffer packTarget, cl::Buffer packSource,  int ite
 
 void Simulation::computeDelta(int iterationIndex)
 {
-    int param = 0;
-    mKernels["computeDelta"].setArg(param++, mParameters);
-    mKernels["computeDelta"].setArg(param++, oclLog.GetDebugBuffer());
-    mKernels["computeDelta"].setArg(param++, mDeltaBuffer);
-    mKernels["computeDelta"].setArg(param++, mPredictedPingBuffer); // xyz=Predicted z=Scaling
-    mKernels["computeDelta"].setArg(param++, mFriendsListBuffer);
-    mKernels["computeDelta"].setArg(param++, fWavePos);
-    mKernels["computeDelta"].setArg(param++, Params.particleCount);
+    glUseProgram(g_SelectedProgram = mPrograms["compute_delta"]);
+    glBindImageTexture(0, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA32F);
+    glBindImageTexture(1, mDeltaTBO,         0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    glBindImageTexture(2, mFriendsListTBO,   0, GL_FALSE, 0, GL_READ_ONLY,  GL_R32I);
+    glUniform1i(0/*N*/, Params.particleCount);
+    glUniform1f(1/*wave_generator*/, fWavePos);
+    
+    // Execute shader
+    glDispatchCompute(Params.particleCount, 1, 1);
+
+    /*!*/int param = 0;
+    /*!*/mKernels["computeDelta"].setArg(param++, mParameters);
+    /*!*/mKernels["computeDelta"].setArg(param++, oclLog.GetDebugBuffer());
+    /*!*/mKernels["computeDelta"].setArg(param++, mDeltaBuffer);
+    /*!*/mKernels["computeDelta"].setArg(param++, mPredictedPingBuffer); // xyz=Predicted z=Scaling
+    /*!*/mKernels["computeDelta"].setArg(param++, mFriendsListBuffer);
+    /*!*/mKernels["computeDelta"].setArg(param++, fWavePos);
+    /*!*/mKernels["computeDelta"].setArg(param++, Params.particleCount);
 
     // std::cout << "CL_KERNEL_LOCAL_MEM_SIZE = " << mKernels["computeDelta"].getWorkGroupInfo<CL_KERNEL_LOCAL_MEM_SIZE>(NULL) << std::endl;
     // std::cout << "CL_KERNEL_PRIVATE_MEM_SIZE = " << mKernels["computeDelta"].getWorkGroupInfo<CL_KERNEL_PRIVATE_MEM_SIZE>(NULL) << std::endl;
 
-#ifdef LOCALMEM
-    mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, cl::NDRange(DivCeil(Params.particleCount, 256)*256), cl::NDRange(256), NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
-#else
-    mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
-#endif
+/*!*/#ifdef LOCALMEM
+/*!*/    mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, cl::NDRange(DivCeil(Params.particleCount, 256)*256), cl::NDRange(256), NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
+/*!*/#else
+/*!*/    mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
+/*!*/#endif
+
+    /*!*/CompareFloatBuffers(mQueue, mDeltaBuffer, mDeltaSBO);
 
     //SaveFile(mQueue, mDeltaBuffer, "delta2");
 }
