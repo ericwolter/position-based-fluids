@@ -650,6 +650,7 @@ void Simulation::updateCells()
 
 void Simulation::radixsort()
 {
+#ifdef CMS
     // Setup
     glUseProgram(g_SelectedProgram = mPrograms["compute_keys"]);
     glBindImageTexture(0, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA32F);
@@ -660,7 +661,7 @@ void Simulation::radixsort()
 
     // Execute shader
     glDispatchCompute(_NKEYS, 1, 1);
-
+#endif
     /*!*/int param = 0;
     /*!*/mKernels["computeKeys"].setArg(param++, mParameters);
     /*!*/mKernels["computeKeys"].setArg(param++, mPredictedPingBuffer);
@@ -669,8 +670,10 @@ void Simulation::radixsort()
     /*!*/mKernels["computeKeys"].setArg(param++, Params.particleCount);
     /*!*/mQueue.enqueueNDRangeKernel(mKernels["computeKeys"], 0, cl::NDRange(_NKEYS), mLocalRange, NULL, PerfData.GetTrackerEvent("computeKeys"));
 
+#ifdef CMS
     /*!*/CompareIntBuffers(mQueue, mInKeysBuffer, mInKeysSBO);
     /*!*/CompareIntBuffers(mQueue, mInPermutationBuffer, mInPermutationSBO);
+#endif
 
     // // DEBUG
     // cl_uint *keys = new cl_uint[_NKEYS];
@@ -699,6 +702,7 @@ void Simulation::radixsort()
         const size_t h_nblocitems = _ITEMS;
         const size_t h_nbitems = _GROUPS * _ITEMS;
 
+#ifdef CMS
         // Setup
         glUseProgram(g_SelectedProgram = mPrograms["histogram"]);
         glBindImageTexture(0, mInKeysTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_R32UI);
@@ -708,6 +712,7 @@ void Simulation::radixsort()
 
         // Execute shader
         glDispatchCompute(h_nbitems / h_nblocitems, 1, 1);
+#endif
 
         /*!*/param = 0;
         /*!*/mKernels["histogram"].setArg(param++, mInKeysBuffer);
@@ -717,13 +722,16 @@ void Simulation::radixsort()
         /*!*/mKernels["histogram"].setArg(param++, _NKEYS);
         /*!*/mQueue.enqueueNDRangeKernel(mKernels["histogram"], 0, cl::NDRange(h_nbitems), cl::NDRange(h_nblocitems), NULL, PerfData.GetTrackerEvent("histogram", pass));
 
+#ifdef CMS
         /*!*/CompareIntBuffers(mQueue, mHistogramBuffer, mHistogramSBO);
+#endif
 
         // ScanHistogram();
         const size_t sh1_nbitems = _RADIX * _GROUPS * _ITEMS / 2;
         const size_t sh1_nblocitems = sh1_nbitems / _HISTOSPLIT ;
         const int maxmemcache = glm::max(_HISTOSPLIT, _ITEMS * _GROUPS * _RADIX / _HISTOSPLIT);
 
+#ifdef CMS
         // Setup
         glUseProgram(g_SelectedProgram = mPrograms["scanhistograms1"]);
         glBindImageTexture(0, mHistogramTBO, 0, GL_FALSE, 0, GL_READ_WRITE,  GL_R32UI);
@@ -731,6 +739,7 @@ void Simulation::radixsort()
 
         // Execute shader
         glDispatchCompute(sh1_nbitems / sh1_nblocitems, 1, 1);
+#endif
 
         /*!*/mKernels["scanhistograms"].setArg(0, mHistogramBuffer);
         /*!*/mKernels["scanhistograms"].setArg(1, sizeof(cl_uint)* maxmemcache, NULL);
@@ -738,12 +747,15 @@ void Simulation::radixsort()
         /*!*/mQueue.enqueueNDRangeKernel(mKernels["scanhistograms"], 0, cl::NDRange(sh1_nbitems), cl::NDRange(sh1_nblocitems), NULL, PerfData.GetTrackerEvent("scanhistograms1", pass));
         /*!*/mQueue.finish();
 
+#ifdef CMS
         /*!*/CompareIntBuffers(mQueue, mHistogramBuffer, mHistogramSBO);
         /*!*/CompareIntBuffers(mQueue, mGlobSumBuffer, mGlobSumSBO);
+#endif
 
         const size_t sh2_nbitems = _HISTOSPLIT / 2;
         const size_t sh2_nblocitems = sh2_nbitems;
 
+#ifdef CMS
         // Setup
         glUseProgram(g_SelectedProgram = mPrograms["scanhistograms2"]);
         glBindImageTexture(0, mGlobSumTBO, 0, GL_FALSE, 0, GL_READ_WRITE,  GL_R32UI);
@@ -751,21 +763,25 @@ void Simulation::radixsort()
 
         // Execute shader
         glDispatchCompute(sh2_nbitems / sh2_nblocitems, 1, 1);
+#endif
 
         /*!*/mKernels["scanhistograms"].setArg(0, mGlobSumBuffer);
         /*!*/mKernels["scanhistograms"].setArg(2, mHistoTempBuffer);
         /*!*/mQueue.enqueueNDRangeKernel(mKernels["scanhistograms"], 0, cl::NDRange(sh2_nbitems), cl::NDRange(sh2_nblocitems), NULL, PerfData.GetTrackerEvent("scanhistograms2", pass));
 
+#ifdef CMS
         /*!*/CompareIntBuffers(mQueue, mGlobSumBuffer, mGlobSumSBO);
         // The diff here for i>0 should be okay because the rest of the data is never written to
         // TODO: Also why is that even needed at all? Seems like now that we need a second shader anyway
         // because of the compile-time local_size it might be better just to write a different shader
         // which gets rid of this temp buffer completely
         ///*!*/CompareIntBuffers(mQueue, mHistoTempBuffer, mHistoTempSBO);
+#endif
 
         const size_t ph_nbitems = _RADIX * _GROUPS * _ITEMS / 2;
         const size_t ph_nblocitems = ph_nbitems / _HISTOSPLIT;
 
+#ifdef CMS
         // Setup
         glUseProgram(g_SelectedProgram = mPrograms["pastehistograms"]);
         glBindImageTexture(0, mHistogramTBO, 0, GL_FALSE, 0, GL_READ_WRITE,  GL_R32UI);
@@ -773,18 +789,22 @@ void Simulation::radixsort()
 
         // Execute shader
         glDispatchCompute(ph_nbitems / ph_nblocitems, 1, 1);
+#endif
 
         /*!*/param = 0;
         /*!*/mKernels["pastehistograms"].setArg(param++, mHistogramBuffer);
         /*!*/mKernels["pastehistograms"].setArg(param++, mGlobSumBuffer);
         /*!*/mQueue.enqueueNDRangeKernel(mKernels["pastehistograms"], 0, cl::NDRange(ph_nbitems), cl::NDRange(ph_nblocitems), NULL, PerfData.GetTrackerEvent("pastehistograms", pass));
 
+#ifdef CMS
         /*!*/CompareIntBuffers(mQueue, mHistogramBuffer, mHistogramSBO);
+#endif
 
         // Reorder(pass);
         const size_t r_nblocitems = _ITEMS;
         const size_t r_nbitems = _GROUPS * _ITEMS;
 
+#ifdef CMS
         // Setup
         glUseProgram(g_SelectedProgram = mPrograms["reorder"]);
         glBindImageTexture(0, mInKeysTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_R32UI);
@@ -797,6 +817,7 @@ void Simulation::radixsort()
 
         // Execute shader
         glDispatchCompute(r_nbitems / r_nblocitems, 1, 1);
+#endif
 
         /*!*/param = 0;
         /*!*/mKernels["reorder"].setArg(param++, mInKeysBuffer);
@@ -809,6 +830,7 @@ void Simulation::radixsort()
         /*!*/mKernels["reorder"].setArg(param++, _NKEYS);
         /*!*/mQueue.enqueueNDRangeKernel(mKernels["reorder"], 0, cl::NDRange(r_nbitems), cl::NDRange(r_nblocitems), NULL, PerfData.GetTrackerEvent("reorder", pass));
 
+#ifdef CMS
         /*!*/CompareIntBuffers(mQueue, mOutKeysBuffer, mOutKeysSBO);
         /*!*/CompareIntBuffers(mQueue, mOutPermutationBuffer, mOutPermutationSBO);
 
@@ -827,6 +849,7 @@ void Simulation::radixsort()
         tmpGL = mInPermutationTBO;
         mInPermutationTBO = mOutPermutationTBO;
         mOutPermutationTBO = tmpGL;
+#endif
 
         /*!*/cl::Buffer tmp = mInKeysBuffer;
         /*!*/mInKeysBuffer = mOutKeysBuffer;
@@ -863,6 +886,7 @@ void Simulation::radixsort()
     //sharedBuffers.push_back(mPositionsYangBuffer);
     //mQueue.enqueueAcquireGLObjects(&sharedBuffers);
 
+#ifdef CMS
     // Setup shader
     glUseProgram(g_SelectedProgram = mPrograms["sort_particles"]);
     glBindImageTexture(0, mInPermutationTBO, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32UI);
@@ -871,6 +895,7 @@ void Simulation::radixsort()
     glBindImageTexture(3, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
     glBindImageTexture(4, mPredictedPongTBO, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
     glUniform1i(0/*N*/,        Params.particleCount);
+#endif
 
     // Execute shader
     glDispatchCompute(Params.particleCount, 1, 1);
@@ -888,8 +913,10 @@ void Simulation::radixsort()
     /*!*/mKernels["sortParticles"].setArg(param++, Params.particleCount);
     /*!*/mQueue.enqueueNDRangeKernel(mKernels["sortParticles"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("sortParticles"));
 
+#ifdef CMS
     /*!*/CompareFloatBuffers(mQueue, mPositionsPongBuffer, mPositionsPongSBO);
     /*!*/CompareFloatBuffers(mQueue, mPredictedPongBuffer, mPredictedPongSBO);
+#endif
 
     // UnLock Yang buffer
     //mQueue.enqueueReleaseGLObjects(&sharedBuffers);
