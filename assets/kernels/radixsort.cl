@@ -225,8 +225,6 @@ __kernel void scanhistograms( __global int *histo, __local int *temp, __global i
     int n = get_local_size(0) * 2 ;
     int gr = get_group_id(0);
 
-    printf("%d,%d,%d,%d,%d\n",it,ig,decale,n,gr);
-
     // load input into local memory
     // up sweep phase
     temp[2 * it] = histo[2 * ig];
