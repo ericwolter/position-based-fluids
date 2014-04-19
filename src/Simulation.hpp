@@ -139,7 +139,7 @@ public:
     void computeScaling(int iterationIndex);
     void computeDelta(int iterationIndex);
     void radixsort();
-    void packData(cl::Buffer packTarget, cl::Buffer packSource, int iterationIndex);
+    void packData();
 
 public:
     // Default constructor.
