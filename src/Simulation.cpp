@@ -302,9 +302,13 @@ void Simulation::InitBuffers()
     mPredictedPongTBO = GenTextureBuffer(GL_RGBA32F, mPredictedPongSBO);
     mPredictedPongBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     /*!*/mVelocitiesBuffer      = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
-    mDeltaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
+    mDeltaSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(vec4) * Params.particleCount, NULL);
+    mDeltaTBO = GenTextureBuffer(GL_RGBA32F, mDeltaSBO);
+    /*!*/mDeltaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mOmegaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
-    mDensityBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.particleCount * sizeof(cl_float));
+    mDensitySBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(vec4) * Params.particleCount, NULL);
+    mDensityTBO = GenTextureBuffer(GL_RGBA32F, mDensitySBO);
+    /*!*/mDensityBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.particleCount * sizeof(cl_float));
     /*!*/mParameters            = cl::Buffer(mCLContext, CL_MEM_READ_ONLY,  sizeof(Params));
     /*!*/mStatsBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * 2);
 
@@ -560,7 +564,6 @@ void Simulation::buildFriendsList()
 
     // Execute shader
     glDispatchCompute(Params.particleCount, 1, 1);
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
     /*!*/int param = 0;
     /*!*/mKernels["buildFriendsList"].setArg(param++, mParameters);
@@ -581,7 +584,6 @@ void Simulation::buildFriendsList()
 
     // Execute shader
     glDispatchCompute(Params.particleCount, 1, 1);
-    glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
     /*!*/param = 0;
     /*!*/mKernels["resetGrid"].setArg(param++, mParameters);

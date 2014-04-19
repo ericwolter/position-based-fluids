@@ -85,9 +85,13 @@ public:
     /*!*/cl::Buffer mPredictedPongBuffer;
     GLuint            mVelocitiesSBO;
     GLuint            mVelocitiesTBO;
-    cl::Buffer        mVelocitiesBuffer;
-    cl::Buffer mDensityBuffer;
-    cl::Buffer mDeltaBuffer;
+    /*!*/cl::Buffer        mVelocitiesBuffer;
+    GLuint            mDensitySBO;
+    GLuint            mDensityTBO;
+    /*!*/cl::Buffer mDensityBuffer;
+    GLuint            mDeltaSBO;
+    GLuint            mDeltaTBO;
+    /*!*/cl::Buffer mDeltaBuffer;
     cl::Buffer mOmegaBuffer;
     GLuint   mGLParametersUBO;
     cl::Buffer mParameters;
