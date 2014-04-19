@@ -1,0 +1,17 @@
+layout (local_size_x = 1) in;
+
+layout (binding = 0, rgba32f) uniform           imageBuffer imgPredicted;
+layout (binding = 1, rgba32f) uniform readonly  imageBuffer imgDelta;
+
+layout (location = 0) uniform int N;
+
+void main()                               
+{
+    // Scaling = lambda
+    const int i = int(gl_GlobalInvocationID.x);
+    if (i >= N) return;
+
+    vec4 predicted = imageLoad(imgPredicted,i);
+    vec4 delta = imageLoad(imgDelta, i);
+    imageStore(imgPredicted, i, predicted + delta);
+}

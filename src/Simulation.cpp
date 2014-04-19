@@ -201,6 +201,7 @@ const string *Simulation::ShaderFileList()
         "reset_grid.cms",
         "compute_scaling.cms",
         "compute_delta.cms",
+        "update_predicted.cms",
         ""
     };
 
@@ -602,12 +603,22 @@ void Simulation::buildFriendsList()
 
 void Simulation::updatePredicted(int iterationIndex)
 {
-    int param = 0;
-    mKernels["updatePredicted"].setArg(param++, mPredictedPingBuffer);
-    mKernels["updatePredicted"].setArg(param++, mDeltaBuffer);
-    mKernels["updatePredicted"].setArg(param++, Params.particleCount);
+    glUseProgram(g_SelectedProgram = mPrograms["update_predicted"]);
+    glBindImageTexture(0, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+    glBindImageTexture(1, mDeltaTBO,         0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA32F);
+    glUniform1i(0/*N*/, Params.particleCount);
+    
+    // Execute shader
+    glDispatchCompute(Params.particleCount, 1, 1);
 
-    mQueue.enqueueNDRangeKernel(mKernels["updatePredicted"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updatePredicted", iterationIndex));
+    /*!*/int param = 0;
+    /*!*/mKernels["updatePredicted"].setArg(param++, mPredictedPingBuffer);
+    /*!*/mKernels["updatePredicted"].setArg(param++, mDeltaBuffer);
+    /*!*/mKernels["updatePredicted"].setArg(param++, Params.particleCount);
+
+    /*!*/mQueue.enqueueNDRangeKernel(mKernels["updatePredicted"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updatePredicted", iterationIndex));
+
+    /*!*/CompareFloatBuffers(mQueue, mPredictedPingBuffer, mPredictedPingSBO);
 }
 
 void Simulation::packData(cl::Buffer packTarget, cl::Buffer packSource,  int iterationIndex)
