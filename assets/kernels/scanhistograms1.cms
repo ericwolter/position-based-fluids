@@ -20,12 +20,12 @@ void main()
     temp[2 * it] = imageLoad(imgHistogram, int(2 * ig)).x;
     temp[2 * it + 1] = imageLoad(imgHistogram, int(2 * ig + 1)).x;
 
-    barrier();  
-
     // parallel prefix sum (algorithm of Blelloch 1990)
     for (uint d = slots >> 1; d > 0; d >>= 1)
     {
         barrier( );
+        memoryBarrierShared();
+
         if (it < d)
         {
             uint ai = decale * (2 * it + 1) - 1;
@@ -49,6 +49,7 @@ void main()
     {
         decale >>= 1;
         barrier( );
+        memoryBarrierShared();
 
         if (it < d)
         {
@@ -62,6 +63,7 @@ void main()
 
     }
     barrier( );
+    memoryBarrierShared();
 
     // write results to device memory
     imageStore(imgHistogram, int(2 * ig), uvec4(temp[2 * it],0,0,0));

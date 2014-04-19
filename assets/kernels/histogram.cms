@@ -38,9 +38,6 @@ void main()
     uint groups = gl_NumWorkGroups.x;
     uint items = gl_WorkGroupSize.x;
     
-    
-    memoryBarrierShared( );
-    
     // set the local histograms to zero
     for (int ir = 0; ir < _RADIX; ir++)
     {
@@ -48,6 +45,7 @@ void main()
         loc_histo[ir * items + it] = 0;
     }
 
+    barrier();
     memoryBarrierShared( );
 
 
@@ -70,6 +68,7 @@ void main()
         loc_histo[shortkey *  items + it ]++;
     }
 
+    barrier();
     memoryBarrierShared( );
 
     // copy the local histogram to the global one
@@ -77,6 +76,4 @@ void main()
     {
         imageStore(imgHistogram, int(ir * groups * items + items * gr + it), uvec4(loc_histo[ir * items + it],0,0,0));
     }
-
-    memoryBarrierShared( );
 }

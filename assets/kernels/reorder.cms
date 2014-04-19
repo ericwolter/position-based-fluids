@@ -52,6 +52,7 @@ void main()
         loc_histo[ir * items + it] = imageLoad(imgHistogram, int(ir * groups * items + items * gr + it)).x;
     }
     barrier();
+    memoryBarrierShared();
 
     uint newpos, key, shortkey;
 
