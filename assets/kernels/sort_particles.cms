@@ -1,0 +1,19 @@
+layout (local_size_x = 1) in;
+
+layout (binding = 0, r32ui)   uniform readonly  uimageBuffer imgPermutation;
+layout (binding = 1, rgba32f) uniform readonly  imageBuffer  imgPositionsPing;
+layout (binding = 2, rgba32f) uniform writeonly imageBuffer  imgPositionsPong;
+layout (binding = 3, rgba32f) uniform readonly  imageBuffer  imgPredictedPing;
+layout (binding = 4, rgba32f) uniform writeonly imageBuffer  imgPredictedPong;
+
+layout (location = 0) uniform int  N;
+
+void main()                               
+{
+    const int i = int(gl_GlobalInvocationID.x);
+    if (i >= N) return;
+
+    int permutation = int(imageLoad(imgPermutation,i).x);
+    imageStore(imgPositionsPong, i, imageLoad(imgPositionsPing,permutation));
+    imageStore(imgPredictedPong, i, imageLoad(imgPredictedPing,permutation));
+}

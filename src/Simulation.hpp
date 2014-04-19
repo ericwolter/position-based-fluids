@@ -72,11 +72,15 @@ public:
     GLuint            mPositionsPingSBO;
     GLuint            mPositionsPingTBO;
     /*!*/cl::BufferGL mPositionsPingBuffer;
-    cl::BufferGL mPositionsPongBuffer;
+    GLuint            mPositionsPongSBO;
+    GLuint            mPositionsPongTBO;
+    /*!*/cl::BufferGL mPositionsPongBuffer;
     GLuint            mPredictedPingSBO;
     GLuint            mPredictedPingTBO;
     /*!*/cl::Buffer   mPredictedPingBuffer;
-    cl::Buffer mPredictedPongBuffer;
+    GLuint            mPredictedPongSBO;
+    GLuint            mPredictedPongTBO;
+    /*!*/cl::Buffer mPredictedPongBuffer;
     GLuint            mVelocitiesSBO;
     GLuint            mVelocitiesTBO;
     cl::Buffer        mVelocitiesBuffer;

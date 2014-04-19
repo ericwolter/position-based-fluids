@@ -195,6 +195,7 @@ const string *Simulation::ShaderFileList()
         "scanhistograms2.cms",
         "pastehistograms.cms",
         "reorder.cms",
+        "sort_particles.cms",
         "update_cells.cms"
         ""
     };
@@ -289,12 +290,14 @@ void Simulation::InitBuffers()
 
     // Create buffers
     /*!*/mPositionsPingBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharedPingBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
-    mPositionsPongBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharedPongBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
+    /*!*/mPositionsPongBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharedPongBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
     mParticlePosImg        = cl::Image2DGL(mCLContext, CL_MEM_READ_WRITE, GL_TEXTURE_2D, 0, mSharedParticlesPos);
 
     mPredictedPingSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(vec4) * Params.particleCount, &mPositions[0]);
     mPredictedPingTBO = GenTextureBuffer(GL_RGBA32F, mPredictedPingSBO);
     /**/mPredictedPingBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
+    mPredictedPongSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(vec4) * Params.particleCount, NULL);
+    mPredictedPongTBO = GenTextureBuffer(GL_RGBA32F, mPredictedPongSBO);
     mPredictedPongBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     /*!*/mVelocitiesBuffer      = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mDeltaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
@@ -340,6 +343,8 @@ void Simulation::InitBuffers()
     // Copy mPositions (Host) => mPositionsPingBuffer (GPU) 
     mPositionsPingSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(vec4) * Params.particleCount, &mPositions[0]);
     mPositionsPingTBO = GenTextureBuffer(GL_RGBA32F, mPositionsPingSBO);
+    mPositionsPongSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(vec4) * Params.particleCount, NULL);
+    mPositionsPongTBO = GenTextureBuffer(GL_RGBA32F, mPositionsPongSBO);
     /*!*/vector<cl::Memory> sharedBuffers;
     /*!*/sharedBuffers.push_back(mPositionsPingBuffer);
     /*!*/mQueue = cl::CommandQueue(mCLContext, mCLDevice);
@@ -488,12 +493,17 @@ void CompareFloatBuffers(cl::CommandQueue queue, cl::Buffer clBuf, GLuint glBuf)
     if (gl.size != cl.size)
         throw "Size does not match";
 
-    for (int i = 0; i < cl.size / 4; i++)
-        if (abs(cl.pFloats[i] - gl.pFloats[i]) > 0.01)
+    for (int i = 0; i < cl.size / 4; i++) {
+        float clv = cl.pFloats[i];
+        float glv = gl.pFloats[i];
+        float diff = abs(clv - glv);
+
+        if (diff > 0.01)
         {
             _asm nop;
             break;
         };
+    }
 }
 
 void CL2GL_BufferCopy(cl::CommandQueue queue, cl::Buffer clBuf, GLuint glBuf)
@@ -818,13 +828,13 @@ void Simulation::radixsort()
         mInPermutationTBO = mOutPermutationTBO;
         mOutPermutationTBO = tmpGL;
 
-        cl::Buffer tmp = mInKeysBuffer;
-        mInKeysBuffer = mOutKeysBuffer;
-        mOutKeysBuffer = tmp;
+        /*!*/cl::Buffer tmp = mInKeysBuffer;
+        /*!*/mInKeysBuffer = mOutKeysBuffer;
+        /*!*/mOutKeysBuffer = tmp;
 
-        tmp = mInPermutationBuffer;
-        mInPermutationBuffer = mOutPermutationBuffer;
-        mOutPermutationBuffer = tmp;
+        /*!*/tmp = mInPermutationBuffer;
+        /*!*/mInPermutationBuffer = mOutPermutationBuffer;
+        /*!*/mOutPermutationBuffer = tmp;
     }
 
     // // DEBUG
@@ -853,15 +863,33 @@ void Simulation::radixsort()
     //sharedBuffers.push_back(mPositionsYangBuffer);
     //mQueue.enqueueAcquireGLObjects(&sharedBuffers);
 
+    // Setup shader
+    glUseProgram(g_SelectedProgram = mPrograms["sort_particles"]);
+    glBindImageTexture(0, mInPermutationTBO, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32UI);
+    glBindImageTexture(1, mPositionsPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+    glBindImageTexture(2, mPositionsPongTBO, 0, GL_FALSE, 0, GL_WRITE_ONLY,  GL_RGBA32F);
+    glBindImageTexture(3, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+    glBindImageTexture(4, mPredictedPongTBO, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    glUniform1i(0/*N*/,        Params.particleCount);
+
+    // Execute shader
+    glDispatchCompute(Params.particleCount, 1, 1);
+
+    /*!*/CompareFloatBuffers(mQueue, mPositionsPingBuffer, mPositionsPingSBO);
+    /*!*/CompareFloatBuffers(mQueue, mPredictedPingBuffer, mPredictedPingSBO);
+
     // Execute particle reposition
-    param = 0;
-    mKernels["sortParticles"].setArg(param++, mInPermutationBuffer);
-    mKernels["sortParticles"].setArg(param++, mPositionsPingBuffer);
-    mKernels["sortParticles"].setArg(param++, mPositionsPongBuffer);
-    mKernels["sortParticles"].setArg(param++, mPredictedPingBuffer);
-    mKernels["sortParticles"].setArg(param++, mPredictedPongBuffer);
-    mKernels["sortParticles"].setArg(param++, Params.particleCount);
-    mQueue.enqueueNDRangeKernel(mKernels["sortParticles"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("sortParticles"));
+    /*!*/param = 0;
+    /*!*/mKernels["sortParticles"].setArg(param++, mInPermutationBuffer);
+    /*!*/mKernels["sortParticles"].setArg(param++, mPositionsPingBuffer);
+    /*!*/mKernels["sortParticles"].setArg(param++, mPositionsPongBuffer);
+    /*!*/mKernels["sortParticles"].setArg(param++, mPredictedPingBuffer);
+    /*!*/mKernels["sortParticles"].setArg(param++, mPredictedPongBuffer);
+    /*!*/mKernels["sortParticles"].setArg(param++, Params.particleCount);
+    /*!*/mQueue.enqueueNDRangeKernel(mKernels["sortParticles"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("sortParticles"));
+
+    /*!*/CompareFloatBuffers(mQueue, mPositionsPongBuffer, mPositionsPongSBO);
+    /*!*/CompareFloatBuffers(mQueue, mPredictedPongBuffer, mPredictedPongSBO);
 
     // UnLock Yang buffer
     //mQueue.enqueueReleaseGLObjects(&sharedBuffers);
