@@ -1,0 +1,75 @@
+#define TRANSPOSE (false)      // transpose the initial vector (faster memory access)
+#define PERMUT    (true)       // store the final permutation
+
+layout (local_size_x = _ITEMS) in;
+
+layout (binding = 0, r32ui) uniform readonly  uimageBuffer imgInKeys;
+layout (binding = 1, r32ui) uniform writeonly uimageBuffer imgOutKeys;
+layout (binding = 2, r32ui) uniform readonly  uimageBuffer imgHistogram;
+layout (binding = 3, r32ui) uniform readonly  uimageBuffer imgInPermutation;
+layout (binding = 4, r32ui) uniform writeonly uimageBuffer imgOutPermutation;
+
+layout (location = 0) uniform int pass;
+layout (location = 1) uniform int nkeys;
+
+shared uint loc_histo[_RADIX * _ITEMS];
+
+// change of index for the transposition
+int indexTranspose(uint i, uint nkeys)
+{
+    uint ip;
+    if (TRANSPOSE)
+    {
+        uint k, l;
+        k = i / (nkeys / _GROUPS / _ITEMS);
+        l = i % (nkeys / _GROUPS / _ITEMS);
+        ip = l * (_GROUPS * _ITEMS) + k;
+    }
+    else
+    {
+        ip = i;
+    }
+    return int(ip);
+}
+
+void main()                               
+{   
+    uint it = gl_LocalInvocationID.x;
+    uint ig = gl_GlobalInvocationID.x;
+
+    uint gr = gl_WorkGroupID.x;
+
+    uint groups = gl_NumWorkGroups.x;
+    uint items = gl_WorkGroupSize.x;
+
+    //int start= gr * n/groups + it * n/groups/items;
+    uint start = ig * (nkeys / groups / items);
+    uint size = nkeys / groups / items;
+
+    // take the histograms in the cache
+    for (uint ir = 0; ir < _RADIX; ir++)
+    {
+        loc_histo[ir * items + it] = imageLoad(imgHistogram, int(ir * groups * items + items * gr + it)).x;
+    }
+    barrier();
+
+    uint newpos, key, shortkey;
+
+    for (uint i = start; i < start + size; i++)
+    {
+        key = imageLoad(imgInKeys,indexTranspose(i, nkeys)).x;
+        shortkey = ((key >> (pass * _BITS)) & (_RADIX - 1));
+
+        newpos = loc_histo[shortkey * items + it];
+        imageStore(imgOutKeys, indexTranspose(newpos, nkeys), ivec4(key,0,0,0));
+
+        if (PERMUT)
+        {
+            uint temp = imageLoad(imgInPermutation,indexTranspose(i, nkeys)).x;
+            imageStore(imgOutPermutation, indexTranspose(newpos, nkeys), ivec4(temp,0,0,0));
+        }
+
+        newpos++;
+        loc_histo[shortkey * items + it] = newpos;
+    }
+}

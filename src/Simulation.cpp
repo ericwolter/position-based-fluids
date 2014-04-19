@@ -194,6 +194,7 @@ const string *Simulation::ShaderFileList()
         "scanhistograms1.cms",
         "scanhistograms2.cms",
         "pastehistograms.cms",
+        "reorder.cms",
         "update_cells.cms"
         ""
     };
@@ -317,8 +318,12 @@ void Simulation::InitBuffers()
     /*!*/mInPermutationBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _NKEYS);
     mInPermutationSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _NKEYS, NULL);
     mInPermutationTBO = GenTextureBuffer(GL_R32UI, mInPermutationSBO);
-    mOutKeysBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _NKEYS);
-    mOutPermutationBuffer  = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _NKEYS);
+    /*!*/mOutKeysBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _NKEYS);
+    mOutKeysSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _NKEYS, NULL);
+    mOutKeysTBO = GenTextureBuffer(GL_R32UI, mOutKeysSBO);
+    /*!*/mOutPermutationBuffer  = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _NKEYS);
+    mOutPermutationSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _NKEYS, NULL);
+    mOutPermutationTBO = GenTextureBuffer(GL_R32UI, mOutPermutationSBO);    
     /*!*/mHistogramBuffer       = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _RADIX * _GROUPS * _ITEMS);
     mHistogramSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _RADIX * _GROUPS * _ITEMS, NULL);
     mHistogramTBO = GenTextureBuffer(GL_R32UI, mHistogramSBO);
@@ -769,16 +774,33 @@ void Simulation::radixsort()
         // Reorder(pass);
         const size_t r_nblocitems = _ITEMS;
         const size_t r_nbitems = _GROUPS * _ITEMS;
-        param = 0;
-        mKernels["reorder"].setArg(param++, mInKeysBuffer);
-        mKernels["reorder"].setArg(param++, mOutKeysBuffer);
-        mKernels["reorder"].setArg(param++, mHistogramBuffer);
-        mKernels["reorder"].setArg(param++, pass);
-        mKernels["reorder"].setArg(param++, mInPermutationBuffer);
-        mKernels["reorder"].setArg(param++, mOutPermutationBuffer);
-        mKernels["reorder"].setArg(param++, sizeof(cl_uint)* _RADIX * _ITEMS, NULL);
-        mKernels["reorder"].setArg(param++, _NKEYS);
-        mQueue.enqueueNDRangeKernel(mKernels["reorder"], 0, cl::NDRange(r_nbitems), cl::NDRange(r_nblocitems), NULL, PerfData.GetTrackerEvent("reorder", pass));
+
+        // Setup
+        glUseProgram(g_SelectedProgram = mPrograms["reorder"]);
+        glBindImageTexture(0, mInKeysTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_R32UI);
+        glBindImageTexture(1, mOutKeysTBO, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32UI);
+        glBindImageTexture(2, mHistogramTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_R32UI);
+        glBindImageTexture(3, mInPermutationTBO, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32UI);
+        glBindImageTexture(4, mOutPermutationTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_R32UI);
+        glUniform1i(0, pass);
+        glUniform1i(1, _NKEYS);
+
+        // Execute shader
+        glDispatchCompute(r_nbitems / r_nblocitems, 1, 1);
+
+        /*!*/param = 0;
+        /*!*/mKernels["reorder"].setArg(param++, mInKeysBuffer);
+        /*!*/mKernels["reorder"].setArg(param++, mOutKeysBuffer);
+        /*!*/mKernels["reorder"].setArg(param++, mHistogramBuffer);
+        /*!*/mKernels["reorder"].setArg(param++, pass);
+        /*!*/mKernels["reorder"].setArg(param++, mInPermutationBuffer);
+        /*!*/mKernels["reorder"].setArg(param++, mOutPermutationBuffer);
+        /*!*/mKernels["reorder"].setArg(param++, sizeof(cl_uint)* _RADIX * _ITEMS, NULL);
+        /*!*/mKernels["reorder"].setArg(param++, _NKEYS);
+        /*!*/mQueue.enqueueNDRangeKernel(mKernels["reorder"], 0, cl::NDRange(r_nbitems), cl::NDRange(r_nblocitems), NULL, PerfData.GetTrackerEvent("reorder", pass));
+
+        /*!*/CompareIntBuffers(mQueue, mOutKeysBuffer, mOutKeysSBO);
+        /*!*/CompareIntBuffers(mQueue, mOutPermutationBuffer, mOutPermutationSBO);
 
         cl::Buffer tmp = mInKeysBuffer;
         mInKeysBuffer = mOutKeysBuffer;

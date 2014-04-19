@@ -95,8 +95,12 @@ public:
     GLuint mInPermutationSBO;
     GLuint mInPermutationTBO;
     /*!*/cl::Buffer mInPermutationBuffer;
-    cl::Buffer mOutKeysBuffer;
-    cl::Buffer mOutPermutationBuffer;
+    GLuint mOutKeysSBO;
+    GLuint mOutKeysTBO;
+    /*!*/cl::Buffer mOutKeysBuffer;
+    GLuint mOutPermutationSBO;
+    GLuint mOutPermutationTBO;
+    /*!*/cl::Buffer mOutPermutationBuffer;
     GLuint mHistogramSBO;
     GLuint mHistogramTBO;
     /*!*/cl::Buffer mHistogramBuffer;
