@@ -1,0 +1,22 @@
+layout (local_size_x = 1) in;
+                            
+layout (binding = 0, rgba32f) uniform restrict  imageBuffer imgPositions;
+layout (binding = 1, rgba32f) uniform readonly  imageBuffer imgPredicted;
+layout (binding = 2, rgba32f) uniform writeonly imageBuffer imgVelocities;                            
+
+layout (location = 0) uniform int N;
+                               
+void main()
+{
+    const int i = int(gl_GlobalInvocationID.x);
+    if (i >= N) return;
+
+    // Compute velocity
+    vec3 prevPosition = imageLoad(imgPositions, i).xyz;
+    vec3 currPosition = imageLoad(imgPredicted, i).xyz;
+    vec3 velocity = (currPosition - prevPosition) / Params.timeStep;
+    
+    // Store velocity values
+    imageStore(imgVelocities, i, vec4(velocity, 0));
+    imageStore(imgPositions,  i, vec4(currPosition, length(velocity)));
+}

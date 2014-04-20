@@ -73,6 +73,57 @@ void Simulation::CreateParticles()
     // random_shuffle(&mPositions[0],&mPositions[Params.particleCount-1]);
 }
 
+/*!*/void CompareIntBuffers(cl::CommandQueue queue, cl::Buffer clBuf, GLuint glBuf)
+/*!*/{
+/*!*/    CopyBufferToHost gl(GL_SHADER_STORAGE_BUFFER, glBuf);
+/*!*/    OCL_CopyBufferToHost cl(queue, clBuf);
+/*!*/
+/*!*/    if (gl.size != cl.size)
+/*!*/        throw "Size does not match";
+/*!*/
+/*!*/    for (int i = 0; i < cl.size / 4; i++) {
+/*!*/        int clv = cl.pIntegers[i];
+/*!*/        int glv = gl.pIntegers[i];
+/*!*/
+/*!*/        if (clv - glv != 0)
+/*!*/        {
+/*!*/            _asm nop;
+/*!*/            break;
+/*!*/        };
+/*!*/    }
+/*!*/}
+/*!*/
+/*!*/void CompareFloatBuffers(cl::CommandQueue queue, cl::Buffer clBuf, GLuint glBuf)
+/*!*/{
+/*!*/    CopyBufferToHost gl(GL_SHADER_STORAGE_BUFFER, glBuf);
+/*!*/    OCL_CopyBufferToHost cl(queue, clBuf);
+/*!*/
+/*!*/    if (gl.size != cl.size)
+/*!*/        throw "Size does not match";
+/*!*/
+/*!*/    for (int i = 0; i < cl.size / 4; i++) {
+/*!*/        float clv = cl.pFloats[i];
+/*!*/        float glv = gl.pFloats[i];
+/*!*/        float diff = abs(clv - glv);
+/*!*/
+/*!*/        if (diff > 0.01)
+/*!*/        {
+/*!*/            _asm nop;
+/*!*/            break;
+/*!*/        };
+/*!*/    }
+/*!*/}
+/*!*/
+/*!*/void CL2GL_BufferCopy(cl::CommandQueue queue, cl::Buffer clBuf, GLuint glBuf)
+/*!*/{
+/*!*/    OCL_CopyBufferToHost cl(queue, clBuf);
+/*!*/
+/*!*/    // Send data to OpenGL
+/*!*/    glBindBuffer(GL_SHADER_STORAGE_BUFFER, glBuf);
+/*!*/    glBufferData(GL_SHADER_STORAGE_BUFFER, cl.size, cl.pBytes, GL_DYNAMIC_COPY);
+/*!*/    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+/*!*/}
+
 /*!*/const std::string *Simulation::CL_KernelFileList()
 /*!*/{
 /*!*/    static const std::string kernels[] =
@@ -203,7 +254,7 @@ const string *Simulation::ShaderFileList()
         "compute_delta.cms",
         "update_predicted.cms",
         "pack_data.cms",
-        ""
+        "update_velocities.cms"
     };
 
     return shaders;
@@ -435,17 +486,28 @@ void SaveFile(cl::CommandQueue queue, cl::Buffer buffer, const char *szFilename)
 
 void Simulation::updateVelocities()
 {
-    int param = 0;
-    mKernels["updateVelocities"].setArg(param++, mParameters);
-    mKernels["updateVelocities"].setArg(param++, mPositionsPingBuffer);
-    mKernels["updateVelocities"].setArg(param++, mPredictedPingBuffer);
-    mKernels["updateVelocities"].setArg(param++, mParticlePosImg);
-    mKernels["updateVelocities"].setArg(param++, mVelocitiesBuffer);
-    mKernels["updateVelocities"].setArg(param++, Params.particleCount);
+        // Setup shader
+    glUseProgram(g_SelectedProgram = mPrograms["update_velocities"]);
+    glBindImageTexture(0, mPositionsPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA32F);
+    glBindImageTexture(1, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+    glBindImageTexture(2, mVelocitiesTBO,    0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    glUniform1i(0/*N*/,        Params.particleCount);
 
-    mQueue.enqueueNDRangeKernel(mKernels["updateVelocities"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updateVelocities"));
+    // Execute shader
+    glDispatchCompute(Params.particleCount, 1, 1);
 
-    //SaveFile(mQueue, mVelocitiesBuffer, "Velo2");
+    /*!*/int param = 0;
+    /*!*/mKernels["updateVelocities"].setArg(param++, mParameters);
+    /*!*/mKernels["updateVelocities"].setArg(param++, mPositionsPingBuffer);
+    /*!*/mKernels["updateVelocities"].setArg(param++, mPredictedPingBuffer);
+    /*!*/mKernels["updateVelocities"].setArg(param++, mParticlePosImg);
+    /*!*/mKernels["updateVelocities"].setArg(param++, mVelocitiesBuffer);
+    /*!*/mKernels["updateVelocities"].setArg(param++, Params.particleCount);
+    /*!*/
+    /*!*/mQueue.enqueueNDRangeKernel(mKernels["updateVelocities"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updateVelocities"));
+    /*!*/
+    /*!*/CompareFloatBuffers(mQueue, mVelocitiesBuffer, mVelocitiesSBO);
+    /*!*/CompareFloatBuffers(mQueue, mPredictedPingBuffer, mPredictedPingSBO);
 }
 
 void Simulation::applyViscosity()
@@ -477,57 +539,6 @@ void Simulation::applyVorticity()
     mQueue.enqueueNDRangeKernel(mKernels["applyVorticity"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("applyVorticity"));
 
     //SaveFile(mQueue, mDeltaVelocityBuffer, "Omega");
-}
-
-void CompareIntBuffers(cl::CommandQueue queue, cl::Buffer clBuf, GLuint glBuf)
-{
-    CopyBufferToHost gl(GL_SHADER_STORAGE_BUFFER, glBuf);
-    OCL_CopyBufferToHost cl(queue, clBuf);
-
-    if (gl.size != cl.size)
-        throw "Size does not match";
-
-    for (int i = 0; i < cl.size / 4; i++) {
-        int clv = cl.pIntegers[i];
-        int glv = gl.pIntegers[i];
-
-        if (clv - glv != 0)
-        {
-            _asm nop;
-            break;
-        };
-    }
-}
-
-void CompareFloatBuffers(cl::CommandQueue queue, cl::Buffer clBuf, GLuint glBuf)
-{
-    CopyBufferToHost gl(GL_SHADER_STORAGE_BUFFER, glBuf);
-    OCL_CopyBufferToHost cl(queue, clBuf);
-
-    if (gl.size != cl.size)
-        throw "Size does not match";
-
-    for (int i = 0; i < cl.size / 4; i++) {
-        float clv = cl.pFloats[i];
-        float glv = gl.pFloats[i];
-        float diff = abs(clv - glv);
-
-        if (diff > 0.01)
-        {
-            _asm nop;
-            break;
-        };
-    }
-}
-
-void CL2GL_BufferCopy(cl::CommandQueue queue, cl::Buffer clBuf, GLuint glBuf)
-{
-    OCL_CopyBufferToHost cl(queue, clBuf);
-
-    // Send data to OpenGL
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, glBuf);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, cl.size, cl.pBytes, GL_DYNAMIC_COPY);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 }
 
 void Simulation::predictPositions()
