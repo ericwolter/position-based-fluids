@@ -1,0 +1,82 @@
+layout (local_size_x = 1) in;
+
+layout (binding = 0, rgba32f) uniform readonly imageBuffer imgPredicted;
+layout (binding = 1, rgba32f) uniform restrict imageBuffer imgVelocities;  
+layout (binding = 2, rgba32f) uniform readonly imageBuffer  imgOmegas;
+layout (binding = 3, r32i)    uniform readonly iimageBuffer imgFriendsList;
+
+layout (location = 0) uniform int N;
+    
+void main()    
+{
+    const int i = int(gl_GlobalInvocationID.x);
+    if (i >= N) return;
+
+    // Get particle i position
+    vec3 i_predicted = imageLoad(imgPredicted, i).xyz;
+    vec3 i_omega     = imageLoad(imgOmegas, i).xyz;
+
+    // read number of friends
+    int totalFriends = 0;
+    int circleParticles[MAX_FRIENDS_CIRCLES];
+    for (int j = 0; j < MAX_FRIENDS_CIRCLES; j++) 
+        totalFriends += circleParticles[j] = imageLoad(imgFriendsList, j * MAX_PARTICLES_COUNT + i).x;
+
+    vec3 eta = vec3(0);
+    int proccedFriends = 0;
+    for (int iCircle = 0; iCircle < MAX_FRIENDS_CIRCLES; iCircle++)
+    {
+        // Check if we want to process/skip next friends circle
+        if (float(proccedFriends) / totalFriends > 0.5f)
+            continue;
+
+        // Add next circle to process count
+        proccedFriends += circleParticles[iCircle];
+        
+        // Compute friends start offset
+        int baseIndex = FRIENDS_BLOCK_SIZE +                                      // Skip friendsCount block
+                        iCircle * (MAX_PARTICLES_COUNT * MAX_FRIENDS_IN_CIRCLE) + // Offset to relevent circle
+                        i;                                                        // Offset to particle_index              
+
+        // Process friends in circle
+        for (int iFriend = 0; iFriend < circleParticles[iCircle]; iFriend++)
+        {
+            // Read friend index from friends_list
+            const int j_index = imageLoad(imgFriendsList, baseIndex + iFriend * MAX_PARTICLES_COUNT).x;
+            
+            // Get j particle position
+            vec4 j_particle = imageLoad(imgPredicted, j_index);
+
+            // Compute distance between particle i and j
+            const vec3  r = i_predicted - j_particle.xyz;
+            const float r_length_2 = (r.x * r.x + r.y * r.y + r.z * r.z);
+
+            // Check if distance is under "h"
+            if (r_length_2 < Params.h_2)
+            {
+                // ignore particles where the density is zero
+                // this is either a numerical issue or a problem
+                // with estimating the density by sampling the neighborhood
+                // In this case the standard SPH gradient operator brakes
+                // because of the division by zero.
+                if (abs(j_particle.w) > 1e-8f)
+                {
+                    // get j omega
+                    vec3 j_omega = imageLoad(imgOmegas, j_index).xyz;
+                    const float r_length = sqrt(r_length_2);
+                    const float h_r_diff = Params.h - r_length;
+                    const vec3  gradient_spiky = r * h_r_diff * h_r_diff / r_length;
+
+                    const float omega_length = length(j_omega);
+                    eta += (omega_length / j_particle.w) * gradient_spiky;
+                }
+            }
+        }
+    }
+
+    const vec3 eta_N = normalize(eta * GRAD_SPIKY_FACTOR);
+    const vec3 vorticityForce    = Params.vorticityFactor * cross(eta_N, i_omega);
+    const vec3 vorticityVelocity = vorticityForce * Params.timeStep;
+
+    imageStore(imgVelocities, i, vec4(vorticityVelocity, 0));
+}

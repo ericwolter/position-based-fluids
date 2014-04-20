@@ -74,7 +74,7 @@ void Simulation::CreateParticles()
 }
 
 /*!*/void CompareIntBuffers(cl::CommandQueue queue, cl::Buffer clBuf, GLuint glBuf)
-/*!*/{
+/*!*/{return;
 /*!*/    CopyBufferToHost gl(GL_SHADER_STORAGE_BUFFER, glBuf);
 /*!*/    OCL_CopyBufferToHost cl(queue, clBuf);
 /*!*/
@@ -118,7 +118,7 @@ void DumpFloatArrayCompare(char* szFilename, char* szTitle1, char* szTitle2, flo
 /*!*/
 /*!*/        if (diff > 0.1)
 /*!*/        {
-/*!*/            DumpFloatArrayCompare("FloatComp.csv", "CL", "GL", cl.pFloats, gl.pFloats, cl.size / 4);
+/*!*/            //DumpFloatArrayCompare("FloatComp.csv", "CL", "GL", cl.pFloats, gl.pFloats, cl.size / 4);
 /*!*/            _asm nop;
 /*!*/            break;
 /*!*/        };
@@ -267,6 +267,7 @@ const string *Simulation::ShaderFileList()
         "pack_data.cms",
         "update_velocities.cms",
         "apply_viscosity.cms",
+        "apply_vorticity.cms",
         ""
     };
 
@@ -554,17 +555,28 @@ void Simulation::applyViscosity()
 
 void Simulation::applyVorticity()
 {
-    int param = 0;
-    mKernels["applyVorticity"].setArg(param++, mParameters);
-    mKernels["applyVorticity"].setArg(param++, mPredictedPingBuffer);
-    mKernels["applyVorticity"].setArg(param++, mVelocitiesBuffer);
-    mKernels["applyVorticity"].setArg(param++, mOmegaBuffer);
-    mKernels["applyVorticity"].setArg(param++, mFriendsListBuffer);
-    mKernels["applyVorticity"].setArg(param++, Params.particleCount);
+    // Setup shader
+    glUseProgram(g_SelectedProgram = mPrograms["apply_viscosity"]);
+    glBindImageTexture(0, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA32F);
+    glBindImageTexture(1, mVelocitiesTBO,    0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+    glBindImageTexture(2, mOmegasTBO,        0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA32F);
+    glBindImageTexture(3, mFriendsListTBO,   0, GL_FALSE, 0, GL_READ_ONLY,  GL_R32I);
+    glUniform1i(0/*N*/, Params.particleCount);
 
-    mQueue.enqueueNDRangeKernel(mKernels["applyVorticity"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("applyVorticity"));
+    // Execute shader
+    glDispatchCompute(Params.particleCount, 1, 1);
 
-    //SaveFile(mQueue, mDeltaVelocityBuffer, "Omega");
+    /*!*/int param = 0;
+    /*!*/mKernels["applyVorticity"].setArg(param++, mParameters);
+    /*!*/mKernels["applyVorticity"].setArg(param++, mPredictedPingBuffer);
+    /*!*/mKernels["applyVorticity"].setArg(param++, mVelocitiesBuffer);
+    /*!*/mKernels["applyVorticity"].setArg(param++, mOmegaBuffer);
+    /*!*/mKernels["applyVorticity"].setArg(param++, mFriendsListBuffer);
+    /*!*/mKernels["applyVorticity"].setArg(param++, Params.particleCount);
+    /*!*/
+    /*!*/mQueue.enqueueNDRangeKernel(mKernels["applyVorticity"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("applyVorticity"));
+    /*!*/
+    /*!*/CompareFloatBuffers(mQueue, mVelocitiesBuffer, mVelocitiesSBO);
 }
 
 void Simulation::predictPositions()
@@ -681,7 +693,7 @@ void Simulation::buildFriendsList()
     /*!*/mKernels["resetGrid"].setArg(param++, mCellsBuffer);
     /*!*/mKernels["resetGrid"].setArg(param++, Params.particleCount);
     /*!*/mQueue.enqueueNDRangeKernel(mKernels["resetGrid"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("resetPartList"));
-
+    /*!*/
     /*!*/CompareIntBuffers(mQueue, mInKeysBuffer, mInKeysSBO);
     /*!*/CompareIntBuffers(mQueue, mCellsBuffer, mCellsSBO);
 }
@@ -700,9 +712,9 @@ void Simulation::updatePredicted(int iterationIndex)
     /*!*/mKernels["updatePredicted"].setArg(param++, mPredictedPingBuffer);
     /*!*/mKernels["updatePredicted"].setArg(param++, mDeltaBuffer);
     /*!*/mKernels["updatePredicted"].setArg(param++, Params.particleCount);
-
+    /*!*/
     /*!*/mQueue.enqueueNDRangeKernel(mKernels["updatePredicted"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updatePredicted", iterationIndex));
-
+    /*!*/
     /*!*/CompareFloatBuffers(mQueue, mPredictedPingBuffer, mPredictedPingSBO);
 }
 
@@ -720,9 +732,9 @@ void Simulation::packData()
     /*!*/mKernels["packData"].setArg(param++, mPredictedPingBuffer);
     /*!*/mKernels["packData"].setArg(param++, mDensityBuffer);
     /*!*/mKernels["packData"].setArg(param++, Params.particleCount);
-
+    /*!*/
     /*!*/mQueue.enqueueNDRangeKernel(mKernels["packData"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("packData"));
-
+    /*!*/
     /*!*/CompareFloatBuffers(mQueue, mPredictedPingBuffer, mPredictedPingSBO);
 }
 
@@ -746,25 +758,20 @@ void Simulation::computeDelta(int iterationIndex)
     /*!*/mKernels["computeDelta"].setArg(param++, mFriendsListBuffer);
     /*!*/mKernels["computeDelta"].setArg(param++, fWavePos);
     /*!*/mKernels["computeDelta"].setArg(param++, Params.particleCount);
-
-    // std::cout << "CL_KERNEL_LOCAL_MEM_SIZE = " << mKernels["computeDelta"].getWorkGroupInfo<CL_KERNEL_LOCAL_MEM_SIZE>(NULL) << std::endl;
-    // std::cout << "CL_KERNEL_PRIVATE_MEM_SIZE = " << mKernels["computeDelta"].getWorkGroupInfo<CL_KERNEL_PRIVATE_MEM_SIZE>(NULL) << std::endl;
-
+    /*!*/
 /*!*/#ifdef LOCALMEM
 /*!*/    mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, cl::NDRange(DivCeil(Params.particleCount, 256)*256), cl::NDRange(256), NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
 /*!*/#else
 /*!*/    mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
 /*!*/#endif
-
+    /*!*/
     /*!*/CompareFloatBuffers(mQueue, mDeltaBuffer, mDeltaSBO);
-
-    //SaveFile(mQueue, mDeltaBuffer, "delta2");
 }
 
 void Simulation::computeScaling(int iterationIndex)
 {
-    /*!*/CL2GL_BufferCopy(mQueue, mPredictedPingBuffer, mPredictedPingSBO);
-    /*!*/CL2GL_BufferCopy(mQueue, mDensityBuffer, mDensitySBO);
+    ///*!*/CL2GL_BufferCopy(mQueue, mPredictedPingBuffer, mPredictedPingSBO);
+    ///*!*/CL2GL_BufferCopy(mQueue, mDensityBuffer, mDensitySBO);
 
     glUseProgram(g_SelectedProgram = mPrograms["compute_scaling"]);
     glBindImageTexture(0, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_WRITE,  GL_RGBA32F);
@@ -789,8 +796,8 @@ void Simulation::computeScaling(int iterationIndex)
 
 void Simulation::updateCells()
 {
-    /*!*/CL2GL_BufferCopy(mQueue, mInKeysBuffer, mInKeysSBO);
-    /*!*/CL2GL_BufferCopy(mQueue, mCellsBuffer, mCellsSBO);
+    ///*!*/CL2GL_BufferCopy(mQueue, mInKeysBuffer, mInKeysSBO);
+    ///*!*/CL2GL_BufferCopy(mQueue, mCellsBuffer, mCellsSBO);
 
     glUseProgram(g_SelectedProgram = mPrograms["update_cells"]);
     glBindImageTexture(0, mInKeysTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_R32I);
@@ -833,27 +840,6 @@ void Simulation::radixsort()
 
     /*!*/CompareIntBuffers(mQueue, mInKeysBuffer, mInKeysSBO);
     /*!*/CompareIntBuffers(mQueue, mInPermutationBuffer, mInPermutationSBO);
-
-    // // DEBUG
-    // cl_uint *keys = new cl_uint[_NKEYS];
-    // cl_uint *permutation = new cl_uint[_NKEYS];
-    // mQueue.finish();
-    // mQueue.enqueueReadBuffer(mInKeysBuffer, CL_TRUE, 0, sizeof(cl_uint) * _NKEYS, keys);
-    // mQueue.enqueueReadBuffer(mInPermutationBuffer, CL_TRUE, 0, sizeof(cl_uint) * _NKEYS, permutation);
-    // mQueue.finish();
-    // cout << "before sort:" << endl;
-    // cout << "keys: ";
-    // for (unsigned int i = 0; i < _NKEYS; ++i)
-    // {
-    //     cout << i<<"="<<keys[i] << ",";
-    // }
-    // cout << endl;
-    // cout << "permu: ";
-    // for (unsigned int i = 0; i < _NKEYS; ++i)
-    // {
-    //     cout << i<<"="<<permutation[i] << ",";
-    // }
-    // cout << endl;
 
     for (size_t pass = 0; pass < _PASS; pass++)
     {
@@ -998,27 +984,6 @@ void Simulation::radixsort()
         /*!*/mInPermutationBuffer = mOutPermutationBuffer;
         /*!*/mOutPermutationBuffer = tmp;
     }
-
-    // // DEBUG
-    // mQueue.finish();
-    // mQueue.enqueueReadBuffer(mInKeysBuffer, CL_TRUE, 0, sizeof(cl_uint) * _NKEYS, keys);
-    // mQueue.enqueueReadBuffer(mInPermutationBuffer, CL_TRUE, 0, sizeof(cl_uint) * _NKEYS, permutation);
-    // mQueue.finish();
-    // cout << "before sort:" << endl;
-    // cout << "keys: ";
-    // for (unsigned int i = 0; i < _NKEYS; ++i)
-    // {
-    //     cout << i<<"="<<keys[i] << ",";
-    // }
-    // cout << endl;
-    // cout << "permu: ";
-    // for (unsigned int i = 0; i < _NKEYS; ++i)
-    // {
-    //     cout << i<<"="<<permutation[i] << ",";
-    // }
-    // cout << endl;
-    // delete[] keys;
-    // delete[] permutation;
 
     // Lock Yang buffer (Yin is already locked)
     //vector<cl::Memory> sharedBuffers;
