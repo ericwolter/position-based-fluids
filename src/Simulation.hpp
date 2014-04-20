@@ -92,9 +92,11 @@ public:
     GLuint            mDeltaSBO;
     GLuint            mDeltaTBO;
     /*!*/cl::Buffer mDeltaBuffer;
-    cl::Buffer mOmegaBuffer;
-    GLuint   mGLParametersUBO;
-    cl::Buffer mParameters;
+    GLuint            mOmegasSBO;
+    GLuint            mOmegasTBO;
+    /*!*/cl::Buffer mOmegaBuffer;
+    GLuint            mGLParametersUBO;
+    /*!*/cl::Buffer mParameters;
 
     cl::Image2DGL mParticlePosImg;
 

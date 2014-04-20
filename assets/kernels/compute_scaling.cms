@@ -24,9 +24,7 @@ void main()
     int totalFriends = 0;
     int circleParticles[MAX_FRIENDS_CIRCLES];
     for (int j = 0; j < MAX_FRIENDS_CIRCLES; j++) 
-    {
         totalFriends += circleParticles[j] = imageLoad(imgFriendsList, j * MAX_PARTICLES_COUNT + i).x;
-    }
 
     int proccedFriends = 0;
     for (int iCircle = 0; iCircle < MAX_FRIENDS_CIRCLES; iCircle++)
@@ -49,7 +47,7 @@ void main()
         for (int iFriend = 0; iFriend < circleParticles[iCircle]; iFriend++)
         {
             // Read friend index from friends_list
-            const int j_index = imageLoad(imgFriendsList,baseIndex + iFriend * MAX_PARTICLES_COUNT).x;
+            const int j_index = imageLoad(imgFriendsList, baseIndex + iFriend * MAX_PARTICLES_COUNT).x;
 
             // Get j particle data
             vec4 j_data = imageLoad(imgPredicted, j_index);

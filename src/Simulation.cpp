@@ -93,6 +93,16 @@ void Simulation::CreateParticles()
 /*!*/    }
 /*!*/}
 /*!*/
+void DumpFloatArrayCompare(char* szFilename, char* szTitle1, char* szTitle2, float* arr1, float* arr2, int itemsCount)
+{
+    ofstream fdmp(szFilename);
+    fdmp << szTitle1 << "," << szTitle2 << ",diff" << endl;
+    for (int i = 0; i < itemsCount; i++) 
+    {
+        fdmp << arr1[i] << "," << arr2[i] << "," << arr2[i] - arr1[i] << endl;
+    }
+}
+/*!*/
 /*!*/void CompareFloatBuffers(cl::CommandQueue queue, cl::Buffer clBuf, GLuint glBuf)
 /*!*/{
 /*!*/    CopyBufferToHost gl(GL_SHADER_STORAGE_BUFFER, glBuf);
@@ -106,8 +116,9 @@ void Simulation::CreateParticles()
 /*!*/        float glv = gl.pFloats[i];
 /*!*/        float diff = abs(clv - glv);
 /*!*/
-/*!*/        if (diff > 0.01)
+/*!*/        if (diff > 0.1)
 /*!*/        {
+/*!*/            DumpFloatArrayCompare("FloatComp.csv", "CL", "GL", cl.pFloats, gl.pFloats, cl.size / 4);
 /*!*/            _asm nop;
 /*!*/            break;
 /*!*/        };
@@ -254,7 +265,9 @@ const string *Simulation::ShaderFileList()
         "compute_delta.cms",
         "update_predicted.cms",
         "pack_data.cms",
-        "update_velocities.cms"
+        "update_velocities.cms",
+        "apply_viscosity.cms",
+        ""
     };
 
     return shaders;
@@ -360,7 +373,9 @@ void Simulation::InitBuffers()
     mDeltaSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(vec4) * Params.particleCount, NULL);
     mDeltaTBO = GenTextureBuffer(GL_RGBA32F, mDeltaSBO);
     /*!*/mDeltaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
-    mOmegaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
+    mOmegasSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(vec4) * Params.particleCount, NULL);
+    mOmegasTBO = GenTextureBuffer(GL_RGBA32F, mOmegasSBO);
+    /*!*/mOmegaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mDensitySBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(float) * Params.particleCount, NULL);
     mDensityTBO = GenTextureBuffer(GL_R32F, mDensitySBO);
     /*!*/mDensityBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.particleCount * sizeof(cl_float));
@@ -486,7 +501,7 @@ void SaveFile(cl::CommandQueue queue, cl::Buffer buffer, const char *szFilename)
 
 void Simulation::updateVelocities()
 {
-        // Setup shader
+    // Setup shader
     glUseProgram(g_SelectedProgram = mPrograms["update_velocities"]);
     glBindImageTexture(0, mPositionsPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA32F);
     glBindImageTexture(1, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
@@ -512,18 +527,29 @@ void Simulation::updateVelocities()
 
 void Simulation::applyViscosity()
 {
-    int param = 0;
-    mKernels["applyViscosity"].setArg(param++, mParameters);
-    mKernels["applyViscosity"].setArg(param++, mPredictedPingBuffer);
-    mKernels["applyViscosity"].setArg(param++, mVelocitiesBuffer);
-    mKernels["applyViscosity"].setArg(param++, mOmegaBuffer);
-    mKernels["applyViscosity"].setArg(param++, mFriendsListBuffer);
-    mKernels["applyViscosity"].setArg(param++, Params.particleCount);
+    // Setup shader
+    glUseProgram(g_SelectedProgram = mPrograms["apply_viscosity"]);
+    glBindImageTexture(0, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+    glBindImageTexture(1, mFriendsListTBO,   0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
+    glBindImageTexture(2, mVelocitiesTBO,    0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+    glBindImageTexture(3, mOmegasTBO,        0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
+    glUniform1i(0/*N*/,        Params.particleCount);
 
-    mQueue.enqueueNDRangeKernel(mKernels["applyViscosity"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("applyViscosity"));
+    // Execute shader
+    glDispatchCompute(Params.particleCount, 1, 1);
 
-    //SaveFile(mQueue, mOmegaBuffer, "Omega");
-    //SaveFile(mQueue, mDeltaVelocityBuffer, "DeltaVel");
+    /*!*/int param = 0;
+    /*!*/mKernels["applyViscosity"].setArg(param++, mParameters);
+    /*!*/mKernels["applyViscosity"].setArg(param++, mPredictedPingBuffer);
+    /*!*/mKernels["applyViscosity"].setArg(param++, mVelocitiesBuffer);
+    /*!*/mKernels["applyViscosity"].setArg(param++, mOmegaBuffer);
+    /*!*/mKernels["applyViscosity"].setArg(param++, mFriendsListBuffer);
+    /*!*/mKernels["applyViscosity"].setArg(param++, Params.particleCount);
+    /*!*/
+    /*!*/mQueue.enqueueNDRangeKernel(mKernels["applyViscosity"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("applyViscosity"));
+    /*!*/
+    /*!*/CompareFloatBuffers(mQueue, mOmegaBuffer, mOmegasSBO);
+    /*!*/CompareFloatBuffers(mQueue, mVelocitiesBuffer, mVelocitiesSBO);
 }
 
 void Simulation::applyVorticity()
@@ -738,6 +764,7 @@ void Simulation::computeDelta(int iterationIndex)
 void Simulation::computeScaling(int iterationIndex)
 {
     /*!*/CL2GL_BufferCopy(mQueue, mPredictedPingBuffer, mPredictedPingSBO);
+    /*!*/CL2GL_BufferCopy(mQueue, mDensityBuffer, mDensitySBO);
 
     glUseProgram(g_SelectedProgram = mPrograms["compute_scaling"]);
     glBindImageTexture(0, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_WRITE,  GL_RGBA32F);
@@ -754,19 +781,10 @@ void Simulation::computeScaling(int iterationIndex)
     /*!*/mKernels["computeScaling"].setArg(param++, mDensityBuffer);
     /*!*/mKernels["computeScaling"].setArg(param++, mFriendsListBuffer);
     /*!*/mKernels["computeScaling"].setArg(param++, Params.particleCount);
-
-    // std::cout << "CL_KERNEL_LOCAL_MEM_SIZE = " << mKernels["computeScaling"].getWorkGroupInfo<CL_KERNEL_LOCAL_MEM_SIZE>(NULL) << std::endl;
-    // std::cout << "CL_KERNEL_PRIVATE_MEM_SIZE = " << mKernels["computeScaling"].getWorkGroupInfo<CL_KERNEL_PRIVATE_MEM_SIZE>(NULL) << std::endl;
-
+    /*!*/
     /*!*/mQueue.enqueueNDRangeKernel(mKernels["computeScaling"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeScaling", iterationIndex));
-    // mQueue.enqueueNDRangeKernel(mKernels["computeScaling"], 0, cl::NDRange(((Params.particleCount + 399) / 400) * 400), cl::NDRange(400), NULL, PerfData.GetTrackerEvent("computeScaling", iterationIndex));
-
-    //SaveFile(mQueue, mPredictedPingBuffer, "pred2");
-    //SaveFile(mQueue, mDensityBuffer,       "dens2");
-
     /*!*/CompareFloatBuffers(mQueue, mDensityBuffer, mDensitySBO);
     /*!*/CompareFloatBuffers(mQueue, mPredictedPingBuffer, mPredictedPingSBO);
-
 }
 
 void Simulation::updateCells()

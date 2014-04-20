@@ -41,8 +41,8 @@ __kernel void applyViscosity(
         {
             // Read friend index from friends_list
             const int j_index = friends_list[baseIndex + iFriend * MAX_PARTICLES_COUNT];
-			
-			__private float4 neighbor = predicted[j_index];
+            
+            __private float4 neighbor = predicted[j_index];
 
             const float3 r = particle.xyz - neighbor.xyz;
             const float r_length_2 = (r.x * r.x + r.y * r.y + r.z * r.z);
@@ -61,9 +61,9 @@ __kernel void applyViscosity(
 
                     // equation 15
                     const float r_length = sqrt(r_length_2);
-                    const float3 gradient_spiky = r / (r_length)
-                                                  * (Params->h - r_length)
-                                                  * (Params->h - r_length);
+                    const float h_r_diff = Params->h - r_length;
+                    const float3 gradient_spiky = r * h_r_diff * h_r_diff / r_length;
+
                     // the gradient has to be negated because it is with respect to p_j
                     omega_i += cross(v, gradient_spiky);
 
