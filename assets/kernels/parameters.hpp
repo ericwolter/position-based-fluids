@@ -1,11 +1,21 @@
 // add "#pragma once" for PC compile only
 #if !defined(__OPENCL_VERSION__) && !defined(GLSL_COMPILER)
     #pragma once
+
+    #include <glm\glm.hpp>
+    using namespace glm;
 #endif
 
-// define class header (GLSL is diffrent from C++/OpeCL)
+// Define class header
 #ifdef GLSL_COMPILER
-layout (std140, binding = 10) uniform Parameters
+    #define CLASS_HEADER layout (std140, binding = 10) uniform Parameter
+    #define CLASS_FOOTER Params
+#else
+    #define CLASS_HEADER struct Parameters
+    #define CLASS_FOOTER
+#endif
+
+CLASS_HEADER 
 {
     // Runner related
     int resetSimOnChange;
@@ -53,60 +63,7 @@ layout (std140, binding = 10) uniform Parameters
 
     // Computed fields
     float h_2;
-};
-#else
-struct Parameters
-{
-    // Runner related
-    int  resetSimOnChange;
-
-    // Scene related
-    unsigned int  particleCount;
-    float xMin;
-    float xMax;
-    float yMin;
-    float yMax;
-    float zMin;
-    float zMax;
-
-    float waveGenAmp;
-    float waveGenFreq;
-    float waveGenDuty;
-
-    // Simulation consts
-    float timeStep;
-    unsigned int  simIterations;
-    unsigned int  subSteps;
-    float h;
-    float restDensity;
-    float epsilon;
-    float gravity;
-    float vorticityFactor;
-    float viscosityFactor;
-    float surfaceTenstionK;
-    float surfaceTenstionDist;
-
-    // Grid and friends list
-    unsigned int  friendsCircles;
-    unsigned int  particlesPerCircle;
-    unsigned int  gridBufSize;
-
-    // Setup related
-    float setupSpacing;
-
-    // Sorting
-    unsigned int  segmentSize;
-    unsigned int  sortIterations;
-
-    // Rendering related
-    float particleRenderSize;
-
-    // Computed fields
-    float h_2;
-};
-#endif
-
-
+} CLASS_FOOTER;
 
 // RADIX SORTING
 // NOTE: Brackets can't be used to define local size in compute shaders

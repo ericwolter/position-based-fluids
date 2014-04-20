@@ -13,7 +13,7 @@ void main()
     {
         vec4 predicted = imageLoad(imgPredicted, i);
         
-        ivec3 currentCell = ivec3(predicted.xyz / h);
+        ivec3 currentCell = ivec3(predicted.xyz / Params.h);
         
         int cellHash = calcGridHash(currentCell);
         

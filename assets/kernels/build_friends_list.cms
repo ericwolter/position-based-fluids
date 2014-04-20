@@ -11,7 +11,7 @@ void main()
     const int i = int(gl_GlobalInvocationID.x);
     if (i >= N) return;
     
-    const float MIN_R = 0.3f * h;
+    const float MIN_R = 0.3f * Params.h;
 
     // Define circle particle counter varible
     int circleParticles[MAX_FRIENDS_CIRCLES];
@@ -20,7 +20,7 @@ void main()
 
     // Start grid scan
     vec4 predicted = imageLoad(imgPredicted, i);
-    ivec3 currentCell = ivec3(predicted.xyz / h);
+    ivec3 currentCell = ivec3(predicted.xyz / Params.h);
 
     for (int x = -1; x <= 1; ++x)
     {
@@ -48,11 +48,11 @@ void main()
                         // Ignore unfriendly particles (r > h)
                         const vec3 r = predicted.xyz - predicted_j.xyz;
                         const float r_length_2 = dot(r, r);
-                        if (r_length_2 >= h_2)
+                        if (r_length_2 >= Params.h_2)
                             continue;
 
                         // Find particle circle
-                        const float adjusted_r = max(0.0f, (sqrt(r_length_2) - MIN_R) / (h - MIN_R));
+                        const float adjusted_r = max(0.0f, (sqrt(r_length_2) - MIN_R) / (Params.h - MIN_R));
                         const int j_circle = min(int(adjusted_r * adjusted_r * adjusted_r * MAX_FRIENDS_CIRCLES), MAX_FRIENDS_CIRCLES - 1);
 
                         // Make sure particle doesn't have too many friends

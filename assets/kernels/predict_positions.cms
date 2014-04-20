@@ -20,12 +20,12 @@ void main()
     
         // Append gravity (if simulation isn't pause)
         // ignore last component in calculations so it can store additional related information
-        vec3 newVelocity = velocity.xyz + timeStep * vec3(0,-gravity,0);
+        vec3 newVelocity = velocity.xyz + Params.timeStep * vec3(0,-Params.gravity,0);
         imageStore(imgVelocities, i, vec4(newVelocity,velocity.w));
         
         
         // Compute new predicted position
-        vec3 predictedPosition = position.xyz + timeStep * newVelocity;
+        vec3 predictedPosition = position.xyz + Params.timeStep * newVelocity;
         imageStore(imgPredicted, i, vec4(predictedPosition,position.w));
     }
 }

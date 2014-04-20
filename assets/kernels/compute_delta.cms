@@ -41,11 +41,11 @@ void main()
 
     // Sum of lambdas
     vec3 sum = vec3(0.0f);
-    const float h_2_cache = Parameters.h_2;
-    const float h_cache = Parameters.h;
+    const float h_2_cache = Params.h_2;
+    const float h_cache = Params.h;
 
     // equation (13)
-    const float q_2 = pow(Parameters.surfaceTenstionDist * h_cache, 2);
+    const float q_2 = pow(Params.surfaceTenstionDist * h_cache, 2);
     const float poly6_q = pow(h_2_cache - q_2, 3);
 
     // read number of friends
@@ -99,7 +99,7 @@ void main()
                 const float poly6_r = r_2_diff * r_2_diff * r_2_diff;
 
                 const float r_q_radio = poly6_r / poly6_q;
-                const float s_corr = Parameters.surfaceTenstionK * r_q_radio * r_q_radio * r_q_radio * r_q_radio;
+                const float s_corr = Params.surfaceTenstionK * r_q_radio * r_q_radio * r_q_radio * r_q_radio;
 
                 // Sum for delta p of scaling factors and grad spiky (equation 12)
                 sum += (predicted.w + j_data.w + s_corr) * gradient_spiky;
@@ -108,7 +108,7 @@ void main()
     }
 
     // equation (12)
-    vec3 delta_p = (-GRAD_SPIKY_FACTOR*sum) / Parameters.restDensity;
+    vec3 delta_p = (-GRAD_SPIKY_FACTOR*sum) / Params.restDensity;
 
     float randDist = 0.005f;
     vec3 future = predicted.xyz + delta_p;
@@ -119,11 +119,11 @@ void main()
     frand(randSeed);
 
     // Clamp Y
-    if (future.y < Parameters.yMin) future.y = Parameters.yMin + frand(randSeed) * randDist;
-    if (future.z < Parameters.zMin) future.z = Parameters.zMin + frand(randSeed) * randDist;
-    else if (future.z > Parameters.zMax) future.z = Parameters.zMax - frand(randSeed) * randDist;
-    if (future.x < (Parameters.xMin + wave_generator))  future.x = Parameters.xMin + wave_generator + frand(randSeed) * randDist;
-    else if (future.x > (Parameters.xMax))  future.x = Parameters.xMax                  - frand(randSeed) * randDist;
+    if (future.y < Params.yMin) future.y = Params.yMin + frand(randSeed) * randDist;
+    if (future.z < Params.zMin) future.z = Params.zMin + frand(randSeed) * randDist;
+    else if (future.z > Params.zMax) future.z = Params.zMax - frand(randSeed) * randDist;
+    if (future.x < (Params.xMin + wave_generator))  future.x = Params.xMin + wave_generator + frand(randSeed) * randDist;
+    else if (future.x > (Params.xMax))  future.x = Params.xMax                  - frand(randSeed) * randDist;
 
     // Compute delta
     imageStore(imgDelta, i, vec4(future - predicted.xyz,0));

@@ -235,7 +235,7 @@ GLuint GenTextureBuffer(GLenum format, GLuint bufferId)
 bool Simulation::InitShaders()
 {
     // Build shader header
-    string header = "#version 430\n#define GLSL_COMPILER\n";
+    string header = "#version 430\n#define GLSL_COMPILER\n#pragma optionNV(fastmath off)\n#pragma optionNV(fastprecision off)\n";
 
     // Add Parameters 
     header += "#line 1\n" + getKernelSource("parameters.hpp") + "\n";
@@ -726,6 +726,8 @@ void Simulation::computeDelta(int iterationIndex)
 
 void Simulation::computeScaling(int iterationIndex)
 {
+    /*!*/CL2GL_BufferCopy(mQueue, mPredictedPingBuffer, mPredictedPingSBO);
+
     glUseProgram(g_SelectedProgram = mPrograms["compute_scaling"]);
     glBindImageTexture(0, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_WRITE,  GL_RGBA32F);
     glBindImageTexture(1, mDensityTBO,       0, GL_FALSE, 0, GL_WRITE_ONLY,  GL_R32F);
