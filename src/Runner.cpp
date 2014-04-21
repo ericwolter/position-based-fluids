@@ -15,9 +15,6 @@ void Runner::run(Simulation &simulation, CVisual &renderer)
     const string *pCShaders = simulation.ShaderFileList();
     for (int iSrc = 0; pCShaders[iSrc] != ""; iSrc++)
         mKernelFilesTracker.push_back(make_pair(getPathForKernel(pCShaders[iSrc]), defaultTime));
-    /*!*/const string *pKernels = simulation.CL_KernelFileList();
-    /*!*/for (int iSrc = 0; pKernels[iSrc] != ""; iSrc++)
-    /*!*/    mKernelFilesTracker.push_back(make_pair(getPathForKernel(pKernels[iSrc]), defaultTime));
 
     // Append parameter file to resource tracking file list
     mKernelFilesTracker.push_back(make_pair(getPathForScenario("dam_coarse.par"), defaultTime));
@@ -34,11 +31,11 @@ void Runner::run(Simulation &simulation, CVisual &renderer)
     UIManager_Init(renderer.mWindow, &renderer, &simulation);
 
     // Main loop
-    bool KernelBuildOk = false;
-    cl_uint prevParticleCount = 0;
-    cl_float simTime = 0.0f;
-    cl_float waveTime = 0.0f;
-    cl_float wavePos  = 0.0f;
+    bool  KernelBuildOk = false;
+    uint  prevParticleCount = 0;
+    float simTime = 0.0f;
+    float waveTime = 0.0f;
+    float wavePos  = 0.0f;
 
     do
     {
@@ -57,15 +54,6 @@ void Runner::run(Simulation &simulation, CVisual &renderer)
                 // Notify renderer for parameter changed
                 renderer.parametersChanged();
 
-                // Generate shared buffer
-                simulation.mSharedPingBufferID = renderer.createSharingBuffer(Params.particleCount * sizeof(cl_float4));
-                simulation.mSharedPongBufferID = renderer.createSharingBuffer(Params.particleCount * sizeof(cl_float4));
-                simulation.mSharedParticlesPos = renderer.createSharingTexture(2048, (Params.particleCount + 2048 - 1) / 2048);
-
-                // Generated friends list shared buffer
-                int nFriendListSize = Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle);
-                simulation.mSharedFriendsList   = OGLU_GenerateTexture(2048, (nFriendListSize + 2048 - 1) / 2048, GL_R32UI);
-
                 // Init buffers
                 simulation.InitBuffers();
             }
@@ -75,7 +63,6 @@ void Runner::run(Simulation &simulation, CVisual &renderer)
 
             // Init kernels
             KernelBuildOk = simulation.InitShaders();
-            /*!*/KernelBuildOk = KernelBuildOk && simulation.CL_InitKernels();
 
             // Reset wavee
             waveTime = 0.0f;
@@ -98,7 +85,7 @@ void Runner::run(Simulation &simulation, CVisual &renderer)
         if (renderer.UICmd_GenerateWaves)
         {
             // Wave consts
-            const cl_float wave_push_length = Params.waveGenAmp * (Params.xMax - Params.xMin);
+            const float wave_push_length = Params.waveGenAmp * (Params.xMax - Params.xMin);
 
             // Update the wave position
             float t = Params.waveGenFreq * waveTime;
@@ -119,7 +106,7 @@ void Runner::run(Simulation &simulation, CVisual &renderer)
         simulation.fWavePos         = wavePos;
 
         // Sub frames
-        for (cl_uint i = 0; i < Params.subSteps; i++)
+        for (uint i = 0; i < Params.subSteps; i++)
         {
             // Execute simulation
             simulation.Step();

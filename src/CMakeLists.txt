@@ -5,7 +5,6 @@ include_directories(
     ${CMAKE_SOURCE_DIR}/lib/soil/src/
     ${CMAKE_SOURCE_DIR}/lib/AntTweakBar/include
     ${GLEW_INCLUDE_DIRS}
-	${OPENCL_INCLUDE_DIRS}
 )
 
 if(MSVC)
@@ -25,27 +24,21 @@ set(SOURCE
     Simulation.cpp
     Resources.cpp
     ParamUtils.cpp
-    OCLPerfMon.cpp
     UIManager.cpp    
     ZPR.cpp
     OGL_Utils.cpp
-    OCL_Logger.cpp
     OGL_RenderStageInspector.cpp
 )
 
 set(HEADER
-    hesp.hpp
-    Particle.hpp
     Runner.hpp
     Simulation.hpp
     Resources.hpp
     Parameters.hpp  
     ParamUtils.hpp
-    OCLPerfMon.h
     UIManager.h
     ZPR.h
     OGL_Utils.h
-    OCL_Logger.h
     OGL_RenderStageInspector.h
     Precomp_OpenGL.h
 )
@@ -53,10 +46,8 @@ set(HEADER
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_subdirectory(visual)
-add_subdirectory(ocl)
 
 set(KERNELS_SRC_SHARE
-    "${PBF_SOURCE_DIR}/src/hesp.hpp"
     "${PBF_SOURCE_DIR}/src/parameters.hpp"
 )
 
@@ -92,7 +83,6 @@ if (APPLE)
         glfw
         soil
         ${OPENGL_LIBRARY}
-        ${OPENCL_LIBRARY}
         ${COREFOUNDATION_LIBRARY}
         ${COCOA_LIB}
         ${IOKIT_LIB}
@@ -106,7 +96,6 @@ elseif(MSVC)
         soil
         glew32s
         ${OPENGL_LIBRARY}
-        ${OPENCL_LIBRARY}
         ${ANTTWEAKBAR_LIBRARY}
     )
 else()
@@ -114,7 +103,6 @@ else()
         glfw
         soil
         ${OPENGL_LIBRARY}
-        ${OPENCL_LIBRARY}
         ${ANTTWEAKBAR_LIBRARY}
     )
 endif()

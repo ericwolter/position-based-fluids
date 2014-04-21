@@ -5,7 +5,6 @@
 
 #include "../Precomp_OpenGL.h"
 #include "../OGL_Utils.h"
-#include "../hesp.hpp"
 #include "../Resources.hpp"
 #include "../Simulation.hpp"
 
@@ -98,9 +97,6 @@ private:
     int mWindowHeight;
     int mFrameWidth;
     int mFrameHeight;
-
-    // Rendering states
-    int mCycleID;
 
     // Rendering FBOs
     FBO *pPrevTarget;

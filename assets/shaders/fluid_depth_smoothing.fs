@@ -1,22 +1,19 @@
 #version 430
 
 uniform sampler2D depthTexture;
-uniform sampler2D particlesPos;
-uniform usampler2D visParticles;
 
+layout (binding = 0, rgba32f) uniform readonly imageBuffer  imgPosition;
+layout (binding = 1, r32i)    uniform readonly iimageBuffer imgCells;
+
+// Projection and Deprojection
 uniform mat4      MV_Matrix;
 uniform mat4      iMV_Matrix;
 uniform mat4      Proj_Matrix;
 uniform vec2      depthRange;
 uniform vec2      invFocalLen; // See http://stackoverflow.com/questions/17647222/ssao-changing-dramatically-with-camera-angle
 
-layout(r32i) uniform iimage2D grid_chain;
-layout(r32i) uniform iimage2D grid;
-
 // Particles related
 uniform float     smoothLength;
-//uniform float     poly6Factor;
-//uniform float     poly6GradFactor;
 uniform int       particlesCount;
 uniform uint      currentCycleID;
 
@@ -93,48 +90,6 @@ float ViewSpaceDepth_to_ZBufferDepth(vec3 viewSpacePos)
     return (abs(far - near) * ndcDepth + near + far) / 2.0;
 }
 
-vec3 GetParticlePos(int index)
-{
-    // Compute texture location
-    ivec2 texSize = textureSize(particlesPos, 0);
-    ivec2 texCoord = ivec2(index % texSize.x, index / texSize.x);
-    
-    // Get position value
-    return texelFetch(particlesPos, texCoord, 0).xyz;
-}
-
-float GetDensity(vec3 worldPos)
-{
-    int visMapWidth = textureSize(visParticles, 0).x;
-    
-    float h_2 = smoothLength*smoothLength;
-    
-    float density = 0.0;
-    for (int i = 0; i < particlesCount; i++)
-    {
-        // Check if we should skip this particle (not visible)
-        uint partCycleID = texelFetch(visParticles, ivec2(i % visMapWidth, i / visMapWidth), 0).x;
-        if (partCycleID != currentCycleID) continue;
-    
-        // Get particles position
-        vec3 partPos = GetParticlePos(i);
-        
-        // find distance^2 between pixel and particles
-        vec3 delta = partPos - worldPos;
-        float r_2 = dot(delta, delta);
-
-        // Check if out of range
-        if (r_2 < h_2)
-        {
-            // append density
-            float h_2_r_2_diff = h_2 - r_2;
-            density += h_2_r_2_diff * h_2_r_2_diff * h_2_r_2_diff;    
-        }
-    }
-    
-    return density;
-}
-
 int expandBits(int x)
 {
     x = (x | (x << 16)) & 0x030000FF;
@@ -150,9 +105,9 @@ int mortonNumber(ivec3 gridPos)
     return expandBits(gridPos.x) | (expandBits(gridPos.y) << 1) | (expandBits(gridPos.z) << 2);
 }
 
-uint calcGridHash(ivec3 gridPos)
+int calcGridHash(ivec3 gridPos)
 {
-    return mortonNumber(gridPos) % /*GRID_BUF_SIZE*/ (2048*2048);
+    return mortonNumber(gridPos) % 200000/*GRID_BUF_SIZE*/;
 }
 
 void SampleDensityAndGradient(vec3 worldPos, out float density, out vec3 gradient)
@@ -166,24 +121,25 @@ void SampleDensityAndGradient(vec3 worldPos, out float density, out vec3 gradien
     int count = 0;
     
     // Compute Grid position
-    ivec3 gridCell = ivec3(worldPos / smoothLength);
-
-    // scan 3x3x3 cells
-    for (int iz = -1; iz <= +1; iz++)
+    ivec3 centerCell = ivec3(worldPos / smoothLength);
+result =vec4(1);
+    for (int x = -1; x <= 1; ++x)
     {
-        for (int iy = -1; iy <= +1; iy++)
+        for (int y = -1; y <= 1; ++y)
         {
-            for (int ix = -1; ix <= +1; ix++)
+            for (int z = -1; z <= 1; ++z)
             {
-                // Find first cell particle
-                uint gridOffset = calcGridHash(gridCell + ivec3(ix, iy, iz));
-                int partIdx = imageLoad(grid, ivec2(gridOffset % 2048, gridOffset / 2048)).x;
-                
-                // Scan chain
-                while (partIdx != -1)
+                // find first and last particle in this cell
+                int cell_index = calcGridHash(centerCell + ivec3(x, y, z));
+                int startIndex = imageLoad(imgCells, cell_index * 2 + 0).x;
+                int endIndex   = imageLoad(imgCells, cell_index * 2 + 1).x;
+                result = vec4(startIndex,0,0,1); return;
+
+                // Scan all particles in cell
+                for (int iPart = startIndex; iPart <= endIndex; iPart++)  
                 {
                     // Get particles position
-                    vec3 partPos = GetParticlePos(partIdx);
+                    vec3 partPos = imageLoad(imgPosition, iPart).xyz;
                     
                     // find distance^2 between pixel and particles
                     vec3 delta = partPos - worldPos;
@@ -202,9 +158,6 @@ void SampleDensityAndGradient(vec3 worldPos, out float density, out vec3 gradien
                         // append density
                         density += h_2_r_2_diff * h_2_r_2_diff * h_2_r_2_diff;    
                     }
-                    
-                    // Get next particle in chain
-                    partIdx = imageLoad(grid_chain, ivec2(partIdx % 2048, partIdx / 2048)).x;
                 }
             }
         }
@@ -246,6 +199,7 @@ void main()
     {
         // get test point density
         SampleDensityAndGradient(shellPos, density, gradient);
+        return;
         
         // Compute density delta 
         float densityDelta = density - TargetDensity;

@@ -1,10 +1,10 @@
 #pragma once
 
-#include "hesp.hpp"
-#include "parameters.hpp"
 
 #include <string>
 using std::string;
+
+#include "parameters.hpp"
 
 // A function to load parameters from file
 void LoadParameters(string InputFile);

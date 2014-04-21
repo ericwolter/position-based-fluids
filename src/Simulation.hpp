@@ -10,11 +10,7 @@
 #include <assert.h>
 #include <algorithm>
 
-#include "hesp.hpp"
 #include "Parameters.hpp"
-#include "Particle.hpp"
-#include "OCLPerfMon.h"
-#include "OCL_Logger.h"
 
 #include <GLFW/glfw3.h>
 
@@ -38,25 +34,9 @@ private:
     // Init particles positions
     void CreateParticles();
 
-    // Copy current positions and velocities
-    void dumpData(vec4 * (&positions), vec4 * (&velocities) );
-
 public:
-
-    // OpenCL objects supplied by OpenCL setup
-    const cl::Context &mCLContext;
-    const cl::Device &mCLDevice;
-
     // holds all shader programs used by simulation
     map<string, GLuint> mPrograms;
-    /*!*/map<string, cl::Kernel> mKernels;
-
-    // command queue all OpenCL calls are run on
-    cl::CommandQueue mQueue;
-
-    // ranges used for executing the kernels
-    cl::NDRange mGlobalRange;
-    cl::NDRange mLocalRange;
 
     // OCL buffer sizes
     size_t mBufferSizeParticles;
@@ -64,71 +44,46 @@ public:
     size_t mBufferSizeParticlesList;
 
     // The device memory buffers holding the simulation data
-    GLuint            mCellsSBO;
-    GLuint            mCellsTBO;
-    /*!*/cl::Buffer mCellsBuffer;
-    cl::Buffer mParticlesListBuffer;
+    GLuint mCellsSBO;
+    GLuint mCellsTBO;
     GLuint mFriendsListSBO;
     GLuint mFriendsListTBO;
-    /*!*/cl::Buffer mFriendsListBuffer;
-    GLuint            mPositionsPingSBO;
-    GLuint            mPositionsPingTBO;
-    /*!*/cl::BufferGL mPositionsPingBuffer;
-    GLuint            mPositionsPongSBO;
-    GLuint            mPositionsPongTBO;
-    /*!*/cl::BufferGL mPositionsPongBuffer;
-    GLuint            mPredictedPingSBO;
-    GLuint            mPredictedPingTBO;
-    /*!*/cl::Buffer   mPredictedPingBuffer;
-    GLuint            mPredictedPongSBO;
-    GLuint            mPredictedPongTBO;
-    /*!*/cl::Buffer mPredictedPongBuffer;
-    GLuint            mVelocitiesSBO;
-    GLuint            mVelocitiesTBO;
-    /*!*/cl::Buffer        mVelocitiesBuffer;
-    GLuint            mDensitySBO;
-    GLuint            mDensityTBO;
-    /*!*/cl::Buffer mDensityBuffer;
-    GLuint            mDeltaSBO;
-    GLuint            mDeltaTBO;
-    /*!*/cl::Buffer mDeltaBuffer;
-    GLuint            mOmegasSBO;
-    GLuint            mOmegasTBO;
-    /*!*/cl::Buffer mOmegaBuffer;
-    GLuint            mGLParametersUBO;
-    /*!*/cl::Buffer mParameters;
-
-    cl::Image2DGL mParticlePosImg;
+    GLuint mPositionsPingSBO;
+    GLuint mPositionsPingTBO;
+    GLuint mPositionsPongSBO;
+    GLuint mPositionsPongTBO;
+    GLuint mPredictedPingSBO;
+    GLuint mPredictedPingTBO;
+    GLuint mPredictedPongSBO;
+    GLuint mPredictedPongTBO;
+    GLuint mVelocitiesSBO;
+    GLuint mVelocitiesTBO;
+    GLuint mDensitySBO;
+    GLuint mDensityTBO;
+    GLuint mDeltaSBO;
+    GLuint mDeltaTBO;
+    GLuint mOmegasSBO;
+    GLuint mOmegasTBO;
+    GLuint mGLParametersUBO;
 
     // Radix buffers
     GLuint mInKeysSBO;
     GLuint mInKeysTBO;
-    /*!*/cl::Buffer mInKeysBuffer;
     GLuint mInPermutationSBO;
     GLuint mInPermutationTBO;
-    /*!*/cl::Buffer mInPermutationBuffer;
     GLuint mOutKeysSBO;
     GLuint mOutKeysTBO;
-    /*!*/cl::Buffer mOutKeysBuffer;
     GLuint mOutPermutationSBO;
     GLuint mOutPermutationTBO;
-    /*!*/cl::Buffer mOutPermutationBuffer;
     GLuint mHistogramSBO;
     GLuint mHistogramTBO;
-    /*!*/cl::Buffer mHistogramBuffer;
     GLuint mGlobSumSBO;
     GLuint mGlobSumTBO;
-    /*!*/cl::Buffer mGlobSumBuffer;
     GLuint mHistoTempSBO;
     GLuint mHistoTempTBO;
-    /*!*/cl::Buffer mHistoTempBuffer;
-    cl::Buffer mStatsBuffer;
-
-    // Lengths of each cell in each direction
-    cl_float4 mCellLength;
 
     // Array for the cells
-    cl_int *mCells;
+    int *mCells;
 
     // Private member functions
     void updateCells();
@@ -145,7 +100,7 @@ public:
 
 public:
     // Default constructor.
-    explicit Simulation(const cl::Context &clContext, const cl::Device &clDevice);
+    explicit Simulation();
 
     // Destructor.
     ~Simulation ();
@@ -158,36 +113,20 @@ public:
 
     // Load and build shaders
     bool InitShaders();
-    /*!*/bool CL_InitKernels();
 
     // Perform single simulation step
     void Step();
 
     // Get a list of kernel files
     const std::string *ShaderFileList();
-    /*!*/const std::string *CL_KernelFileList();
 
 public:
 
-    // Open GL Sharing buffers
-    GLuint mSharedPingBufferID;
-    GLuint mSharedPongBufferID;
-
-    // Open GL Sharing Texture buffer
-    GLuint mSharedParticlesPos;
-    GLuint mSharedFriendsList;
-
-    // Performance measurement
-    OCLPerfMon PerfData;
-
-    // OCL Logging
-    OCL_Logger oclLog;
-
     // Rendering state
-    bool      bPauseSim;
-    bool      bReadFriendsList;
-    bool      bDumpParticlesData;
-    cl_float  fWavePos;
+    bool   bPauseSim;
+    bool   bReadFriendsList;
+    bool   bDumpParticlesData;
+    float  fWavePos;
 
     // debug buffers (placed in host memory)
     vec4 *mPositions;

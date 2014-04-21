@@ -35,10 +35,9 @@ CVisual::CVisual (const int windowWidth, const int windowHeight)
       UICmd_ResetSimulation(false),
       UICmd_PauseSimulation(false),
       UICmd_FriendsHistogarm(false),
-      UICmd_RenderMode(0),
+      UICmd_RenderMode(1),
       mWindowWidth(windowWidth),
       mWindowHeight(windowHeight),
-      mCycleID(0),
       mSystemBufferID(0)
 {
 }
@@ -207,8 +206,6 @@ bool CVisual::initShaders()
         glUniform1i(UniformLoc("grid"),       2);
 
         glUseProgram(g_SelectedProgram = mFluidDepthSmoothProgID);
-        glUniform1i(UniformLoc("grid_chain"), 1);
-        glUniform1i(UniformLoc("grid"),       2);
     }
 
     return bLoadOK;
@@ -249,16 +246,21 @@ void CVisual::renderFluidSmoothDepth()
     ZPR_InvModelViewMatrix = glm::inverse(ZPR_ModelViewMatrix);
     glUseProgram(g_SelectedProgram = mFluidDepthSmoothProgID);
     OGLU_BindTextureToUniform("depthTexture", 0, pPrevTarget->pColorTextureId[0]);
-    OGLU_BindTextureToUniform("particlesPos", 1, mSimulation->mSharedParticlesPos);
-    OGLU_BindTextureToUniform("visParticles", 2, mImgParticleVisible);
+
+    // Bind image units
+    glBindImageTexture(0, mSimulation->mPositionsPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
+    glBindImageTexture(1, mSimulation->mCellsTBO,         0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
+
+    // Setup projection related unitforms
     glUniformMatrix4fv(UniformLoc("iMV_Matrix"), 1, GL_FALSE, glm::value_ptr(ZPR_InvModelViewMatrix));
     glUniformMatrix4fv(UniformLoc("MV_Matrix"),  1, GL_FALSE, glm::value_ptr(ZPR_ModelViewMatrix));
     glUniformMatrix4fv(UniformLoc("Proj_Matrix"), 1, GL_FALSE, glm::value_ptr(mProjectionMatrix));
     glUniform2f(UniformLoc("depthRange"), 0.1f, 10.0f);
     glUniform2fv(UniformLoc("invFocalLen"), 1, glm::value_ptr(mInvFocalLen));
+
+    // Setup simulation uniforms
     glUniform1f(UniformLoc("smoothLength"), Params.h);
     glUniform1i(UniformLoc("particlesCount"), Params.particleCount);
-    glUniform1ui(UniformLoc("currentCycleID"), mCycleID);
 
     OGLU_RenderQuad(0, 0, 1.0, 1.0);
     swapTargets();
@@ -266,54 +268,16 @@ void CVisual::renderFluidSmoothDepth()
 
 void CVisual::drawFullScreenTexture(GLuint textureID)
 {
-        // Select shader
-        glUseProgram(g_SelectedProgram = mStandardCopyProgID);
+    // Select shader
+    glUseProgram(g_SelectedProgram = mStandardCopyProgID);
 
-        // Update uniforms
-        OGLU_BindTextureToUniform("ImageSrc", 0, textureID);
-        glUniform1f(UniformLoc("offset"), 0.0f);
-        glUniform1f(UniformLoc("gain"),   1.0f);
+    // Update uniforms
+    OGLU_BindTextureToUniform("ImageSrc", 0, textureID);
+    glUniform1f(UniformLoc("offset"), 0.0f);
+    glUniform1f(UniformLoc("gain"),   1.0f);
     
-        // render quad
-        OGLU_RenderQuad(0, 0, 1.0, 1.0);
-
-}
-
-void CVisual::scanForVisible(GLuint inputTexture)
-{
-    // Setup program
-    glUseProgram(g_SelectedProgram = mVisibleScanProgID);
-    glUniform1ui(UniformLoc("cycleID"), mCycleID);
-    OGLU_BindTextureToUniform("inputTexture", 0, inputTexture);
-    glDispatchCompute(mFrameWidth, mFrameHeight, 1);
-}
-
-void CVisual::buildGrid()
-{
-    // Setup Textures to image units
-    glBindImageTexture(0, mImgParticleVisible, 0, true, 0,  GL_READ_WRITE, GL_R32UI);
-    glBindImageTexture(1, mImgGridChain,       0, true, 0,  GL_READ_WRITE, GL_R32I);
-    glBindImageTexture(2, mImgGrid,            0, true, 0,  GL_READ_WRITE, GL_R32I);
-
-    // Reset grid
-    glUseProgram(g_SelectedProgram = mResetGridProgID);
-    glDispatchCompute(2048, 2048, 1);
-
-    // Reset grid chains
-    glUseProgram(g_SelectedProgram = mResetGridChainProgID);
-    glDispatchCompute(2048, DivCeil(Params.particleCount, 2048), 1);
-
-    // Build Grid
-    glUseProgram(g_SelectedProgram = mBuildGridProgID);
-    glUniform1ui(UniformLoc("currentCycleID"), mCycleID);
-    glUniform1ui(UniformLoc("particlesCount"), Params.particleCount);
-    glUniform1f (UniformLoc("smoothLength"), Params.h);
-    OGLU_BindTextureToUniform("visiblityMap", 0, mImgParticleVisible);
-    OGLU_BindTextureToUniform("particlesPos", 1, mSimulation->mSharedParticlesPos);
-    
-    glDispatchCompute(2048, DivCeil(Params.particleCount, 2048), 1);
-
-    if (OGSI_InspectTexture(mImgGrid, "Build Grid", 1, 0)) return;
+    // render quad
+    OGLU_RenderQuad(0, 0, 1.0, 1.0);
 }
 
 void CVisual::renderFluidFinal(GLuint depthTexture)
@@ -335,9 +299,6 @@ void CVisual::renderFluidFinal(GLuint depthTexture)
 
 void CVisual::renderParticles()
 {
-    // Increment cycleID
-    mCycleID++;
-
     // start buffer inspection
     OGSI_StartCycle();
 
@@ -363,10 +324,10 @@ void CVisual::renderParticles()
 
     // Bind positions buffer
     glEnableVertexAttribArray(AttribLoc("position"));
-    /*if ((GetTickCount() / 200) % 2 == 0)
+    //if ((GetTickCount() / 200) % 2 == 0)
         glBindBuffer(GL_ARRAY_BUFFER, mSimulation->mPositionsPingSBO);
-    else*/
-        glBindBuffer(GL_ARRAY_BUFFER, mSimulation->mSharedPingBufferID);
+    //else
+    //    glBindBuffer(GL_ARRAY_BUFFER, mSimulation->mSharedPingBufferID);
     glVertexAttribPointer(AttribLoc("position"), 4, GL_FLOAT, GL_FALSE, 0, 0);
 
     glBindFragDataLocation(g_SelectedProgram, 0, "colorOut");
@@ -382,20 +343,19 @@ void CVisual::renderParticles()
     // Inspect
     if (OGSI_InspectTexture(pPrevTarget->pColorTextureId[0],  "Draw Particles [texture]", 1, 0)) return;
     if (OGSI_InspectTexture(pPrevTarget->pDepthTextureId,     "Draw Particles [depth]",   4, -3)) return;
-    if (OGSI_InspectTexture(mSimulation->mSharedParticlesPos, "ParticlePos",   1, 0)) return;
 
     // Smooth fluid depth
     GLuint depthTexture = pPrevTarget->pDepthTextureId;
     if (UICmd_RenderMode == 0/*Smooth*/)
     {
-        // Scan for visible particles
+        /*// Scan for visible particles
         OGLU_StartTimingSection("Scan for visible");
         scanForVisible(pPrevTarget->pColorTextureId[0]);
         if (OGSI_InspectTexture(mImgParticleVisible,    "VisImg",   1, 0)) return;
 
         // Build grid
         OGLU_StartTimingSection("Build visual grid");
-        buildGrid();
+        buildGrid();*/
 
         // Render depth
         OGLU_StartTimingSection("Render Depth Smooth");

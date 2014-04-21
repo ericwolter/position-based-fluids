@@ -175,7 +175,7 @@ void UIManager_Init(GLFWwindow *window, CVisual *pRenderer, Simulation *pSim)
 
 void DrawPerformanceGraph()
 {
-    // Compute sizes
+    /*// Compute sizes
     const int ViewWidth    = mFrameWidth;
     const int ViewHeight   = mFrameHeight;
     const int BarHeight    = (int)(mFrameHeight * 0.03);
@@ -240,11 +240,11 @@ void DrawPerformanceGraph()
         prevX = newX;
     }
 
-    tw.EndDraw();
+    tw.EndDraw();*/
 }
 
 void DrawFriendsHistogram()
-{
+{/*
     // Histogram
     int Histogram[32];
     memset(Histogram, 0, sizeof(Histogram));
@@ -305,7 +305,7 @@ void DrawFriendsHistogram()
         tw.DrawText(twFont, screenX1 + 2, HistBottom - 12, 0xffff0000u, 0);
     }
 
-    tw.EndDraw();
+    tw.EndDraw();*/
 }
 
 void DrawAntTweakBar()
@@ -329,14 +329,14 @@ void DrawAntTweakBar()
 
     if (mIsFirstCycle)
     {
-        // Create performance rows
+       /* // Create performance rows
         for (size_t i = 0; i < mSim->PerfData.Trackers.size(); i++)
         {
             // create row
             string title = "  " + mSim->PerfData.Trackers[i]->eventName;
             void* pValue = &mSim->PerfData.Trackers[i]->total_time;
             TwAddVarRO(mTweakBar, title.c_str(),  TW_TYPE_DOUBLE,  pValue, "precision=2 group=OCL_Timings");
-        }
+        }*/
 
         // Make sure Stats group is folded
         TwDefine(" PBFTweak/OCL_Timings opened=false ");
@@ -365,8 +365,8 @@ void DrawAntTweakBar()
 
     // Accumulate execution time
     mTotalSimTime = 0;
-    for (size_t i = 0; i < mSim->PerfData.Trackers.size(); i++)
-        mTotalSimTime += mSim->PerfData.Trackers[i]->total_time;
+    /*for (size_t i = 0; i < mSim->PerfData.Trackers.size(); i++)
+        mTotalSimTime += mSim->PerfData.Trackers[i]->total_time;*/
 
     mTotalRenderTime = 0.0;
     for (iter = g_OGL_Timings.begin(); iter != g_OGL_Timings.end(); iter++)
@@ -423,6 +423,6 @@ void UIManager_Draw()
 
 bool UIManager_WindowShouldClose()
 {
-    return glfwWindowShouldClose(mWindow);
+    return glfwWindowShouldClose(mWindow) != 0;
 }
 

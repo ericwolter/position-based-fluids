@@ -5,7 +5,6 @@
 #include <glm/gtx/quaternion.hpp>
 
 #include <cmath>
-#include "hesp.hpp"
 #include "ZPR.h"
 
 // Model view matrices
