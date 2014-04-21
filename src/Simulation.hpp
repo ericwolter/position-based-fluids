@@ -34,6 +34,10 @@ private:
     // Init particles positions
     void CreateParticles();
 
+    void SetupComputeShader(char* szPrgramName);
+
+    void DispatchComputeShader(int WorkItemCount, int LocalSizeX, int LocalSizeY);
+
 public:
     // holds all shader programs used by simulation
     map<string, GLuint> mPrograms;

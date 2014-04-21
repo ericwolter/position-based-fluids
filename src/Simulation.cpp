@@ -13,8 +13,8 @@ using namespace std;
 
 unsigned int _NKEYS = 0;
 
-#define DivCeil(num, divider) ((num + divider - 1) / divider) 
-#define IntCeil(num, divider) (((num + divider - 1) / divider) * divider)
+#define DivCeil(num, divider) (((num) + (divider) - 1) / (divider)) 
+#define IntCeil(num, divider) ((((num) + (divider) - 1) / (divider)) * (divider))
 
 #define  M_PI   3.14159265358979323846	/* pi */
 
@@ -130,7 +130,7 @@ GLuint GenTextureBuffer(GLenum format, GLuint bufferId)
 bool Simulation::InitShaders()
 {
     // Build shader header
-    string header = "#version 430\n#define GLSL_COMPILER\n#pragma optionNV(fastmath off)\n#pragma optionNV(fastprecision off)\n";
+    string header = "#version 430\n#define GLSL_COMPILER\n";
 
     // Add Parameters 
     header += "#line 1\n" + getKernelSource("parameters.hpp") + "\n";
@@ -201,28 +201,21 @@ void Simulation::InitBuffers()
     mDensityTBO = GenTextureBuffer(GL_R32F, mDensitySBO);
 
     // Radix buffers
-    if (Params.particleCount % (_ITEMS * _GROUPS) == 0)
-    {
-        _NKEYS = Params.particleCount;
-    }
-    else
-    {
-        _NKEYS = Params.particleCount + (_ITEMS * _GROUPS) - Params.particleCount % (_ITEMS * _GROUPS);
-    }
-    mInKeysSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _NKEYS, NULL);
-    mInKeysTBO = GenTextureBuffer(GL_R32UI, mInKeysSBO);
-    mInPermutationSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _NKEYS, NULL);
-    mInPermutationTBO = GenTextureBuffer(GL_R32UI, mInPermutationSBO);
-    mOutKeysSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _NKEYS, NULL);
-    mOutKeysTBO = GenTextureBuffer(GL_R32UI, mOutKeysSBO);
+    _NKEYS = IntCeil(Params.particleCount, _ITEMS * _GROUPS);
+    mInKeysSBO         = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _NKEYS, NULL);
+    mInKeysTBO         = GenTextureBuffer(GL_R32UI, mInKeysSBO);
+    mInPermutationSBO  = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _NKEYS, NULL);
+    mInPermutationTBO  = GenTextureBuffer(GL_R32UI, mInPermutationSBO);
+    mOutKeysSBO        = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _NKEYS, NULL);
+    mOutKeysTBO        = GenTextureBuffer(GL_R32UI, mOutKeysSBO);
     mOutPermutationSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _NKEYS, NULL);
     mOutPermutationTBO = GenTextureBuffer(GL_R32UI, mOutPermutationSBO);    
-    mHistogramSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _RADIX * _GROUPS * _ITEMS, NULL);
-    mHistogramTBO = GenTextureBuffer(GL_R32UI, mHistogramSBO);
-    mGlobSumSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _HISTOSPLIT, NULL);
-    mGlobSumTBO = GenTextureBuffer(GL_R32UI, mGlobSumSBO);
-    mHistoTempSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _HISTOSPLIT, NULL);
-    mHistoTempTBO = GenTextureBuffer(GL_R32UI, mHistoTempSBO);
+    mHistogramSBO      = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _RADIX * _GROUPS * _ITEMS, NULL);
+    mHistogramTBO      = GenTextureBuffer(GL_R32UI, mHistogramSBO);
+    mGlobSumSBO        = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _HISTOSPLIT, NULL);
+    mGlobSumTBO        = GenTextureBuffer(GL_R32UI, mGlobSumSBO);
+    mHistoTempSBO      = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(uint) * _HISTOSPLIT, NULL);
+    mHistoTempTBO      = GenTextureBuffer(GL_R32UI, mHistoTempSBO);
 
     // Copy mPositions (Host) => mPositionsPingBuffer (GPU) 
     mPositionsPingSBO = GenBuffer(GL_SHADER_STORAGE_BUFFER, sizeof(vec4) * Params.particleCount, &mPositions[0]);
@@ -255,6 +248,22 @@ void Simulation::InitCells()
     mFriendsListTBO = GenTextureBuffer(GL_R32UI, mFriendsListSBO);
 }
 
+void Simulation::SetupComputeShader(char* szPrgramName)
+{
+    OGLU_StartTimingSection(szPrgramName);
+    glUseProgram(g_SelectedProgram = mPrograms[szPrgramName]);
+}
+
+void Simulation::DispatchComputeShader(int WorkItemCount, int LocalSizeX, int LocalSizeY)
+{
+    // Compute groups count
+    int groups = DivCeil(Params.particleCount, LocalSizeX * LocalSizeY);
+
+    // Execute shader
+    glDispatchCompute(groups, 1, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+}
+
 int dumpSession = 0;
 int dumpCounter = 0;
 int cycleCounter = 0;
@@ -262,15 +271,14 @@ int cycleCounter = 0;
 void Simulation::updateVelocities()
 {
     // Setup shader
-    OGLU_StartTimingSection("update_velocities");
-    glUseProgram(g_SelectedProgram = mPrograms["update_velocities"]);
+    SetupComputeShader("update_velocities");
     glBindImageTexture(0, mPositionsPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA32F);
     glBindImageTexture(1, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
     glBindImageTexture(2, mVelocitiesTBO,    0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
-    glUniform1i(0/*N*/,        Params.particleCount);
+    glUniform1i(0/*N*/, Params.particleCount);
 
     // Execute shader
-    glDispatchCompute(Params.particleCount, 1, 1);
+    DispatchComputeShader(Params.particleCount, 64, 4);
 }
 
 void Simulation::applyViscosity()
@@ -286,10 +294,11 @@ void Simulation::applyViscosity()
 
     // Execute shader
     glDispatchCompute(Params.particleCount, 1, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 void Simulation::applyVorticity()
-{return;
+{//return;
     // Setup shader
     OGLU_StartTimingSection("apply_vorticity");
     glUseProgram(g_SelectedProgram = mPrograms["apply_vorticity"]);
@@ -301,6 +310,7 @@ void Simulation::applyVorticity()
 
     // Execute shader
     glDispatchCompute(Params.particleCount, 1, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 void Simulation::predictPositions()
@@ -316,6 +326,7 @@ void Simulation::predictPositions()
 
     // Execute shader
     glDispatchCompute(Params.particleCount, 1, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 void DumpFriendsList(uint* friendList, float* position, char* szFilename)
@@ -372,6 +383,7 @@ void Simulation::buildFriendsList()
 
     // Execute shader
     glDispatchCompute(DivCeil(Params.particleCount, 128) , 1, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
     // Setup shader
     OGLU_StartTimingSection("reset_grid");
@@ -381,7 +393,7 @@ void Simulation::buildFriendsList()
     glUniform1i(0/*N*/,        Params.particleCount);
 
     // Execute shader
-    glDispatchCompute(Params.particleCount, 1, 1);
+    DispatchComputeShader(Params.particleCount, 64, 4);
 }
 
 void Simulation::updatePredicted(int iterationIndex)
@@ -394,6 +406,7 @@ void Simulation::updatePredicted(int iterationIndex)
 
     // Execute shader
     glDispatchCompute(Params.particleCount, 1, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 void Simulation::packData()
@@ -406,6 +419,7 @@ void Simulation::packData()
 
     // Execute shader
     glDispatchCompute(Params.particleCount, 1, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 void Simulation::computeDelta(int iterationIndex)
@@ -420,6 +434,7 @@ void Simulation::computeDelta(int iterationIndex)
 
     // Execute shader
     glDispatchCompute(Params.particleCount, 1, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 void Simulation::computeScaling(int iterationIndex)
@@ -433,6 +448,7 @@ void Simulation::computeScaling(int iterationIndex)
 
     // Execute shader
     glDispatchCompute(Params.particleCount, 1, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 void Simulation::updateCells()
@@ -445,6 +461,7 @@ void Simulation::updateCells()
 
     // Execute shader
     glDispatchCompute(Params.particleCount, 1, 1);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 void Simulation::radixsort()

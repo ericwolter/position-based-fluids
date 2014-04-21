@@ -73,9 +73,7 @@ void Runner::run(Simulation &simulation, CVisual &renderer)
 
         // Auto reload shaders
         if (DetectResourceChanges(mShaderFilesTracker))
-        {
             renderer.initShaders();
-        }
 
         // Make sure that kernels are valid
         if (!KernelBuildOk)

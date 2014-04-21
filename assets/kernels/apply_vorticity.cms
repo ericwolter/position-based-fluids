@@ -65,7 +65,7 @@ void main()
                     vec3 j_omega = imageLoad(imgOmegas, j_index).xyz;
                     const float r_length = sqrt(r_length_2);
                     const float h_r_diff = Params.h - r_length;
-                    const vec3  gradient_spiky = r * h_r_diff * h_r_diff / r_length;
+                    const vec3  gradient_spiky = -1.0f * r * h_r_diff * h_r_diff / r_length;
 
                     const float omega_length = length(j_omega);
                     eta += (omega_length / j_particle.w) * gradient_spiky;
@@ -74,9 +74,12 @@ void main()
         }
     }
 
+    // Compute vorticity impact on velocity
     const vec3 eta_N = normalize(eta * GRAD_SPIKY_FACTOR);
     const vec3 vorticityForce    = Params.vorticityFactor * cross(eta_N, i_omega);
     const vec3 vorticityVelocity = vorticityForce * Params.timeStep;
 
-    imageStore(imgVelocities, i, vec4(vorticityVelocity, 0));
+    // Add to velocity
+    vec3 i_Velocity = imageLoad(imgVelocities, i).xyz;
+    imageStore(imgVelocities, i, vec4(i_Velocity + vorticityVelocity, 0));
 }

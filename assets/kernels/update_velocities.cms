@@ -1,4 +1,4 @@
-layout (local_size_x = 1) in;
+layout (local_size_x = 64, local_size_y = 4) in;
                             
 layout (binding = 0, rgba32f) uniform restrict  imageBuffer imgPositions;
 layout (binding = 1, rgba32f) uniform readonly  imageBuffer imgPredicted;
@@ -8,7 +8,7 @@ layout (location = 0) uniform int N;
                                
 void main()
 {
-    const int i = int(gl_GlobalInvocationID.x);
+    const int i = int(gl_GlobalInvocationID.x + gl_GlobalInvocationID.y * gl_NumWorkGroups.x * gl_WorkGroupSize.x);
     if (i >= N) return;
 
     // Compute velocity
