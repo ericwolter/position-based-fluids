@@ -137,6 +137,7 @@ bool Simulation::InitShaders()
 
     // Add defines
     std::ostringstream defines;
+    defines << "#define LOCAL_SIZE            (" << (int)Params.localSize                      << ")"  << endl;
     defines << "#define END_OF_CELL_LIST      (" << (int)(-1)                                  << ")"  << endl;
     defines << "#define MAX_PARTICLES_COUNT   (" << (int)(Params.particleCount)                << ")"  << endl;
     defines << "#define MAX_FRIENDS_CIRCLES   (" << (int)(Params.friendsCircles)               << ")"  << endl;

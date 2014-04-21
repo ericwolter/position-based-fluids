@@ -58,6 +58,7 @@ void LoadParameters(string parameters)
 
         // Store value into relevent parameter
         /**/ if (parameter == "resetsimonchange")    ss >> Params.resetSimOnChange;
+        else if (parameter == "localsize")           ss >> Params.localSize;
         else if (parameter == "particlecount")       ss >> Params.particleCount;
         else if (parameter == "xmin")                ss >> Params.xMin;
         else if (parameter == "xmax")                ss >> Params.xMax;

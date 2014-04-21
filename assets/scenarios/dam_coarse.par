@@ -36,3 +36,6 @@ SortIterations          6
 
 # Rendering related
 ParticleRenderSize      0.017
+
+# Compute related
+LocalSize				64
