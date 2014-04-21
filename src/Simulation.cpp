@@ -66,6 +66,8 @@ void Simulation::CreateParticles()
         mPositions[i][2] = offsetZ + z * d;
         mPositions[i][3] = 0;
     }
+
+    mNumGroups = DivCeil(Params.particleCount,Params.localSize);
 }
 
 void DumpFloatArrayCompare(char* szFilename, char* szTitle1, char* szTitle2, float* arr1, float* arr2, int itemsCount)
@@ -137,7 +139,7 @@ bool Simulation::InitShaders()
 
     // Add defines
     std::ostringstream defines;
-    defines << "#define LOCAL_SIZE            (" << (int)Params.localSize                      << ")"  << endl;
+    defines << "#define LOCAL_SIZE             " << (int)Params.localSize                      << ""   << endl; // no brackets!
     defines << "#define END_OF_CELL_LIST      (" << (int)(-1)                                  << ")"  << endl;
     defines << "#define MAX_PARTICLES_COUNT   (" << (int)(Params.particleCount)                << ")"  << endl;
     defines << "#define MAX_FRIENDS_CIRCLES   (" << (int)(Params.friendsCircles)               << ")"  << endl;
@@ -271,7 +273,7 @@ void Simulation::updateVelocities()
     glUniform1i(0/*N*/,        Params.particleCount);
 
     // Execute shader
-    glDispatchCompute(Params.particleCount, 1, 1);
+    glDispatchCompute(mNumGroups, 1, 1);
 }
 
 void Simulation::applyViscosity()
@@ -316,7 +318,7 @@ void Simulation::predictPositions()
     glUniform1i(1/*pauseSim*/, bPauseSim);
 
     // Execute shader
-    glDispatchCompute(Params.particleCount, 1, 1);
+    glDispatchCompute(mNumGroups, 1, 1);
 }
 
 void DumpFriendsList(uint* friendList, float* position, char* szFilename)
@@ -372,7 +374,7 @@ void Simulation::buildFriendsList()
     glUniform1i(0/*N*/,        Params.particleCount);
 
     // Execute shader
-    glDispatchCompute(DivCeil(Params.particleCount, 128) , 1, 1);
+    glDispatchCompute(mNumGroups, 1, 1);
 
     // Setup shader
     OGLU_StartTimingSection("reset_grid");
@@ -382,7 +384,7 @@ void Simulation::buildFriendsList()
     glUniform1i(0/*N*/,        Params.particleCount);
 
     // Execute shader
-    glDispatchCompute(Params.particleCount, 1, 1);
+    glDispatchCompute(mNumGroups, 1, 1);
 }
 
 void Simulation::updatePredicted(int iterationIndex)
@@ -394,7 +396,7 @@ void Simulation::updatePredicted(int iterationIndex)
     glUniform1i(0/*N*/, Params.particleCount);
 
     // Execute shader
-    glDispatchCompute(Params.particleCount, 1, 1);
+    glDispatchCompute(mNumGroups, 1, 1);
 }
 
 void Simulation::packData()
@@ -406,7 +408,7 @@ void Simulation::packData()
     glUniform1i(0/*N*/, Params.particleCount);
 
     // Execute shader
-    glDispatchCompute(Params.particleCount, 1, 1);
+    glDispatchCompute(mNumGroups, 1, 1);
 }
 
 void Simulation::computeDelta(int iterationIndex)
@@ -445,7 +447,7 @@ void Simulation::updateCells()
     glUniform1i(0/*N*/, Params.particleCount);
 
     // Execute shader
-    glDispatchCompute(Params.particleCount, 1, 1);
+    glDispatchCompute(mNumGroups, 1, 1);
 }
 
 void Simulation::radixsort()
@@ -460,7 +462,7 @@ void Simulation::radixsort()
     glUniform1i(0/*N*/, Params.particleCount);
 
     // Execute shader
-    glDispatchCompute(_NKEYS, 1, 1);
+    glDispatchCompute(DivCeil(_NKEYS,Params.localSize), 1, 1);
 
     for (size_t pass = 0; pass < _PASS; pass++)
     {
@@ -563,7 +565,7 @@ void Simulation::radixsort()
     glUniform1i(0/*N*/,        Params.particleCount);
 
     // Execute shader
-    glDispatchCompute(Params.particleCount, 1, 1);
+    glDispatchCompute(mNumGroups, 1, 1);
 
     // Double buffering of positions and velocity buffers
     GLuint tmpGL;
