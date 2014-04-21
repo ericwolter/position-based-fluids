@@ -33,6 +33,7 @@ private:
 
     // Init particles positions
     void CreateParticles();
+    unsigned int mNumGroups;
 
     void SetupComputeShader(char* szPrgramName);
 

@@ -17,6 +17,9 @@
 
 CLASS_HEADER 
 {
+    // Compute related
+    int localSize;
+
     // Runner related
     int resetSimOnChange;
 
