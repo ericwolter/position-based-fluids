@@ -291,9 +291,12 @@ void Simulation::applyViscosity()
     glUseProgram(g_SelectedProgram = mPrograms["apply_viscosity"]);
     glBindImageTexture(0, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
     glBindImageTexture(1, mFriendsListTBO,   0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
-    glBindImageTexture(2, mVelocitiesTBO,    0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
+    glBindImageTexture(2, mVelocitiesTBO,    0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
     glBindImageTexture(3, mOmegasTBO,        0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
     glUniform1i(0/*N*/,        Params.particleCount);
+
+    glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_BUFFER, mPredictedPingTBO);
+    glActiveTexture(GL_TEXTURE2); glBindTexture(GL_TEXTURE_BUFFER, mVelocitiesTBO);
 
     // Execute shader
     glDispatchCompute(mNumGroups, 1, 1);
