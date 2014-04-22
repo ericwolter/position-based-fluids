@@ -281,7 +281,7 @@ void Simulation::updateVelocities()
     glUniform1i(0/*N*/, Params.particleCount);
 
     // Execute shader
-    glDispatchCompute(Params.particleCount, 1, 1);
+    glDispatchCompute(mNumGroups, 1, 1);
 }
 
 void Simulation::applyViscosity()
@@ -396,7 +396,7 @@ void Simulation::buildFriendsList()
     glUniform1i(0/*N*/,        Params.particleCount);
 
     // Execute shader
-    glDispatchCompute(Params.particleCount, 1, 1);
+    glDispatchCompute(mNumGroups, 1, 1);
 }
 
 void Simulation::updatePredicted(int iterationIndex)
