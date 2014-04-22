@@ -401,7 +401,7 @@ void Simulation::buildFriendsList()
 
 void Simulation::updatePredicted(int iterationIndex)
 {
-    OGLU_StartTimingSection("update_predicted");
+    OGLU_StartTimingSection("%d_update_predicted", iterationIndex);
     glUseProgram(g_SelectedProgram = mPrograms["update_predicted"]);
     glBindImageTexture(0, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_WRITE, GL_RGBA32F);
     glBindImageTexture(1, mDeltaTBO,         0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA32F);
@@ -427,7 +427,7 @@ void Simulation::packData()
 
 void Simulation::computeDelta(int iterationIndex)
 {
-    OGLU_StartTimingSection("compute_delta");
+    OGLU_StartTimingSection("%d_compute_delta", iterationIndex);
     glUseProgram(g_SelectedProgram = mPrograms["compute_delta"]);
     glBindImageTexture(0, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY,  GL_RGBA32F);
     glBindImageTexture(1, mDeltaTBO,         0, GL_FALSE, 0, GL_WRITE_ONLY, GL_RGBA32F);
@@ -442,7 +442,7 @@ void Simulation::computeDelta(int iterationIndex)
 
 void Simulation::computeScaling(int iterationIndex)
 {
-    OGLU_StartTimingSection("compute_scaling");
+    OGLU_StartTimingSection("%d_compute_scaling", iterationIndex);
     glUseProgram(g_SelectedProgram = mPrograms["compute_scaling"]);
     glBindImageTexture(0, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_WRITE,  GL_RGBA32F);
     glBindImageTexture(1, mDensityTBO,       0, GL_FALSE, 0, GL_WRITE_ONLY,  GL_R32F);

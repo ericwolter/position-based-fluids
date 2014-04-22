@@ -17,14 +17,21 @@ string CurrentTimingSection;
 map<string, OGLU_PERFORMANCE_TRACKER> TimingsMap;
 list<OGLU_PERFORMANCE_TRACKER*> g_OGL_Timings;
 
-void OGLU_StartTimingSection(const char* szSectionTitle)
+void OGLU_StartTimingSection(const char* szSectionName, ...)
 {
+    // Convert string formating
+    va_list aptr;
+    char szFormattedName[64];
+    va_start(aptr, szSectionName);
+    int ret = vsprintf(szFormattedName, szSectionName, aptr);
+    va_end(aptr);
+
     // Check if we need to close last section
     if (CurrentTimingSection.length())
         OGLU_EndTimingSection();
 
     // Check if needs to create section
-    CurrentTimingSection = szSectionTitle;
+    CurrentTimingSection = szFormattedName;
     if (!TimingsMap.count(CurrentTimingSection))
     {
         // Create new tracker object

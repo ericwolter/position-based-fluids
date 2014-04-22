@@ -50,7 +50,7 @@ typedef struct
 
 extern list<OGLU_PERFORMANCE_TRACKER*> g_OGL_Timings;
 
-void OGLU_StartTimingSection(const char* szSectionTitle);
+void OGLU_StartTimingSection(const char* szSectionName, ...);
 void OGLU_EndTimingSection();
 void OGLU_CollectTimings();
 

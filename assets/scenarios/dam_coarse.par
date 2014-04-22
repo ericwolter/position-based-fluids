@@ -1,5 +1,5 @@
 # Simulation settings
-ParticleCount           60000
+ParticleCount           100000
 SetupSpacing            0.55
 ResetSimOnChange        0
 
@@ -38,4 +38,4 @@ SortIterations          6
 ParticleRenderSize      0.017
 
 # Compute related
-LocalSize				64
+LocalSize               256
