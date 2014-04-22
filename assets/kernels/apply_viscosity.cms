@@ -5,6 +5,9 @@ layout (binding = 1, r32i)    uniform readonly  iimageBuffer imgFriendsList;
 layout (binding = 2, rgba32f) uniform restrict  imageBuffer  imgVelocities;
 layout (binding = 3, rgba32f) uniform writeonly imageBuffer  imgOmegas;
 
+layout (binding = 0) uniform samplerBuffer txtPredicted;
+layout (binding = 2) uniform samplerBuffer txtVelocities;
+
 layout (location = 0) uniform int  N;
     
 void main()    
@@ -13,8 +16,8 @@ void main()
     if (i >= N) return;
 
     // Get particle i position and velocity
-    vec3 i_predicted = imageLoad(imgPredicted, i).xyz;
-    vec3 i_velocity  = imageLoad(imgVelocities, i).xyz;
+    vec3 i_predicted = texelFetch(txtPredicted, i).xyz;
+    vec3 i_velocity  = texelFetch(txtVelocities, i).xyz;
 
     // read number of friends
     int totalFriends = 0;
@@ -47,7 +50,7 @@ void main()
                 const int j_index = imageLoad(imgFriendsList, baseIndex + iFriend * MAX_PARTICLES_COUNT).x;
                 
                 // Get j particle position
-                vec4 j_particle = imageLoad(imgPredicted, j_index);
+                vec4 j_particle = texelFetch(txtPredicted, j_index);
 
                 // Compute distance between particle i and j
                 const vec3  r = i_predicted - j_particle.xyz;
@@ -64,7 +67,7 @@ void main()
                     if (abs(j_particle.w) > 1e-8f)
                     {
                         // Compute velocity diff between i and j
-                        vec3 j_velocity = imageLoad(imgVelocities, j_index).xyz;
+                        vec3 j_velocity = texelFetch(txtVelocities, j_index).xyz;
                         const vec3 v = j_velocity - i_velocity;
 
                         // equation 15

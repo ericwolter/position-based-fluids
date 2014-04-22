@@ -1,8 +1,10 @@
 layout (local_size_x = LOCAL_SIZE) in;
 
-layout (binding = 0, rgba32f) uniform           imageBuffer imgPredicted;
-layout (binding = 1, r32f)    uniform writeonly imageBuffer imgDensity;
+layout (binding = 0, rgba32f) uniform           imageBuffer  imgPredicted;
+layout (binding = 1, r32f)    uniform writeonly imageBuffer  imgDensity;
 layout (binding = 2, r32i)    uniform readonly  iimageBuffer imgFriendsList;
+
+layout (binding = 0) uniform samplerBuffer  txtPredicted;
 
 layout (location = 0) uniform int N;
 
@@ -12,7 +14,7 @@ void main()
     const int i = int(gl_GlobalInvocationID.x);
     if (i >= N) return;
 
-    vec4 predicted = imageLoad(imgPredicted, i);
+    vec4 predicted = texelFetch(txtPredicted, i);
     const float e = Params.epsilon * Params.restDensity;
 
     // Sum of rho_i, |nabla p_k C_i|^2 and nabla p_k C_i for k = i
@@ -48,12 +50,7 @@ void main()
                 const int j_index = imageLoad(imgFriendsList, baseIndex + iFriend * MAX_PARTICLES_COUNT).x;
 
                 // Get j particle data
-                vec4 j_data = imageLoad(imgPredicted, j_index);
-                // float4 j_data;
-                // if (j_index / local_size == group_id)
-                //     j_data = loc_predicted[j_index % local_size];
-                // else
-                //     j_data = predicted[j_index];
+                vec4 j_data = texelFetch(txtPredicted, j_index);
 
                 vec3 r = predicted.xyz - j_data.xyz;
                 const float r_length_2 = dot(r,r);

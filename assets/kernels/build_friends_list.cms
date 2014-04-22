@@ -4,6 +4,9 @@ layout (binding = 0, rgba32f) uniform readonly  imageBuffer  imgPredicted;
 layout (binding = 1, r32i)    uniform readonly  iimageBuffer imgCells;
 layout (binding = 2, r32i)    uniform writeonly iimageBuffer imgFriendsList;
 
+layout (binding = 0) uniform samplerBuffer  txtPredicted;
+layout (binding = 1) uniform isamplerBuffer txtCells;
+
 layout (location = 0) uniform int N;
 
 void main()
@@ -19,7 +22,7 @@ void main()
         circleParticles[j] = 0;
 
     // Start grid scan
-    vec4 predicted = imageLoad(imgPredicted, i);
+    vec4 predicted = texelFetch(txtPredicted, i);
     ivec3 currentCell = ivec3(predicted.xyz / Params.h);
 
     for (int x = -1; x <= 1; ++x)
@@ -31,7 +34,7 @@ void main()
                 int cell_index = calcGridHash(currentCell + ivec3(x, y, z));
 
                 // find first and last particle in this cell
-                ivec2 cell_boundary = ivec2(imageLoad(imgCells,cell_index*2+0).x, imageLoad(imgCells,cell_index*2+1).x);
+                ivec2 cell_boundary = ivec2(texelFetch(txtCells, cell_index*2+0).x, texelFetch(txtCells, cell_index*2+1).x);
                 
                 // skip empty cells
                 if(cell_boundary.x == END_OF_CELL_LIST) continue;
@@ -43,7 +46,7 @@ void main()
                     if (i != j_index)
                     {
                         // Get j particle position
-                        vec4 predicted_j = imageLoad(imgPredicted, j_index);
+                        vec4 predicted_j = texelFetch(txtPredicted, j_index);
                         
                         // Ignore unfriendly particles (r > h)
                         const vec3 r = predicted.xyz - predicted_j.xyz;

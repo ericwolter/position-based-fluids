@@ -264,7 +264,7 @@ void Simulation::DispatchComputeShader(int WorkItemCount, int LocalSizeX, int Lo
 
     // Execute shader
     glDispatchCompute(groups, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    //glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 int dumpSession = 0;
@@ -297,7 +297,7 @@ void Simulation::applyViscosity()
 
     // Execute shader
     glDispatchCompute(mNumGroups, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    //glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 void Simulation::applyVorticity()
@@ -313,7 +313,7 @@ void Simulation::applyVorticity()
 
     // Execute shader
     glDispatchCompute(mNumGroups, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    //glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 void Simulation::predictPositions()
@@ -329,7 +329,7 @@ void Simulation::predictPositions()
 
     // Execute shader
     glDispatchCompute(mNumGroups, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    //glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 void DumpFriendsList(uint* friendList, float* position, char* szFilename)
@@ -384,9 +384,12 @@ void Simulation::buildFriendsList()
     glBindImageTexture(2, mFriendsListTBO,   0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32I);
     glUniform1i(0/*N*/,        Params.particleCount);
 
+    glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_BUFFER, mPredictedPingTBO);
+    glActiveTexture(GL_TEXTURE1); glBindTexture(GL_TEXTURE_BUFFER, mCellsTBO);
+
     // Execute shader
     glDispatchCompute(mNumGroups, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    //glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
     // Setup shader
     OGLU_StartTimingSection("reset_grid");
@@ -409,7 +412,7 @@ void Simulation::updatePredicted(int iterationIndex)
 
     // Execute shader
     glDispatchCompute(mNumGroups, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    //glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 void Simulation::packData()
@@ -422,7 +425,7 @@ void Simulation::packData()
 
     // Execute shader
     glDispatchCompute(mNumGroups, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    //glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 void Simulation::computeDelta(int iterationIndex)
@@ -435,9 +438,11 @@ void Simulation::computeDelta(int iterationIndex)
     glUniform1i(0/*N*/, Params.particleCount);
     glUniform1f(1/*wave_generator*/, fWavePos);
 
+    glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_BUFFER, mPredictedPingTBO);
+
     // Execute shader
     glDispatchCompute(mNumGroups, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    //glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 void Simulation::computeScaling(int iterationIndex)
@@ -447,11 +452,14 @@ void Simulation::computeScaling(int iterationIndex)
     glBindImageTexture(0, mPredictedPingTBO, 0, GL_FALSE, 0, GL_READ_WRITE,  GL_RGBA32F);
     glBindImageTexture(1, mDensityTBO,       0, GL_FALSE, 0, GL_WRITE_ONLY,  GL_R32F);
     glBindImageTexture(2, mFriendsListTBO,   0, GL_FALSE, 0, GL_READ_ONLY,   GL_R32I);
+    
+    glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_BUFFER, mPredictedPingTBO);
+
     glUniform1i(0/*N*/, Params.particleCount);
 
     // Execute shader
     glDispatchCompute(mNumGroups, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    //glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 void Simulation::updateCells()
@@ -464,7 +472,7 @@ void Simulation::updateCells()
 
     // Execute shader
     glDispatchCompute(mNumGroups, 1, 1);
-    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+    //glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
 void Simulation::radixsort()
