@@ -436,7 +436,7 @@ void Simulation::computeDelta(int iterationIndex)
     glUniform1f(1/*wave_generator*/, fWavePos);
 
     // Execute shader
-    glDispatchCompute(Params.particleCount, 1, 1);
+    glDispatchCompute(mNumGroups, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 
@@ -450,7 +450,7 @@ void Simulation::computeScaling(int iterationIndex)
     glUniform1i(0/*N*/, Params.particleCount);
 
     // Execute shader
-    glDispatchCompute(Params.particleCount, 1, 1);
+    glDispatchCompute(mNumGroups, 1, 1);
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 }
 

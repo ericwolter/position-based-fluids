@@ -29,55 +29,56 @@ void main()
     for (int iCircle = 0; iCircle < MAX_FRIENDS_CIRCLES; iCircle++)
     {
         // Check if we want to process/skip next friends circle
-        if (float(proccedFriends) / totalFriends > 0.5f)
-            continue;
-
-        // Add next circle to process count
-        proccedFriends += circleParticles[iCircle];
-        
-        // Compute friends start offset
-        int baseIndex = FRIENDS_BLOCK_SIZE +                                      // Skip friendsCount block
-                        iCircle * (MAX_PARTICLES_COUNT * MAX_FRIENDS_IN_CIRCLE) + // Offset to relevent circle
-                        i;                                                        // Offset to particle_index              
-
-        // Process friends in circle
-        for (int iFriend = 0; iFriend < circleParticles[iCircle]; iFriend++)
-        {
-            // Read friend index from friends_list
-            const int j_index = imageLoad(imgFriendsList, baseIndex + iFriend * MAX_PARTICLES_COUNT).x;
+        if (float(proccedFriends) / totalFriends <= 0.5f)
+        {   
+            // Add next circle to process count
+            proccedFriends += circleParticles[iCircle];
             
-            // Get j particle position
-            vec4 j_particle = imageLoad(imgPredicted, j_index);
+            // Compute friends start offset
+            int baseIndex = FRIENDS_BLOCK_SIZE +                                      // Skip friendsCount block
+                            iCircle * (MAX_PARTICLES_COUNT * MAX_FRIENDS_IN_CIRCLE) + // Offset to relevent circle
+                            i;                                                        // Offset to particle_index              
 
-            // Compute distance between particle i and j
-            const vec3  r = i_predicted - j_particle.xyz;
-            const float r_length_2 = (r.x * r.x + r.y * r.y + r.z * r.z);
-
-            // Check if distance is under "h"
-            if (r_length_2 < Params.h_2)
+            int numFriendsInCircle = circleParticles[iCircle];
+            // Process friends in circle
+            for (int iFriend = 0; iFriend < numFriendsInCircle; iFriend++)
             {
-                // ignore particles where the density is zero
-                // this is either a numerical issue or a problem
-                // with estimating the density by sampling the neighborhood
-                // In this case the standard SPH gradient operator brakes
-                // because of the division by zero.
-                if (abs(j_particle.w) > 1e-8f)
+                // Read friend index from friends_list
+                const int j_index = imageLoad(imgFriendsList, baseIndex + iFriend * MAX_PARTICLES_COUNT).x;
+                
+                // Get j particle position
+                vec4 j_particle = imageLoad(imgPredicted, j_index);
+
+                // Compute distance between particle i and j
+                const vec3  r = i_predicted - j_particle.xyz;
+                const float r_length_2 = (r.x * r.x + r.y * r.y + r.z * r.z);
+
+                // Check if distance is under "h"
+                if (r_length_2 < Params.h_2)
                 {
-                    // Compute velocity diff between i and j
-                    vec3 j_velocity = imageLoad(imgVelocities, j_index).xyz;
-                    const vec3 v = j_velocity - i_velocity;
+                    // ignore particles where the density is zero
+                    // this is either a numerical issue or a problem
+                    // with estimating the density by sampling the neighborhood
+                    // In this case the standard SPH gradient operator brakes
+                    // because of the division by zero.
+                    if (abs(j_particle.w) > 1e-8f)
+                    {
+                        // Compute velocity diff between i and j
+                        vec3 j_velocity = imageLoad(imgVelocities, j_index).xyz;
+                        const vec3 v = j_velocity - i_velocity;
 
-                    // equation 15
-                    const float r_length = sqrt(r_length_2);
-                    const float h_r_diff = Params.h - r_length;
-                    const vec3  gradient_spiky = r * h_r_diff * h_r_diff / r_length;
+                        // equation 15
+                        const float r_length = sqrt(r_length_2);
+                        const float h_r_diff = Params.h - r_length;
+                        const vec3  gradient_spiky = r * h_r_diff * h_r_diff / r_length;
 
-                    // the gradient has to be negated because it is with respect to p_j
-                    omega_i += cross(v, gradient_spiky);
+                        // the gradient has to be negated because it is with respect to p_j
+                        omega_i += cross(v, gradient_spiky);
 
-                    // Sum viscosity
-                    const float h2_r2_diff = Params.h_2 - r_length_2;
-                    viscosity_sum += (1.0f / j_particle.w) * v * (h2_r2_diff * h2_r2_diff * h2_r2_diff);
+                        // Sum viscosity
+                        const float h2_r2_diff = Params.h_2 - r_length_2;
+                        viscosity_sum += (1.0f / j_particle.w) * v * (h2_r2_diff * h2_r2_diff * h2_r2_diff);
+                    }
                 }
             }
         }

@@ -1,4 +1,4 @@
-layout (local_size_x = 1) in;
+layout (local_size_x = LOCAL_SIZE) in;
 
 layout (binding = 0, rgba32f) uniform readonly  imageBuffer  imgPredicted;
 layout (binding = 1, rgba32f) uniform writeonly imageBuffer  imgDelta;
@@ -61,48 +61,47 @@ void main()
     for (int iCircle = 0; iCircle < MAX_FRIENDS_CIRCLES; iCircle++)
     {
         // Check if we want to process/skip next friends circle
-        if (float(proccedFriends) / totalFriends > 0.6f)
+        if (float(proccedFriends) / totalFriends <= 0.5f)
         {
-            continue;
-        }
+            // Add next circle to process count
+            proccedFriends += circleParticles[iCircle];
 
-        // Add next circle to process count
-        proccedFriends += circleParticles[iCircle];
+            // Compute friends start offset
+            int baseIndex = FRIENDS_BLOCK_SIZE +                                      // Skip friendsCount block
+                            iCircle * (MAX_PARTICLES_COUNT * MAX_FRIENDS_IN_CIRCLE) + // Offset to relevent circle
+                            i;   
 
-        // Compute friends start offset
-        int baseIndex = FRIENDS_BLOCK_SIZE +                                      // Skip friendsCount block
-                        iCircle * (MAX_PARTICLES_COUNT * MAX_FRIENDS_IN_CIRCLE) + // Offset to relevent circle
-                        i;   
-
-        // Process friends in circle
-        for (int iFriend = 0; iFriend < circleParticles[iCircle]; iFriend++)
-        {
-            // Read friend index from friends_list
-            const int j_index = imageLoad(imgFriendsList,baseIndex + iFriend * MAX_PARTICLES_COUNT).x;
-
-            // Get j particle data
-            vec4 j_data = imageLoad(imgPredicted, j_index);
-
-            // Compute r, length(r) and length(r)^2
-            vec3 r         = predicted.xyz - j_data.xyz;
-            const float r_length_2 = dot(r, r);
-
-            if (r_length_2 < h_2_cache)
+            int numFriendsInCircle = circleParticles[iCircle];
+            // Process friends in circle
+            for (int iFriend = 0; iFriend < numFriendsInCircle; iFriend++)
             {
-                const float r_length   = sqrt(r_length_2);
+                // Read friend index from friends_list
+                const int j_index = imageLoad(imgFriendsList,baseIndex + iFriend * MAX_PARTICLES_COUNT).x;
 
-                vec3 gradient_spiky = r / (r_length) *
-                                              (h_cache - r_length) *
-                                              (h_cache - r_length);
+                // Get j particle data
+                vec4 j_data = imageLoad(imgPredicted, j_index);
 
-                const float r_2_diff = h_2_cache - r_length_2;
-                const float poly6_r = r_2_diff * r_2_diff * r_2_diff;
+                // Compute r, length(r) and length(r)^2
+                vec3 r         = predicted.xyz - j_data.xyz;
+                const float r_length_2 = dot(r, r);
 
-                const float r_q_radio = poly6_r / poly6_q;
-                const float s_corr = Params.surfaceTenstionK * r_q_radio * r_q_radio * r_q_radio * r_q_radio;
+                if (r_length_2 < h_2_cache)
+                {
+                    const float r_length   = sqrt(r_length_2);
 
-                // Sum for delta p of scaling factors and grad spiky (equation 12)
-                sum += (predicted.w + j_data.w + s_corr) * gradient_spiky;
+                    vec3 gradient_spiky = r / (r_length) *
+                                                  (h_cache - r_length) *
+                                                  (h_cache - r_length);
+
+                    const float r_2_diff = h_2_cache - r_length_2;
+                    const float poly6_r = r_2_diff * r_2_diff * r_2_diff;
+
+                    const float r_q_radio = poly6_r / poly6_q;
+                    const float s_corr = Params.surfaceTenstionK * r_q_radio * r_q_radio * r_q_radio * r_q_radio;
+
+                    // Sum for delta p of scaling factors and grad spiky (equation 12)
+                    sum += (predicted.w + j_data.w + s_corr) * gradient_spiky;
+                }
             }
         }
     }
