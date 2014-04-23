@@ -1,7 +1,7 @@
 __kernel void predictPositions(__constant struct Parameters *Params,
                                const uint pauseSim,
                                const __global float4 *positions,
-                               __global float4 *predicted,
+                               __write_only image2d_t imgPredicted,
                                __global float4 *velocities,
                                const uint N)
 {
@@ -13,5 +13,6 @@ __kernel void predictPositions(__constant struct Parameters *Params,
         velocities[i].xyz = velocities[i].xyz + Params->timeStep * (float3)(0.0f, -Params->garvity, 0.0f);
         
     // Compute new predicted position
-    predicted[i].xyz  = positions[i].xyz  + Params->timeStep * velocities[i].xyz;
+    // predicted[i].xyz  = positions[i].xyz  + Params->timeStep * velocities[i].xyz;
+    imgWritef4(imgPredicted, i,  positions[i] + Params->timeStep * velocities[i]);
 }

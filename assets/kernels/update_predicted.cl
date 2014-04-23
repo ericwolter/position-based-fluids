@@ -1,15 +1,11 @@
-__kernel void updatePredicted(__global float4 *predicted,
+__kernel void updatePredicted(__read_only image2d_t imgPredictedSrc, 
+                              __write_only image2d_t imgPredictedDst, 
                               const __global float4 *delta,
                               const uint N)
 {
     const uint i = get_global_id(0);
     if (i >= N) return;
-
-    predicted[i].xyz = predicted[i].xyz + delta[i].xyz;
-
-    // #if defined(USE_DEBUG)
-    //     // printf("UPDATE_PREDICTED: %d: predict:[%f,%f,%f]\n",
-    //     //        i,
-    //     //        predicted[i].x, predicted[i].y, predicted[i].z);
-    // #endif
+    
+    float4 newPredicted = imgReadf4(imgPredictedSrc, i) + delta[i];
+    imgWritef4(imgPredictedDst, i, newPredicted);
 }

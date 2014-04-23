@@ -1,7 +1,7 @@
 __kernel void computeDelta(__constant struct Parameters *Params,
                            volatile __global int *debugBuf,
                            __global float4 *delta,
-                           const __global float4 *predicted, // xyz=predicted, w=scaling
+                           __read_only image2d_t imgPredicted, // xyz=predicted, w=scaling
                            const __global int *friends_list,
                            const float wave_generator,
                            const int N)
@@ -9,6 +9,9 @@ __kernel void computeDelta(__constant struct Parameters *Params,
     const int i = get_global_id(0);
 
     if (i >= N) return;
+    
+    // Read particle "i" position
+    float4 particle_i = imgReadf4(imgPredicted, i);
     
 #ifdef LOCALMEM
     #define local_size       (256)
@@ -18,11 +21,9 @@ __kernel void computeDelta(__constant struct Parameters *Params,
 
     // Load data into shared block
     __local float4 loc_predicted[local_size]; 
-    loc_predicted[local_id] = predicted[i];
+    loc_predicted[local_id] = particle_i;
     barrier(CLK_LOCAL_MEM_FENCE);
 #endif
-
-	__private float4 particle = predicted[i];
 
     uint2 randSeed = (uint2)(1 + get_global_id(0), 1);
 
@@ -47,9 +48,7 @@ __kernel void computeDelta(__constant struct Parameters *Params,
         totalFriends += circleParticles[j] = friends_list[j * MAX_PARTICLES_COUNT + i];
 
     int proccedFriends = 0;
-	
-	
-	
+
     for (int iCircle = 0; iCircle < MAX_FRIENDS_CIRCLES; iCircle++)
     {
         // Check if we want to process/skip next friends circle
@@ -70,27 +69,27 @@ __kernel void computeDelta(__constant struct Parameters *Params,
             // Read friend index from friends_list
             const int j_index = friends_list[baseIndex + iFriend * MAX_PARTICLES_COUNT];
 
-            // Get j particle data
+            // Get particle "j" position
 #ifdef LOCALMEM
-            float4 j_data;
+            float4 particle_j;
             if (j_index / local_size == group_id)
             {
-                j_data = loc_predicted[j_index % local_size];
+                particle_j = loc_predicted[j_index % local_size];
             //     localHit++;
             //     atomic_inc(&stats[0]);
             }
             else
             {
-                j_data = predicted[j_index];
+                particle_j = imgReadf4(imgPredicted, j_index);
             //     localMiss++;
             //     atomic_inc(&stats[1]);
             }
 #else
-            const float4 j_data = predicted[j_index];
+            const float4 particle_j = imgReadf4(imgPredicted, j_index);
 #endif
 
             // Compute r, length(r) and length(r)^2
-            const float3 r         = particle.xyz - j_data.xyz;
+            const float3 r         = particle_i.xyz - particle_j.xyz;
             const float r_length_2 = dot(r, r);
 
             if (r_length_2 < h_2_cache)
@@ -108,7 +107,7 @@ __kernel void computeDelta(__constant struct Parameters *Params,
                 const float s_corr = Params->surfaceTenstionK * r_q_radio * r_q_radio * r_q_radio * r_q_radio;
 
                 // Sum for delta p of scaling factors and grad spiky (equation 12)
-                sum += (particle.w + j_data.w + s_corr) * gradient_spiky;
+                sum += (particle_i.w + particle_j.w + s_corr) * gradient_spiky;
             }
         }
     }
@@ -117,7 +116,7 @@ __kernel void computeDelta(__constant struct Parameters *Params,
     float3 delta_p = (-GRAD_SPIKY_FACTOR*sum) / Params->restDensity;
 
     float randDist = 0.005f;
-    float3 future = particle.xyz + delta_p;
+    float3 future = particle_i.xyz + delta_p;
 
     // Prime the random... DO NOT REMOVE
     frand(&randSeed);
@@ -132,7 +131,7 @@ __kernel void computeDelta(__constant struct Parameters *Params,
     else if (future.x > (Params->xMax))  future.x = Params->xMax                  - frand(&randSeed) * randDist;
 
     // Compute delta
-    delta[i].xyz = future - particle.xyz;
+    delta[i].xyz = future - particle_i.xyz;
 
 //    if(group_id == 0) {
   //      printf("%d: hits: %d vs miss: %d\n", i, localHit,localMiss);

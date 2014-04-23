@@ -16,6 +16,7 @@ using namespace std;
 unsigned int _NKEYS = 0;
 
 #define DivCeil(num, divider) ((num + divider - 1) / divider) 
+#define SWAP(t, a, b) { t tmp = a; a = b; b = tmp; } 
 
 Simulation::Simulation(const cl::Context &clContext, const cl::Device &clDevice)
     : mCLContext(clContext),
@@ -207,12 +208,13 @@ void Simulation::InitBuffers()
     mPositionsPongBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharedPongBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
     mParticlePosImg        = cl::Image2DGL(mCLContext, CL_MEM_READ_WRITE, GL_TEXTURE_2D, 0, mSharedParticlesPos);
 
-    mPredictedPingBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
-    mPredictedPongBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
+    mPredictedPingBuffer   = cl::Image2D(mCLContext, CL_MEM_READ_WRITE, cl::ImageFormat(CL_RGBA, CL_FLOAT), 2048, DivCeil(mBufferSizeParticles, 2048));
+    mPredictedPongBuffer   = cl::Image2D(mCLContext, CL_MEM_READ_WRITE, cl::ImageFormat(CL_RGBA, CL_FLOAT), 2048, DivCeil(mBufferSizeParticles, 2048));
     mVelocitiesBuffer      = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mDeltaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mOmegaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mDensityBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.particleCount * sizeof(cl_float));
+    mLambdaBuffer          = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.particleCount * sizeof(cl_float));
     mParameters            = cl::Buffer(mCLContext, CL_MEM_READ_ONLY,  sizeof(Params));
     mStatsBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * 2);
 
@@ -262,16 +264,11 @@ void Simulation::InitBuffers()
 
 void Simulation::InitCells()
 {
-    // Allocate host buffers
-
-	// DO NOT use uint2 vector because it causes a race condition the kernel
-	// instead manage the cell boundaries manually
-    delete[] mCells;         mCells         = new cl_uint[Params.gridBufSize*2];
-
     // Init cells
-	for (cl_uint i = 0; i < Params.gridBufSize*2; ++i) {
-		mCells[i] = END_OF_CELL_LIST;
-	}
+    delete[] mCells; 
+    mCells = new cl_uint[Params.gridBufSize*2];
+    for (cl_uint i = 0; i < Params.gridBufSize*2; ++i)
+        mCells[i] = END_OF_CELL_LIST;
 
     // Write buffer for cells
     mBufferSizeCells = Params.gridBufSize * 2 * sizeof(cl_uint);
@@ -394,7 +391,7 @@ void Simulation::buildFriendsList()
 
     param = 0;
     mKernels["resetGrid"].setArg(param++, mParameters);
-	mKernels["resetGrid"].setArg(param++, mInKeysBuffer);
+    mKernels["resetGrid"].setArg(param++, mInKeysBuffer);
     mKernels["resetGrid"].setArg(param++, mCellsBuffer);
     mKernels["resetGrid"].setArg(param++, Params.particleCount);
     mQueue.enqueueNDRangeKernel(mKernels["resetGrid"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("resetPartList"));
@@ -404,20 +401,27 @@ void Simulation::updatePredicted(int iterationIndex)
 {
     int param = 0;
     mKernels["updatePredicted"].setArg(param++, mPredictedPingBuffer);
+    mKernels["updatePredicted"].setArg(param++, mPredictedPongBuffer);
     mKernels["updatePredicted"].setArg(param++, mDeltaBuffer);
     mKernels["updatePredicted"].setArg(param++, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["updatePredicted"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updatePredicted", iterationIndex));
+
+    SWAP(cl::Image2D, mPredictedPingBuffer, mPredictedPongBuffer);
 }
 
-void Simulation::packData(cl::Buffer packTarget, cl::Buffer packSource,  int iterationIndex)
+void Simulation::packData(cl::Image2D& sourceImg, cl::Image2D& pongImg, cl::Buffer packSource,  int iterationIndex)
 {
     int param = 0;
-    mKernels["packData"].setArg(param++, packTarget);
+    mKernels["packData"].setArg(param++, pongImg);
+    mKernels["packData"].setArg(param++, sourceImg);
     mKernels["packData"].setArg(param++, packSource);
     mKernels["packData"].setArg(param++, Params.particleCount);
 
     mQueue.enqueueNDRangeKernel(mKernels["packData"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("packData", iterationIndex));
+
+    // Swap between source and pong
+    SWAP(cl::Image2D, sourceImg, pongImg);
 }
 
 void Simulation::computeDelta(int iterationIndex)
@@ -449,7 +453,8 @@ void Simulation::computeScaling(int iterationIndex)
     mKernels["computeScaling"].setArg(param++, mParameters);
     mKernels["computeScaling"].setArg(param++, mPredictedPingBuffer);
     mKernels["computeScaling"].setArg(param++, mDensityBuffer);
-	mKernels["computeScaling"].setArg(param++, mFriendsListBuffer);
+    mKernels["computeScaling"].setArg(param++, mLambdaBuffer);
+    mKernels["computeScaling"].setArg(param++, mFriendsListBuffer);
     mKernels["computeScaling"].setArg(param++, Params.particleCount);
 
     // std::cout << "CL_KERNEL_LOCAL_MEM_SIZE = " << mKernels["computeScaling"].getWorkGroupInfo<CL_KERNEL_LOCAL_MEM_SIZE>(NULL) << std::endl;
@@ -468,10 +473,10 @@ void Simulation::updateCells()
 
     int param = 0;
     mKernels["updateCells"].setArg(param++, mParameters);
-	mKernels["updateCells"].setArg(param++, mInKeysBuffer);
-	mKernels["updateCells"].setArg(param++, mCellsBuffer);
+    mKernels["updateCells"].setArg(param++, mInKeysBuffer);
+    mKernels["updateCells"].setArg(param++, mCellsBuffer);
     mKernels["updateCells"].setArg(param++, Params.particleCount);
-	mQueue.enqueueNDRangeKernel(mKernels["updateCells"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updateCells"));
+    mQueue.enqueueNDRangeKernel(mKernels["updateCells"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updateCells"));
 
     //SaveFile(mQueue, mCellsBuffer, "cells");
     //SaveFile(mQueue, mParticlesListBuffer, "friendlist2");
@@ -607,17 +612,9 @@ void Simulation::radixsort()
     //mQueue.enqueueReleaseGLObjects(&sharedBuffers);
 
     // Double buffering of positions and velocity buffers
-    cl::BufferGL tmp1 = mPositionsPingBuffer;
-    mPositionsPingBuffer = mPositionsPongBuffer;
-    mPositionsPongBuffer = tmp1;
-
-    cl::Buffer tmp2 = mPredictedPingBuffer;
-    mPredictedPingBuffer = mPredictedPongBuffer;
-    mPredictedPongBuffer = tmp2;
-
-    GLuint tmp4 = mSharedPingBufferID;
-    mSharedPingBufferID = mSharedPongBufferID;
-    mSharedPongBufferID = tmp4;
+    SWAP(cl::BufferGL, mPositionsPingBuffer, mPositionsPongBuffer);
+    SWAP(cl::Image2D,  mPredictedPingBuffer, mPredictedPongBuffer);
+    SWAP(GLuint,       mSharedPingBufferID,  mSharedPongBufferID);
 }
 
 void Simulation::Step()
@@ -640,17 +637,20 @@ void Simulation::Step()
     // sort particles buffer
     if (!bPauseSim)
         this->radixsort();
-	
-	// Update cells
+
+    // Update cells
     this->updateCells();
-	
-	// Build friends list
-	this->buildFriendsList();
-	
+
+    // Build friends list
+    this->buildFriendsList();
+
     for (unsigned int i = 0; i < Params.simIterations; ++i)
     {
         // Compute scaling value
         this->computeScaling(i);
+
+        // Place lambda in "mPredictedPingBuffer[x].w"
+        this->packData(mPredictedPingBuffer, mPredictedPongBuffer, mLambdaBuffer, i);
 
         // Compute position delta
         this->computeDelta(i);
@@ -677,7 +677,7 @@ void Simulation::Step()
     }
 
     // Place density in "mPredictedPingBuffer[x].w"
-    this->packData(mPredictedPingBuffer, mDensityBuffer, -1);
+    this->packData(mPredictedPingBuffer, mPredictedPongBuffer, mDensityBuffer, -1);
 
     // Recompute velocities
     this->updateVelocities();

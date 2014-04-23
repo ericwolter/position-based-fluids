@@ -1,6 +1,7 @@
 __kernel void computeScaling(__constant struct Parameters *Params,
-                             __global float4 *predicted,
+                             __read_only image2d_t imgPredicted,
                              __global float *density,
+                             __global float *lambda,
                              const __global int *friends_list,
                              const int N)
 {
@@ -25,7 +26,9 @@ __kernel void computeScaling(__constant struct Parameters *Params,
 
     if (i >= N) return;
 
-	__private float4 particle = predicted[i];
+    // Read particle "i" position
+    float3 particle_i = imgReadf4(imgPredicted, i).xyz;
+    
     const float e = Params->epsilon * Params->restDensity;
 
     // Sum of rho_i, |nabla p_k C_i|^2 and nabla p_k C_i for k = i
@@ -61,14 +64,9 @@ __kernel void computeScaling(__constant struct Parameters *Params,
             const int j_index = friends_list[baseIndex + iFriend * MAX_PARTICLES_COUNT];
 
             // Get j particle data
-            const float4 j_data = predicted[j_index];
-            // float4 j_data;
-            // if (j_index / local_size == group_id)
-            //     j_data = loc_predicted[j_index % local_size];
-            // else
-            //     j_data = predicted[j_index];
+            const float3 position_j = imgReadf4(imgPredicted, j_index).xyz;
 
-            const float3 r = particle.xyz - j_data.xyz;
+            const float3 r = particle_i - position_j;
             const float r_length_2 = dot(r,r);
 
             // Required for numerical stability
@@ -109,5 +107,6 @@ __kernel void computeScaling(__constant struct Parameters *Params,
     // equation (11)
     float scalingResult = -1.0f * density_constraint /
                           (gradient_sum_k / (Params->restDensity * Params->restDensity) + e);
-    predicted[i].w = scalingResult;
+                          
+    lambda[i] = scalingResult;
 }

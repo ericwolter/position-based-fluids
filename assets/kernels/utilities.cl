@@ -98,3 +98,16 @@ void imgWriteui1(image2d_t img, int index, uint value)
     int imgWidth = get_image_width(img);
     write_imageui(img, (int2)(index % imgWidth, index / imgWidth), (uint4)(value, 0, 0, 1));
 }
+
+float4 imgReadf4(image2d_t img, int index)
+{
+    sampler_t smp = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_NEAREST;
+    int imgWidth = get_image_width(img);
+    return read_imagef(img, smp, (int2)(index % imgWidth, index / imgWidth));
+}
+
+void imgWritef4(image2d_t img, int index, float4 value)
+{
+    int imgWidth = get_image_width(img);
+    write_imagef(img, (int2)(index % imgWidth, index / imgWidth), value);
+}

@@ -21,7 +21,7 @@
 //                                                                   ParticleIndex];                                                  // Offset to particle_index
 
 __kernel void buildFriendsList(__constant struct Parameters *Params,
-                               const __global float4 *predicted,
+                               __read_only  image2d_t imgPredicted,
                                const __global uint *cells,
                                __global int *friends_list,
                                const int N)
@@ -30,6 +30,9 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
     if (i >= N) return;
     
     const float MIN_R = 0.3f * Params->h;
+    
+    // Read "i" particles data
+    float3 predicted_i = imgReadf4(imgPredicted, i).xyz;
 
     // Define circle particle counter varible
     __private int circleParticles[MAX_FRIENDS_CIRCLES];
@@ -37,7 +40,7 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
         circleParticles[j] = 0;
 
     // Start grid scan
-    int3 current_cell = convert_int3(predicted[i].xyz / Params->h);
+    int3 current_cell = convert_int3(predicted_i / Params->h);
     for (int x = -1; x <= 1; ++x)
     {
         for (int y = -1; y <= 1; ++y)
@@ -47,19 +50,23 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
                 uint cell_index = calcGridHash(current_cell + (int3)(x, y, z));
 
                 // find first and last particle in this cell
-                uint2 cell_boundary = (uint2)(cells[cell_index*2+0],cells[cell_index*2+1]);
-				
-				// skip empty cells
-				if(cell_boundary.x == END_OF_CELL_LIST) continue;
-					
-				// iterate over all particles in this cell
-				for(int j_index = cell_boundary.x; j_index <= cell_boundary.y; ++j_index) {
+                uint2 cell_boundary = (uint2)(cells[cell_index*2+0], cells[cell_index*2+1]);
+                
+                // skip empty cells
+                if(cell_boundary.x == END_OF_CELL_LIST) continue;
+                    
+                // iterate over all particles in this cell
+                for(int j_index = cell_boundary.x; j_index <= cell_boundary.y; ++j_index) 
+                {
                     // Skip self
                     if (i == j_index)
                         continue;
+                        
+                    // Read "j" particles data
+                    float3 predicted_j = imgReadf4(imgPredicted, j_index).xyz;
 
                     // Ignore unfriendly particles (r > h)
-                    const float3 r = predicted[i].xyz - predicted[j_index].xyz;
+                    const float3 r = predicted_i - predicted_j;
                     const float  r_length_2 = dot(r, r);
                     if (r_length_2 >= Params->h_2)
                         continue;
@@ -92,72 +99,5 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
 
     // Save counters
     for (int iCircle = 0; iCircle < MAX_FRIENDS_CIRCLES; iCircle++)
-    {
         friends_list[iCircle * MAX_PARTICLES_COUNT + i] = circleParticles[iCircle];
-    }
 }
-
-/*
-byte cellToList[27] = 0; 
-int listsCount = 0;
-int listStart[27];
-byte listLength[27];
-
-// Reset cell2List (-1 means no list)
-for (int i=0;i<27;i++)
-  cellToList[i] = -1;
-
-for (int x= -1; x >= +1; x++)
-{
-  for (int y= -1; y >= +1; z++)
-  {
-    for (int z= -1; z >= +1; z++)
-    {
-        // [A] Check if cell was already counted
-        int cubeIndex = x * 9 + y * 6 + z;
-        if (cellToList[cubeIndex] != -1)
-            continue;
-       
-        // Mark cell as used
-        cellToList[cubeIndex] = listsCount;
-           
-        // Get cell hash
-        int cell_hash = morton(x,y,z) % gridsize;
-
-        // [B] Add new list
-        listStart[listsCount] = cell_start_index(cell_hash);
-        listLength[listsCount] = ...;
-        listsCount++;
-        
-        // [C] Check backwards
-        int 
-        while (true)
-        {
-            // Find the cell index of the particle prior to current location
-            vec3 prevParticle = get_particle_pos(listStart[listsCount] - 1);
-            
-            // get grid cell position
-            ivec3 prevGridPos = prevParticle / ...;
-            
-            // [E] Check if in range of current cube (3x3x3)
-            if (!...)
-                break;
-            
-            // [F] Check if already added
-            int prevCubeIndex = out_x * 9 + out_y * 6 + out_z;
-            if (cellToList[prevCubeIndex] != -1)
-            {
-                // [G] add our list to the end of the list
-                listLength[cellToList[prevCubeIndex]] += listLength[listsCount];
-                
-                // Cancel new list
-                listsCount--;
-            }
-        }
-        
-        // Check forward
-        // ...
-    }
-  }
-}
-*/

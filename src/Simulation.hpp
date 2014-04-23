@@ -65,10 +65,11 @@ public:
     cl::Buffer mFriendsListBuffer;
     cl::BufferGL mPositionsPingBuffer;
     cl::BufferGL mPositionsPongBuffer;
-    cl::Buffer mPredictedPingBuffer;
-    cl::Buffer mPredictedPongBuffer;
+    cl::Image2D mPredictedPingBuffer;
+    cl::Image2D mPredictedPongBuffer;
     cl::Buffer mVelocitiesBuffer;
     cl::Buffer mDensityBuffer;
+    cl::Buffer mLambdaBuffer;
     cl::Buffer mDeltaBuffer;
     cl::Buffer mOmegaBuffer;
     cl::Buffer mParameters;
@@ -102,7 +103,7 @@ public:
     void computeScaling(int iterationIndex);
     void computeDelta(int iterationIndex);
     void radixsort();
-    void packData(cl::Buffer packTarget, cl::Buffer packSource, int iterationIndex);
+    void packData(cl::Image2D& sourceImg, cl::Image2D& pongImg, cl::Buffer packSource,  int iterationIndex);
 
 public:
     // Default constructor.

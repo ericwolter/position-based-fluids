@@ -1,6 +1,6 @@
 __kernel void applyViscosity(
     __constant struct Parameters *Params,
-    const __global float4 *predicted,
+    __read_only image2d_t imgPredicted,
     __global float4 *velocities,
     __global float4 *omegas,
     const __global int *friends_list,
@@ -8,9 +8,9 @@ __kernel void applyViscosity(
 {
     const int i = get_global_id(0);
     if (i >= N) return;
-	
-	__private float4 particle = predicted[i];
-	__private float4 particle_velocity = velocities[i];
+
+    float4 particle_i = imgReadf4(imgPredicted, i);
+    float4 velocity_i = velocities[i];
 
     float3 viscosity_sum = (float3) 0.0f;
     float3 omega_i = (float3) 0.0f;
@@ -41,10 +41,11 @@ __kernel void applyViscosity(
         {
             // Read friend index from friends_list
             const int j_index = friends_list[baseIndex + iFriend * MAX_PARTICLES_COUNT];
-			
-			__private float4 neighbor = predicted[j_index];
 
-            const float3 r = particle.xyz - neighbor.xyz;
+            float4 particle_j = imgReadf4(imgPredicted, j_index);
+            float4 velocity_j = velocities[j_index];
+
+            const float3 r = particle_i.xyz - particle_j.xyz;
             const float r_length_2 = (r.x * r.x + r.y * r.y + r.z * r.z);
 
             if (r_length_2 < Params->h_2)
@@ -54,9 +55,9 @@ __kernel void applyViscosity(
                 // with estimating the density by sampling the neighborhood
                 // In this case the standard SPH gradient operator brakes
                 // because of the division by zero.
-                if (fabs(predicted[j_index].w) > 1e-8f)
+                if (fabs(particle_j.w) > 1e-8f)
                 {
-                    const float3 v = velocities[j_index].xyz - particle_velocity.xyz;
+                    const float3 v = velocity_j.xyz - velocity_i.xyz;
                     const float h2_r2_diff = Params->h_2 - r_length_2;
 
                     // equation 15
@@ -67,7 +68,7 @@ __kernel void applyViscosity(
                     // the gradient has to be negated because it is with respect to p_j
                     omega_i += cross(v, gradient_spiky);
 
-                    viscosity_sum += (1.0f / neighbor.w) * v * (h2_r2_diff * h2_r2_diff * h2_r2_diff);
+                    viscosity_sum += (1.0f / particle_j.w) * v * (h2_r2_diff * h2_r2_diff * h2_r2_diff);
                 }
             }
         }

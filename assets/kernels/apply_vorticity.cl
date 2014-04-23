@@ -1,6 +1,6 @@
 __kernel void applyVorticity(
     __constant struct Parameters *Params,
-    const __global float4 *predicted,
+    __read_only image2d_t imgPredicted,
     __global float4 *velocities,
     const __global float4 *omegas,
     const __global int *friends_list,
@@ -8,6 +8,8 @@ __kernel void applyVorticity(
 {
     const int i = get_global_id(0);
     if (i >= N) return;
+    
+    float4 particle_i = imgReadf4(imgPredicted, i);
 
     float3 eta = (float3)0.0f;
 
@@ -37,8 +39,11 @@ __kernel void applyVorticity(
         {
             // Read friend index from friends_list
             const int j_index = friends_list[baseIndex + iFriend * MAX_PARTICLES_COUNT];
-
-            const float3 r = predicted[i].xyz - predicted[j_index].xyz;
+            
+            // Read particle "j" position
+            const float4 particle_j = imgReadf4(imgPredicted, j_index);
+            
+            const float3 r = particle_i.xyz - particle_j.xyz;
             const float r_length_2 = (r.x * r.x + r.y * r.y + r.z * r.z);
 
             if (r_length_2 < Params->h_2)
@@ -48,7 +53,7 @@ __kernel void applyVorticity(
                 // with estimating the density by sampling the neighborhood
                 // In this case the standard SPH gradient operator brakes
                 // because of the division by zero.
-                if (fabs(predicted[j_index].w) > 1e-8f)
+                if (fabs(particle_j.w) > 1e-8f)
                 {
                     const float r_length = sqrt(r_length_2);
                     const float3 gradient_spiky = -1.0f * r / (r_length)
@@ -56,7 +61,7 @@ __kernel void applyVorticity(
                                                   * (Params->h - r_length);
 
                     const float omega_length = fast_length(omegas[j_index].xyz);
-                    eta += (omega_length / predicted[j_index].w) * gradient_spiky;
+                    eta += (omega_length / particle_j.w) * gradient_spiky;
                 }
             }
         }

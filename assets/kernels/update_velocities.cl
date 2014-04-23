@@ -1,18 +1,18 @@
 __kernel void updateVelocities(__constant struct Parameters* Params, 
                                __global float4 *positions,
-                               const __global float4 *predicted,
+                               __read_only image2d_t imgPredicted,
                                __write_only image2d_t texPositions,
                                __global float4 *velocities,
                                const uint N)
 {
     const uint i = get_global_id(0);
     if (i >= N) return;
-	
-	__private float4 newPosition = predicted[i];
-	
+
+    float4 newPosition = imgReadf4(imgPredicted, i);
+
     velocities[i].xyz = (newPosition.xyz - positions[i].xyz) / Params->timeStep;
-	positions[i] = (float4)(newPosition.xyz, fast_length(velocities[i].xyz));
-	
+    positions[i]      = (float4)(newPosition.xyz, fast_length(velocities[i].xyz));
+
     int imgWidth = get_image_width(texPositions);
     write_imagef(texPositions, (int2)(i % imgWidth, i / imgWidth), newPosition);
 
