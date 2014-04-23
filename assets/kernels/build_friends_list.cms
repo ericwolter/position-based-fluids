@@ -34,7 +34,7 @@ void main()
                 int cell_index = calcGridHash(currentCell + ivec3(x, y, z));
 
                 // find first and last particle in this cell
-                ivec2 cell_boundary = ivec2(texelFetch(txtCells, cell_index*2+0).x, texelFetch(txtCells, cell_index*2+1).x);
+                ivec2 cell_boundary = texelFetch(txtCells, cell_index).xy;
                 
                 // skip empty cells
                 if(cell_boundary.x == END_OF_CELL_LIST) continue;

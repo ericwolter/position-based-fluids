@@ -249,7 +249,7 @@ void CVisual::renderFluidSmoothDepth()
 
     // Bind image units
     glBindImageTexture(0, mSimulation->mPositionsPingTBO, 0, GL_FALSE, 0, GL_READ_ONLY, GL_RGBA32F);
-    glBindImageTexture(1, mSimulation->mCellsTBO,         0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
+    glBindImageTexture(1, mSimulation->mCells32TBO,       0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
 
     // Setup projection related unitforms
     glUniformMatrix4fv(UniformLoc("iMV_Matrix"), 1, GL_FALSE, glm::value_ptr(ZPR_InvModelViewMatrix));

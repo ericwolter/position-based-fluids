@@ -50,7 +50,8 @@ public:
 
     // The device memory buffers holding the simulation data
     GLuint mCellsSBO;
-    GLuint mCellsTBO;
+    GLuint mCells32TBO;
+    GLuint mCells64TBO;
     GLuint mFriendsListSBO;
     GLuint mFriendsListTBO;
     GLuint mPositionsPingSBO;
