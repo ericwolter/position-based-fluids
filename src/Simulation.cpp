@@ -15,8 +15,17 @@ using namespace std;
 
 unsigned int _NKEYS = 0;
 
-#define DivCeil(num, divider) ((num + divider - 1) / divider) 
-#define SWAP(t, a, b) { t tmp = a; a = b; b = tmp; } 
+cl::Memory Simulation::CreateCachedBuffer(cl::ImageFormat& format, int elements)
+{
+    if (format.image_channel_order != CL_RGBA)
+        throw "Image type is not supported";
+
+    // Choose what type should be created
+    if (Params.EnableCachedBuffers)
+        return cl::Image2D(mCLContext, CL_MEM_READ_WRITE, format, 2048, DivCeil(elements, 2048));
+    else
+        return cl::Buffer(mCLContext, CL_MEM_READ_WRITE, elements * sizeof(float) * 4);
+}
 
 Simulation::Simulation(const cl::Context &clContext, const cl::Device &clDevice)
     : mCLContext(clContext),
@@ -137,8 +146,6 @@ bool Simulation::InitKernels()
 
     clflags << std::showpoint;
 
-    clflags << "-DCANCEL_RANDOMNESS ";
-
     clflags << "-DLOG_SIZE="                    << (int)1024 << " ";
     clflags << "-DEND_OF_CELL_LIST="            << (int)(-1)         << " ";
 
@@ -151,6 +158,9 @@ bool Simulation::InitKernels()
 
     clflags << "-DPOLY6_FACTOR="      << 315.0f / (64.0f * M_PI * pow(Params.h, 9)) << "f ";
     clflags << "-DGRAD_SPIKY_FACTOR=" << 45.0f / (M_PI * pow(Params.h, 6)) << "f ";
+
+    if (Params.EnableCachedBuffers)
+        clflags << "-DENABLE_CACHED_BUFFERS ";
 
     // Compile kernels
     cl::Program program = clSetup.createProgram(kernelSources, mCLContext, mCLDevice, clflags.str());
@@ -208,8 +218,8 @@ void Simulation::InitBuffers()
     mPositionsPongBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharedPongBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
     mParticlePosImg        = cl::Image2DGL(mCLContext, CL_MEM_READ_WRITE, GL_TEXTURE_2D, 0, mSharedParticlesPos);
 
-    mPredictedPingBuffer   = cl::Image2D(mCLContext, CL_MEM_READ_WRITE, cl::ImageFormat(CL_RGBA, CL_FLOAT), 2048, DivCeil(mBufferSizeParticles, 2048));
-    mPredictedPongBuffer   = cl::Image2D(mCLContext, CL_MEM_READ_WRITE, cl::ImageFormat(CL_RGBA, CL_FLOAT), 2048, DivCeil(mBufferSizeParticles, 2048));
+    mPredictedPingBuffer   = CreateCachedBuffer(cl::ImageFormat(CL_RGBA, CL_FLOAT), Params.particleCount);
+    mPredictedPongBuffer   = CreateCachedBuffer(cl::ImageFormat(CL_RGBA, CL_FLOAT), Params.particleCount);
     mVelocitiesBuffer      = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mDeltaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
     mOmegaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
@@ -407,10 +417,10 @@ void Simulation::updatePredicted(int iterationIndex)
 
     mQueue.enqueueNDRangeKernel(mKernels["updatePredicted"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updatePredicted", iterationIndex));
 
-    SWAP(cl::Image2D, mPredictedPingBuffer, mPredictedPongBuffer);
+    SWAP(cl::Memory, mPredictedPingBuffer, mPredictedPongBuffer);
 }
 
-void Simulation::packData(cl::Image2D& sourceImg, cl::Image2D& pongImg, cl::Buffer packSource,  int iterationIndex)
+void Simulation::packData(cl::Memory& sourceImg, cl::Memory& pongImg, cl::Buffer packSource,  int iterationIndex)
 {
     int param = 0;
     mKernels["packData"].setArg(param++, pongImg);
@@ -421,7 +431,7 @@ void Simulation::packData(cl::Image2D& sourceImg, cl::Image2D& pongImg, cl::Buff
     mQueue.enqueueNDRangeKernel(mKernels["packData"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("packData", iterationIndex));
 
     // Swap between source and pong
-    SWAP(cl::Image2D, sourceImg, pongImg);
+    SWAP(cl::Memory, sourceImg, pongImg);
 }
 
 void Simulation::computeDelta(int iterationIndex)
@@ -613,7 +623,7 @@ void Simulation::radixsort()
 
     // Double buffering of positions and velocity buffers
     SWAP(cl::BufferGL, mPositionsPingBuffer, mPositionsPongBuffer);
-    SWAP(cl::Image2D,  mPredictedPingBuffer, mPredictedPongBuffer);
+    SWAP(cl::Memory,  mPredictedPingBuffer, mPredictedPongBuffer);
     SWAP(GLuint,       mSharedPingBufferID,  mSharedPongBufferID);
 }
 

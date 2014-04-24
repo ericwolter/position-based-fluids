@@ -1,11 +1,11 @@
-__kernel void packData(__write_only image2d_t imgTarget,
-                        __read_only image2d_t imgSource,
+__kernel void packData(cbufferf_writeonly imgTarget,
+                       cbufferf_readonly  imgSource,
                        __global float *packSource,
                        const uint N)
 {
     const uint i = get_global_id(0);
     if (i >= N) return;
 
-    float4 newValue = (float4)(imgReadf4(imgSource, i).xyz, packSource[i]); 
-    imgWritef4(imgTarget, i, newValue);
+    float4 newValue = (float4)(cbufferf_read(imgSource, i).xyz, packSource[i]); 
+    cbufferf_write(imgTarget, i, newValue);
 }

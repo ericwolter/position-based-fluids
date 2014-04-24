@@ -86,28 +86,29 @@ uint calcGridHash(int3 gridPos)
     return mortonNumber(gridPos) % GRID_BUF_SIZE;
 }
 
+__constant sampler_t simpleSampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_NEAREST;
+
 uint imgReadui1(image2d_t img, int index)
 {
-    sampler_t smp = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_NEAREST;
-    int imgWidth = get_image_width(img);
-    return read_imageui(img, smp, (int2)(index % imgWidth, index / imgWidth)).x;
+    const sampler_t smp = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_NEAREST;
+    return read_imageui(img, smp, (int2)(index % 2048, index / 2048)).x;
 }
 
 void imgWriteui1(image2d_t img, int index, uint value)
 {
-    int imgWidth = get_image_width(img);
-    write_imageui(img, (int2)(index % imgWidth, index / imgWidth), (uint4)(value, 0, 0, 1));
+    write_imageui(img, (int2)(index % 2048, index / 2048), (uint4)(value, 0, 0, 1));
 }
 
-float4 imgReadf4(image2d_t img, int index)
-{
-    sampler_t smp = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_NEAREST;
-    int imgWidth = get_image_width(img);
-    return read_imagef(img, smp, (int2)(index % imgWidth, index / imgWidth));
-}
-
-void imgWritef4(image2d_t img, int index, float4 value)
-{
-    int imgWidth = get_image_width(img);
-    write_imagef(img, (int2)(index % imgWidth, index / imgWidth), value);
-}
+#ifdef ENABLE_CACHED_BUFFERS
+    #define cbufferf                            image2d_t
+    #define cbufferf_readonly                   __read_only image2d_t
+    #define cbufferf_writeonly                  __write_only image2d_t
+    #define cbufferf_read(obj, index)           read_imagef(obj, simpleSampler, (int2)((index) % 2048, (index) / 2048))
+    #define cbufferf_write(obj, index, data)    write_imagef(obj, (int2)((index) % 2048, (index) / 2048), data)
+#else
+    #define cbufferf                            __global float4*
+    #define cbufferf_readonly                   const __global float4*
+    #define cbufferf_writeonly                  __global float4*
+    #define cbufferf_read(obj, index)           obj[index]
+    #define cbufferf_write(obj, index, data)    obj[index]=data
+#endif

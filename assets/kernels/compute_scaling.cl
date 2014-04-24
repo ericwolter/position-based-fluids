@@ -1,5 +1,5 @@
 __kernel void computeScaling(__constant struct Parameters *Params,
-                             __read_only image2d_t imgPredicted,
+                             cbufferf_readonly imgPredicted,
                              __global float *density,
                              __global float *lambda,
                              const __global int *friends_list,
@@ -27,7 +27,7 @@ __kernel void computeScaling(__constant struct Parameters *Params,
     if (i >= N) return;
 
     // Read particle "i" position
-    float3 particle_i = imgReadf4(imgPredicted, i).xyz;
+    float3 particle_i = cbufferf_read(imgPredicted, i).xyz;
     
     const float e = Params->epsilon * Params->restDensity;
 
@@ -64,7 +64,7 @@ __kernel void computeScaling(__constant struct Parameters *Params,
             const int j_index = friends_list[baseIndex + iFriend * MAX_PARTICLES_COUNT];
 
             // Get j particle data
-            const float3 position_j = imgReadf4(imgPredicted, j_index).xyz;
+            const float3 position_j = cbufferf_read(imgPredicted, j_index).xyz;
 
             const float3 r = particle_i - position_j;
             const float r_length_2 = dot(r,r);

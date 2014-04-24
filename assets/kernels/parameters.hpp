@@ -50,4 +50,7 @@ struct Parameters
 
     // Computed fields
     float h_2;
+
+    // Kernel setup related
+    bool EnableCachedBuffers;
 };

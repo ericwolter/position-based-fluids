@@ -1,6 +1,6 @@
 __kernel void applyVorticity(
     __constant struct Parameters *Params,
-    __read_only image2d_t imgPredicted,
+    cbufferf_readonly imgPredicted,
     __global float4 *velocities,
     const __global float4 *omegas,
     const __global int *friends_list,
@@ -9,7 +9,7 @@ __kernel void applyVorticity(
     const int i = get_global_id(0);
     if (i >= N) return;
     
-    float4 particle_i = imgReadf4(imgPredicted, i);
+    float4 particle_i = cbufferf_read(imgPredicted, i);
 
     float3 eta = (float3)0.0f;
 
@@ -41,7 +41,7 @@ __kernel void applyVorticity(
             const int j_index = friends_list[baseIndex + iFriend * MAX_PARTICLES_COUNT];
             
             // Read particle "j" position
-            const float4 particle_j = imgReadf4(imgPredicted, j_index);
+            const float4 particle_j = cbufferf_read(imgPredicted, j_index);
             
             const float3 r = particle_i.xyz - particle_j.xyz;
             const float r_length_2 = (r.x * r.x + r.y * r.y + r.z * r.z);

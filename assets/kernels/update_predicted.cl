@@ -1,11 +1,11 @@
-__kernel void updatePredicted(__read_only image2d_t imgPredictedSrc, 
-                              __write_only image2d_t imgPredictedDst, 
+__kernel void updatePredicted(cbufferf_readonly imgPredictedSrc, 
+                              cbufferf_writeonly imgPredictedDst, 
                               const __global float4 *delta,
                               const uint N)
 {
     const uint i = get_global_id(0);
     if (i >= N) return;
     
-    float4 newPredicted = imgReadf4(imgPredictedSrc, i) + delta[i];
-    imgWritef4(imgPredictedDst, i, newPredicted);
+    float4 newPredicted = cbufferf_read(imgPredictedSrc, i) + delta[i];
+    cbufferf_write(imgPredictedDst, i, newPredicted);
 }

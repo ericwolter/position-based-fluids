@@ -21,7 +21,7 @@
 //                                                                   ParticleIndex];                                                  // Offset to particle_index
 
 __kernel void buildFriendsList(__constant struct Parameters *Params,
-                               __read_only  image2d_t imgPredicted,
+                               cbufferf_readonly imgPredicted,
                                const __global uint *cells,
                                __global int *friends_list,
                                const int N)
@@ -32,7 +32,7 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
     const float MIN_R = 0.3f * Params->h;
     
     // Read "i" particles data
-    float3 predicted_i = imgReadf4(imgPredicted, i).xyz;
+    float3 predicted_i = cbufferf_read(imgPredicted, i).xyz;
 
     // Define circle particle counter varible
     __private int circleParticles[MAX_FRIENDS_CIRCLES];
@@ -63,7 +63,7 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
                         continue;
                         
                     // Read "j" particles data
-                    float3 predicted_j = imgReadf4(imgPredicted, j_index).xyz;
+                    float3 predicted_j = cbufferf_read(imgPredicted, j_index).xyz;
 
                     // Ignore unfriendly particles (r > h)
                     const float3 r = predicted_i - predicted_j;

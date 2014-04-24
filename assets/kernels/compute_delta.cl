@@ -1,7 +1,7 @@
 __kernel void computeDelta(__constant struct Parameters *Params,
                            volatile __global int *debugBuf,
                            __global float4 *delta,
-                           __read_only image2d_t imgPredicted, // xyz=predicted, w=scaling
+                           cbufferf_readonly imgPredicted, // xyz=predicted, w=scaling
                            const __global int *friends_list,
                            const float wave_generator,
                            const int N)
@@ -11,7 +11,7 @@ __kernel void computeDelta(__constant struct Parameters *Params,
     if (i >= N) return;
     
     // Read particle "i" position
-    float4 particle_i = imgReadf4(imgPredicted, i);
+    float4 particle_i = cbufferf_read(imgPredicted, i);
     
 #ifdef LOCALMEM
     #define local_size       (256)
@@ -80,12 +80,12 @@ __kernel void computeDelta(__constant struct Parameters *Params,
             }
             else
             {
-                particle_j = imgReadf4(imgPredicted, j_index);
+                particle_j = cbufferf_read(imgPredicted, j_index);
             //     localMiss++;
             //     atomic_inc(&stats[1]);
             }
 #else
-            const float4 particle_j = imgReadf4(imgPredicted, j_index);
+            const float4 particle_j = cbufferf_read(imgPredicted, j_index);
 #endif
 
             // Compute r, length(r) and length(r)^2

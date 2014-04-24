@@ -87,6 +87,8 @@ void LoadParameters(string parameters)
 
         else if (parameter == "particlerendersize")  ss >> Params.particleRenderSize;
 
+        else if (parameter == "enablecachedbuffers") ss >> Params.EnableCachedBuffers;
+
         else
             cerr << "Unknown parameter " << parameter << endl << "Leaving it out." << endl;
     }

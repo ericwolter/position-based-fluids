@@ -35,6 +35,9 @@ private:
     // Init particles positions
     void CreateParticles();
 
+    // Create cached buffers
+    cl::Memory CreateCachedBuffer(cl::ImageFormat& format, int elements);
+
     // Copy current positions and velocities
     void dumpData( cl_float4 * (&positions), cl_float4 * (&velocities) );
 
@@ -60,19 +63,19 @@ public:
     size_t mBufferSizeParticlesList;
 
     // The device memory buffers holding the simulation data
-    cl::Buffer mCellsBuffer;
-    cl::Buffer mParticlesListBuffer;
-    cl::Buffer mFriendsListBuffer;
+    cl::Buffer   mCellsBuffer;
+    cl::Buffer   mParticlesListBuffer;
+    cl::Buffer   mFriendsListBuffer;
     cl::BufferGL mPositionsPingBuffer;
     cl::BufferGL mPositionsPongBuffer;
-    cl::Image2D mPredictedPingBuffer;
-    cl::Image2D mPredictedPongBuffer;
-    cl::Buffer mVelocitiesBuffer;
-    cl::Buffer mDensityBuffer;
-    cl::Buffer mLambdaBuffer;
-    cl::Buffer mDeltaBuffer;
-    cl::Buffer mOmegaBuffer;
-    cl::Buffer mParameters;
+    cl::Memory   mPredictedPingBuffer;
+    cl::Memory   mPredictedPongBuffer;
+    cl::Buffer   mVelocitiesBuffer;
+    cl::Buffer   mDensityBuffer;
+    cl::Buffer   mLambdaBuffer;
+    cl::Buffer   mDeltaBuffer;
+    cl::Buffer   mOmegaBuffer;
+    cl::Buffer   mParameters;
 
     cl::Image2DGL mParticlePosImg;
 
@@ -103,7 +106,7 @@ public:
     void computeScaling(int iterationIndex);
     void computeDelta(int iterationIndex);
     void radixsort();
-    void packData(cl::Image2D& sourceImg, cl::Image2D& pongImg, cl::Buffer packSource,  int iterationIndex);
+    void packData(cl::Memory& sourceImg, cl::Memory& pongImg, cl::Buffer packSource,  int iterationIndex);
 
 public:
     // Default constructor.

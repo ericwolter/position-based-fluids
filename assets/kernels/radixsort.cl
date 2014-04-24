@@ -1,5 +1,5 @@
 __kernel void computeKeys(__constant struct Parameters *Params,
-                          __read_only image2d_t imgPositions,
+                         cbufferf_readonly imgPositions,
                           __global int *keys,
                           __global int *permutation,
                           const uint numParticles)
@@ -8,7 +8,7 @@ __kernel void computeKeys(__constant struct Parameters *Params,
 
     if (i < numParticles)
     {
-        float3 position = imgReadf4(imgPositions, i).xyz;
+        float3 position = cbufferf_read(imgPositions, i).xyz;
         int3 current_cell = convert_int3(position / Params->h);
         keys[i] = calcGridHash(current_cell);
     }
@@ -22,8 +22,8 @@ __kernel void computeKeys(__constant struct Parameters *Params,
 __kernel void sortParticles(const __global int *permutation,
                             const __global float4 *positionsPing,
                             __global float4 *positionsPong,
-                            __read_only  image2d_t imgPredictedPing,
-                            __write_only image2d_t imgPredictedPong,
+                            cbufferf_readonly imgPredictedPing,
+                            cbufferf_writeonly imgPredictedPong,
                             const uint N)
 {
     const uint i = get_global_id(0);
@@ -32,8 +32,8 @@ __kernel void sortParticles(const __global int *permutation,
     positionsPong[i] = positionsPing[permutation[i]];
     
     // imgPredictedPong[i] = imgPredictedPing[permutation[i]];
-    float4 predicted = imgReadf4(imgPredictedPing, permutation[i]);
-    imgWritef4(imgPredictedPong, (int)(i), predicted);
+    float4 predicted = cbufferf_read(imgPredictedPing, permutation[i]);
+    cbufferf_write(imgPredictedPong, (int)(i), predicted);
 }
 
 // fixes compiler warning: no previous prototype for function
