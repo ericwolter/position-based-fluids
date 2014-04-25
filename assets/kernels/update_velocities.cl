@@ -15,11 +15,4 @@ __kernel void updateVelocities(__constant struct Parameters* Params,
 
     int imgWidth = get_image_width(texPositions);
     write_imagef(texPositions, (int2)(i % imgWidth, i / imgWidth), newPosition);
-
-    // #if defined(USE_DEBUG)
-    // printf("updateVelocites: i,t: %d,%f\npos: [%f,%f,%f]\npredict: [%f,%f,%f]\nvel: [%f,%f,%f]\n",
-    //        i, timestep, positions[i].x, positions[i].y, positions[i].z,
-    //        predicted[i].x, predicted[i].y, predicted[i].z,
-    //        velocities[i].x, velocities[i].y, velocities[i].z);
-    // #endif
 }

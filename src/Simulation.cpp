@@ -13,8 +13,6 @@
 
 using namespace std;
 
-unsigned int _NKEYS = 0;
-
 cl::Memory Simulation::CreateCachedBuffer(cl::ImageFormat& format, int elements)
 {
     if (format.image_channel_order != CL_RGBA)
@@ -27,32 +25,53 @@ cl::Memory Simulation::CreateCachedBuffer(cl::ImageFormat& format, int elements)
         return cl::Buffer(mCLContext, CL_MEM_READ_WRITE, elements * sizeof(float) * 4);
 }
 
+void OCL_InitMemory(cl::CommandQueue& queue, cl::Memory& mem, void* pData = NULL, int nDataSize = 0)
+{
+    // Get buffer size
+    int memSize = mem.getInfo<CL_MEM_SIZE>();
+
+    // Create memory
+    char* pBuf = new char[memSize];
+    memset(pBuf, 0, memSize);
+
+    // Fill with data
+    if ((pData != NULL) && (nDataSize > 0))
+        for (int i = 0; i < memSize; i++)
+            pBuf[i] = ((char*)pData)[i % nDataSize];
+
+    // Choose the way to transfer the data
+    switch (mem.getInfo<CL_MEM_TYPE>())
+    {
+        case CL_MEM_OBJECT_BUFFER:
+            queue.enqueueWriteBuffer(*((cl::Buffer*)&mem), CL_TRUE, 0, memSize, pBuf);
+            break;
+    }
+
+    // Release memory
+    delete[] pBuf;
+}
+
+
 Simulation::Simulation(const cl::Context &clContext, const cl::Device &clDevice)
     : mCLContext(clContext),
       mCLDevice(clDevice),
-      mCells(NULL),
-      bDumpParticlesData(false),
-      mPositions(NULL),
-      mVelocities(NULL),
-      mPredictions(NULL),
-      mDeltas(NULL),
-      mFriendsList(NULL)
+      bDumpParticlesData(false)
 {
+    // Create Queue
+    mQueue = cl::CommandQueue(mCLContext, mCLDevice, CL_QUEUE_PROFILING_ENABLE);
 }
 
 Simulation::~Simulation()
 {
     glFinish();
     mQueue.finish();
-
-    // Delete buffers
-    delete[] mCells;
-    delete[] mPositions;
-    delete[] mVelocities;
 }
 
 void Simulation::CreateParticles()
 {
+    // Create buffers
+    cl_float4* positions   = new cl_float4[Params.particleCount];
+
     // Compute particle count per axis
     int ParticlesPerAxis = (int)ceil(pow(Params.particleCount, 1 / 3.0));
 
@@ -67,13 +86,17 @@ void Simulation::CreateParticles()
         cl_uint y = ((cl_uint)(i / pow(ParticlesPerAxis, 0)) % ParticlesPerAxis);
         cl_uint z = ((cl_uint)(i / pow(ParticlesPerAxis, 2)) % ParticlesPerAxis);
 
-        mPositions[i].s[0] = offsetX + (x /*+ (y % 2) * .5*/) * d;
-        mPositions[i].s[1] = offsetY + (y) * d;
-        mPositions[i].s[2] = offsetZ + (z /*+ (y % 2) * .5*/) * d;
-        mPositions[i].s[3] = 0;
+        positions[i].s[0] = offsetX + (x /*+ (y % 2) * .5*/) * d;
+        positions[i].s[1] = offsetY + (y) * d;
+        positions[i].s[2] = offsetZ + (z /*+ (y % 2) * .5*/) * d;
+        positions[i].s[3] = 0;
     }
 
-    // random_shuffle(&mPositions[0],&mPositions[Params.particleCount-1]);
+    // Copy data from Host to GPU
+    OCL_InitMemory(mQueue, mPositionsPingBuffer, positions , sizeof(positions[0])  * Params.particleCount);
+    OCL_InitMemory(mQueue, mVelocitiesBuffer);
+
+    delete[] positions;
 }
 
 const std::string *Simulation::KernelFileList()
@@ -140,10 +163,6 @@ bool Simulation::InitKernels()
     if (devVendor.find("NVIDIA") != std::string::npos)
         clflags << "-cl-nv-verbose ";
 
-#ifdef USE_DEBUG
-    clflags << "-DUSE_DEBUG ";
-#endif // USE_DEBUG
-
     clflags << std::showpoint;
 
     clflags << "-DLOG_SIZE="                    << (int)1024 << " ";
@@ -180,39 +199,11 @@ bool Simulation::InitKernels()
     cout << "CL_KERNEL_WORK_GROUP_SIZE=" << mKernels["computeDelta"].getWorkGroupInfo<CL_KERNEL_WORK_GROUP_SIZE>(mCLDevice) << endl;
     cout << "CL_KERNEL_LOCAL_MEM_SIZE =" << mKernels["computeDelta"].getWorkGroupInfo<CL_KERNEL_LOCAL_MEM_SIZE>(mCLDevice) << endl;
 
-    // Copy Params (Host) => mParams (GPU)
-    mQueue = cl::CommandQueue(mCLContext, mCLDevice, CL_QUEUE_PROFILING_ENABLE);
-    mQueue.enqueueWriteBuffer(mParameters, CL_TRUE, 0, sizeof(Params), &Params);
-    mQueue.finish();
-
     return true;
 }
 
 void Simulation::InitBuffers()
 {
-    // Define CL buffer sizes
-    mBufferSizeParticles      = Params.particleCount * sizeof(cl_float4);
-    mBufferSizeParticlesList  = Params.particleCount * sizeof(cl_int);
-
-    // Allocate CPU buffers
-    delete[] mPositions;   mPositions   = new cl_float4[Params.particleCount];
-    delete[] mVelocities;  mVelocities  = new cl_float4[Params.particleCount];
-    delete[] mPredictions; mPredictions = new cl_float4[Params.particleCount]; // (used for debugging)
-    delete[] mDeltas;      mDeltas      = new cl_float4[Params.particleCount]; // (used for debugging)
-    delete[] mFriendsList; mFriendsList = new cl_uint  [Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle)]; // (used for debugging)
-
-    // Position particles
-    CreateParticles();
-
-    // Initialize particle speed arrays
-    for (cl_uint i = 0; i < Params.particleCount; ++i)
-    {
-        mVelocities[i].s[0] = 0;
-        mVelocities[i].s[1] = 0;
-        mVelocities[i].s[2] = 0;
-        mVelocities[i].s[3] = 1; // <= "m" == 1?
-    }
-
     // Create buffers
     mPositionsPingBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharedPingBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
     mPositionsPongBuffer   = cl::BufferGL(mCLContext, CL_MEM_READ_WRITE, mSharedPongBufferID); // buffer could be changed to be CL_MEM_WRITE_ONLY but for debugging also reading it might be helpful
@@ -220,76 +211,46 @@ void Simulation::InitBuffers()
 
     mPredictedPingBuffer   = CreateCachedBuffer(cl::ImageFormat(CL_RGBA, CL_FLOAT), Params.particleCount);
     mPredictedPongBuffer   = CreateCachedBuffer(cl::ImageFormat(CL_RGBA, CL_FLOAT), Params.particleCount);
-    mVelocitiesBuffer      = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
-    mDeltaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
-    mOmegaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeParticles);
+    mVelocitiesBuffer      = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.particleCount * sizeof(cl_float4));
+    mDeltaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.particleCount * sizeof(cl_float4));
+    mOmegaBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.particleCount * sizeof(cl_float4));
     mDensityBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.particleCount * sizeof(cl_float));
     mLambdaBuffer          = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.particleCount * sizeof(cl_float));
     mParameters            = cl::Buffer(mCLContext, CL_MEM_READ_ONLY,  sizeof(Params));
-    mStatsBuffer           = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * 2);
 
     // Radix buffers
-    if (Params.particleCount % (_ITEMS * _GROUPS) == 0)
-    {
-        _NKEYS = Params.particleCount;
-    }
-    else
-    {
-        _NKEYS = Params.particleCount + (_ITEMS * _GROUPS) - Params.particleCount % (_ITEMS * _GROUPS);
-    }
-    mInKeysBuffer          = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _NKEYS);
-    mInPermutationBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _NKEYS);
-    mOutKeysBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _NKEYS);
-    mOutPermutationBuffer  = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _NKEYS);
+    mKeysCount             = IntCeil(Params.particleCount, _ITEMS * _GROUPS);
+    mInKeysBuffer          = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * mKeysCount);
+    mInPermutationBuffer   = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * mKeysCount);
+    mOutKeysBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * mKeysCount);
+    mOutPermutationBuffer  = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * mKeysCount);
     mHistogramBuffer       = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _RADIX * _GROUPS * _ITEMS);
     mGlobSumBuffer         = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _HISTOSPLIT);
     mHistoTempBuffer       = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, sizeof(cl_uint) * _HISTOSPLIT);
 
-    if (mQueue() != 0)
-        mQueue.flush();
+    // Update OpenGL lock list
+    mGLLockList.push_back(mPositionsPingBuffer);
+    mGLLockList.push_back(mPositionsPongBuffer);
+    mGLLockList.push_back(mParticlePosImg);
 
-    // Copy mPositions (Host) => mPositionsPingBuffer (GPU) (we have to lock the shared buffer)
-    vector<cl::Memory> sharedBuffers;
-    sharedBuffers.push_back(mPositionsPingBuffer);
-    mQueue = cl::CommandQueue(mCLContext, mCLDevice);
-    mQueue.enqueueAcquireGLObjects(&sharedBuffers);
-    mQueue.enqueueWriteBuffer(mPositionsPingBuffer, CL_TRUE, 0, mBufferSizeParticles, mPositions);
-    mQueue.enqueueReleaseGLObjects(&sharedBuffers);
-    mQueue.finish();
+    // Update mPositionsPingBuffer and mVelocitiesBuffer
+    LockGLObjects();
+    CreateParticles();
+    UnlockGLObjects();
 
-    // Copy mVelocities (Host) => mVelocitiesBuffer (GPU)
-    mQueue.enqueueWriteBuffer(mVelocitiesBuffer, CL_TRUE, 0, mBufferSizeParticles, mVelocities);
-    mQueue.finish();
-
-    // Copy mVelocities (Host) => mVelocitiesBuffer (GPU)
-    mQueue.enqueueWriteBuffer(mVelocitiesBuffer, CL_TRUE, 0, mBufferSizeParticles, mVelocities);
-    mQueue.finish();
-
-    cl_uint *stats = new cl_uint[2];
-    stats[0] = 0;
-    stats[1] = 0;
-    mQueue.enqueueWriteBuffer(mStatsBuffer, CL_TRUE, 0, sizeof(cl_uint) * 2, stats);
-    mQueue.finish();
+    // Copy Params (Host) => mParams (GPU)
+    mQueue.enqueueWriteBuffer(mParameters, CL_TRUE, 0, sizeof(Params), &Params);
 }
 
 void Simulation::InitCells()
 {
-    // Init cells
-    delete[] mCells; 
-    mCells = new cl_uint[Params.gridBufSize*2];
-    for (cl_uint i = 0; i < Params.gridBufSize*2; ++i)
-        mCells[i] = END_OF_CELL_LIST;
-
     // Write buffer for cells
-    mBufferSizeCells = Params.gridBufSize * 2 * sizeof(cl_uint);
-    mCellsBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, mBufferSizeCells);
-    mQueue.enqueueWriteBuffer(mCellsBuffer, CL_TRUE, 0, mBufferSizeCells, mCells);
+    mCellsBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.gridBufSize * 2 * sizeof(cl_uint));
+    OCL_InitMemory(mQueue, mCellsBuffer, (void*)&END_OF_CELL_LIST, sizeof(END_OF_CELL_LIST));
 
     // Init Friends list buffer
-    int BufSize = Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle) * sizeof(cl_uint);
-    memset(mFriendsList, 0, BufSize);
-    mFriendsListBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, BufSize);
-    mQueue.enqueueWriteBuffer(mFriendsListBuffer, CL_TRUE, 0, BufSize, mFriendsList);
+    mFriendsListBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle) * sizeof(cl_uint));
+    OCL_InitMemory(mQueue, mFriendsListBuffer);
 }
 
 int dumpSession = 0;
@@ -326,109 +287,96 @@ void SaveFile(cl::CommandQueue queue, cl::Buffer buffer, const char *szFilename)
 
 void Simulation::updateVelocities()
 {
-    int param = 0;
-    mKernels["updateVelocities"].setArg(param++, mParameters);
-    mKernels["updateVelocities"].setArg(param++, mPositionsPingBuffer);
-    mKernels["updateVelocities"].setArg(param++, mPredictedPingBuffer);
-    mKernels["updateVelocities"].setArg(param++, mParticlePosImg);
-    mKernels["updateVelocities"].setArg(param++, mVelocitiesBuffer);
-    mKernels["updateVelocities"].setArg(param++, Params.particleCount);
+    int param = 0; cl::Kernel kernel = mKernels["updateVelocities"];
+    kernel.setArg(param++, mParameters);
+    kernel.setArg(param++, mPositionsPingBuffer);
+    kernel.setArg(param++, mPredictedPingBuffer);
+    kernel.setArg(param++, mParticlePosImg);
+    kernel.setArg(param++, mVelocitiesBuffer);
+    kernel.setArg(param++, Params.particleCount);
 
-    mQueue.enqueueNDRangeKernel(mKernels["updateVelocities"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updateVelocities"));
-
-    //SaveFile(mQueue, mVelocitiesBuffer, "Velo2");
+    mQueue.enqueueNDRangeKernel(kernel, 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updateVelocities"));
 }
 
 void Simulation::applyViscosity()
 {
-    int param = 0;
-    mKernels["applyViscosity"].setArg(param++, mParameters);
-    mKernels["applyViscosity"].setArg(param++, mPredictedPingBuffer);
-    mKernels["applyViscosity"].setArg(param++, mVelocitiesBuffer);
-    mKernels["applyViscosity"].setArg(param++, mOmegaBuffer);
-    mKernels["applyViscosity"].setArg(param++, mFriendsListBuffer);
-    mKernels["applyViscosity"].setArg(param++, Params.particleCount);
+    int param = 0; cl::Kernel kernel = mKernels["applyViscosity"];
+    kernel.setArg(param++, mParameters);
+    kernel.setArg(param++, mPredictedPingBuffer);
+    kernel.setArg(param++, mVelocitiesBuffer);
+    kernel.setArg(param++, mOmegaBuffer);
+    kernel.setArg(param++, mFriendsListBuffer);
+    kernel.setArg(param++, Params.particleCount);
 
-    mQueue.enqueueNDRangeKernel(mKernels["applyViscosity"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("applyViscosity"));
-
-    //SaveFile(mQueue, mOmegaBuffer, "Omega");
-    //SaveFile(mQueue, mDeltaVelocityBuffer, "DeltaVel");
+    mQueue.enqueueNDRangeKernel(kernel, 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("applyViscosity"));
 }
 
 void Simulation::applyVorticity()
 {
-    int param = 0;
-    mKernels["applyVorticity"].setArg(param++, mParameters);
-    mKernels["applyVorticity"].setArg(param++, mPredictedPingBuffer);
-    mKernels["applyVorticity"].setArg(param++, mVelocitiesBuffer);
-    mKernels["applyVorticity"].setArg(param++, mOmegaBuffer);
-    mKernels["applyVorticity"].setArg(param++, mFriendsListBuffer);
-    mKernels["applyVorticity"].setArg(param++, Params.particleCount);
+    int param = 0; cl::Kernel kernel = mKernels["applyVorticity"];
+    kernel.setArg(param++, mParameters);
+    kernel.setArg(param++, mPredictedPingBuffer);
+    kernel.setArg(param++, mVelocitiesBuffer);
+    kernel.setArg(param++, mOmegaBuffer);
+    kernel.setArg(param++, mFriendsListBuffer);
+    kernel.setArg(param++, Params.particleCount);
 
-    mQueue.enqueueNDRangeKernel(mKernels["applyVorticity"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("applyVorticity"));
-
-    //SaveFile(mQueue, mDeltaVelocityBuffer, "Omega");
+    mQueue.enqueueNDRangeKernel(kernel, 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("applyVorticity"));
 }
 
 void Simulation::predictPositions()
 {
-    int param = 0;
-    mKernels["predictPositions"].setArg(param++, mParameters);
-    mKernels["predictPositions"].setArg(param++, (cl_uint)bPauseSim);
-    mKernels["predictPositions"].setArg(param++, mPositionsPingBuffer);
-    mKernels["predictPositions"].setArg(param++, mPredictedPingBuffer);
-    mKernels["predictPositions"].setArg(param++, mVelocitiesBuffer);
-    mKernels["predictPositions"].setArg(param++, Params.particleCount);
+    int param = 0; cl::Kernel kernel = mKernels["predictPositions"];
+    kernel.setArg(param++, mParameters);
+    kernel.setArg(param++, (cl_uint)bPauseSim);
+    kernel.setArg(param++, mPositionsPingBuffer);
+    kernel.setArg(param++, mPredictedPingBuffer);
+    kernel.setArg(param++, mVelocitiesBuffer);
+    kernel.setArg(param++, Params.particleCount);
 
-    mQueue.enqueueNDRangeKernel(mKernels["predictPositions"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("predictPositions"));
-
-    //SaveFile(mQueue, mPositionsPingBuffer, "PosPing");
-    //SaveFile(mQueue, mVelocitiesBuffer,    "Velocity");
-    //SaveFile(mQueue, mPredictedPingBuffer, "PredPosPing");
+    mQueue.enqueueNDRangeKernel(kernel, 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("predictPositions"));
 }
 
 void Simulation::buildFriendsList()
 {
-    int param = 0;
-    mKernels["buildFriendsList"].setArg(param++, mParameters);
-    mKernels["buildFriendsList"].setArg(param++, mPredictedPingBuffer);
-    mKernels["buildFriendsList"].setArg(param++, mCellsBuffer);
-    mKernels["buildFriendsList"].setArg(param++, mFriendsListBuffer);
-    mKernels["buildFriendsList"].setArg(param++, Params.particleCount);
-    mQueue.enqueueNDRangeKernel(mKernels["buildFriendsList"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("buildFriendsList"));
+    int param = 0; cl::Kernel kernel = mKernels["buildFriendsList"];
+    kernel.setArg(param++, mParameters);
+    kernel.setArg(param++, mPredictedPingBuffer);
+    kernel.setArg(param++, mCellsBuffer);
+    kernel.setArg(param++, mFriendsListBuffer);
+    kernel.setArg(param++, Params.particleCount);
+    mQueue.enqueueNDRangeKernel(kernel, 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("buildFriendsList"));
 
-    //SaveFile(mQueue, mFriendsListBuffer, "FriendList");
-
-    param = 0;
-    mKernels["resetGrid"].setArg(param++, mParameters);
-    mKernels["resetGrid"].setArg(param++, mInKeysBuffer);
-    mKernels["resetGrid"].setArg(param++, mCellsBuffer);
-    mKernels["resetGrid"].setArg(param++, Params.particleCount);
-    mQueue.enqueueNDRangeKernel(mKernels["resetGrid"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("resetPartList"));
+    param = 0; kernel = mKernels["resetGrid"];
+    kernel.setArg(param++, mParameters);
+    kernel.setArg(param++, mInKeysBuffer);
+    kernel.setArg(param++, mCellsBuffer);
+    kernel.setArg(param++, Params.particleCount);
+    mQueue.enqueueNDRangeKernel(kernel, 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("resetPartList"));
 }
 
 void Simulation::updatePredicted(int iterationIndex)
 {
-    int param = 0;
-    mKernels["updatePredicted"].setArg(param++, mPredictedPingBuffer);
-    mKernels["updatePredicted"].setArg(param++, mPredictedPongBuffer);
-    mKernels["updatePredicted"].setArg(param++, mDeltaBuffer);
-    mKernels["updatePredicted"].setArg(param++, Params.particleCount);
+    int param = 0; cl::Kernel kernel = mKernels["updatePredicted"];
+    kernel.setArg(param++, mPredictedPingBuffer);
+    kernel.setArg(param++, mPredictedPongBuffer);
+    kernel.setArg(param++, mDeltaBuffer);
+    kernel.setArg(param++, Params.particleCount);
 
-    mQueue.enqueueNDRangeKernel(mKernels["updatePredicted"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updatePredicted", iterationIndex));
+    mQueue.enqueueNDRangeKernel(kernel, 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updatePredicted", iterationIndex));
 
     SWAP(cl::Memory, mPredictedPingBuffer, mPredictedPongBuffer);
 }
 
 void Simulation::packData(cl::Memory& sourceImg, cl::Memory& pongImg, cl::Buffer packSource,  int iterationIndex)
 {
-    int param = 0;
-    mKernels["packData"].setArg(param++, pongImg);
-    mKernels["packData"].setArg(param++, sourceImg);
-    mKernels["packData"].setArg(param++, packSource);
-    mKernels["packData"].setArg(param++, Params.particleCount);
+    int param = 0; cl::Kernel kernel = mKernels["packData"];
+   kernel.setArg(param++, pongImg);
+   kernel.setArg(param++, sourceImg);
+   kernel.setArg(param++, packSource);
+   kernel.setArg(param++, Params.particleCount);
 
-    mQueue.enqueueNDRangeKernel(mKernels["packData"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("packData", iterationIndex));
+    mQueue.enqueueNDRangeKernel(kernel, 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("packData", iterationIndex));
 
     // Swap between source and pong
     SWAP(cl::Memory, sourceImg, pongImg);
@@ -436,190 +384,121 @@ void Simulation::packData(cl::Memory& sourceImg, cl::Memory& pongImg, cl::Buffer
 
 void Simulation::computeDelta(int iterationIndex)
 {
-    int param = 0;
-    mKernels["computeDelta"].setArg(param++, mParameters);
-    mKernels["computeDelta"].setArg(param++, oclLog.GetDebugBuffer());
-    mKernels["computeDelta"].setArg(param++, mDeltaBuffer);
-    mKernels["computeDelta"].setArg(param++, mPredictedPingBuffer); // xyz=Predicted z=Scaling
-    mKernels["computeDelta"].setArg(param++, mFriendsListBuffer);
-    mKernels["computeDelta"].setArg(param++, fWavePos);
-    mKernels["computeDelta"].setArg(param++, Params.particleCount);
-
-    // std::cout << "CL_KERNEL_LOCAL_MEM_SIZE = " << mKernels["computeDelta"].getWorkGroupInfo<CL_KERNEL_LOCAL_MEM_SIZE>(NULL) << std::endl;
-    // std::cout << "CL_KERNEL_PRIVATE_MEM_SIZE = " << mKernels["computeDelta"].getWorkGroupInfo<CL_KERNEL_PRIVATE_MEM_SIZE>(NULL) << std::endl;
+    int param = 0; cl::Kernel kernel = mKernels["computeDelta"];
+    kernel.setArg(param++, mParameters);
+    kernel.setArg(param++, oclLog.GetDebugBuffer());
+    kernel.setArg(param++, mDeltaBuffer);
+    kernel.setArg(param++, mPredictedPingBuffer); // xyz=Predicted z=Scaling
+    kernel.setArg(param++, mFriendsListBuffer);
+    kernel.setArg(param++, fWavePos);
+    kernel.setArg(param++, Params.particleCount);
 
 #ifdef LOCALMEM
-    mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, cl::NDRange(DivCeil(Params.particleCount, 256)*256), cl::NDRange(256), NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
+    mQueue.enqueueNDRangeKernel(kernel, 0, cl::NDRange(DivCeil(Params.particleCount, 256)*256), cl::NDRange(256), NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
 #else
-    mQueue.enqueueNDRangeKernel(mKernels["computeDelta"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
+    mQueue.enqueueNDRangeKernel(kernel, 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeDelta", iterationIndex));
 #endif
-
-    //SaveFile(mQueue, mDeltaBuffer, "delta2");
 }
 
 void Simulation::computeScaling(int iterationIndex)
 {
-    int param = 0;
-    mKernels["computeScaling"].setArg(param++, mParameters);
-    mKernels["computeScaling"].setArg(param++, mPredictedPingBuffer);
-    mKernels["computeScaling"].setArg(param++, mDensityBuffer);
-    mKernels["computeScaling"].setArg(param++, mLambdaBuffer);
-    mKernels["computeScaling"].setArg(param++, mFriendsListBuffer);
-    mKernels["computeScaling"].setArg(param++, Params.particleCount);
+    int param = 0; cl::Kernel kernel = mKernels["computeScaling"];
+    kernel.setArg(param++, mParameters);
+    kernel.setArg(param++, mPredictedPingBuffer);
+    kernel.setArg(param++, mDensityBuffer);
+    kernel.setArg(param++, mLambdaBuffer);
+    kernel.setArg(param++, mFriendsListBuffer);
+    kernel.setArg(param++, Params.particleCount);
 
-    // std::cout << "CL_KERNEL_LOCAL_MEM_SIZE = " << mKernels["computeScaling"].getWorkGroupInfo<CL_KERNEL_LOCAL_MEM_SIZE>(NULL) << std::endl;
-    // std::cout << "CL_KERNEL_PRIVATE_MEM_SIZE = " << mKernels["computeScaling"].getWorkGroupInfo<CL_KERNEL_PRIVATE_MEM_SIZE>(NULL) << std::endl;
-
-    mQueue.enqueueNDRangeKernel(mKernels["computeScaling"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeScaling", iterationIndex));
-    // mQueue.enqueueNDRangeKernel(mKernels["computeScaling"], 0, cl::NDRange(((Params.particleCount + 399) / 400) * 400), cl::NDRange(400), NULL, PerfData.GetTrackerEvent("computeScaling", iterationIndex));
-
-    //SaveFile(mQueue, mPredictedPingBuffer, "pred2");
-    //SaveFile(mQueue, mDensityBuffer,       "dens2");
+    mQueue.enqueueNDRangeKernel(kernel, 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("computeScaling", iterationIndex));
+    // mQueue.enqueueNDRangeKernel(kernel, 0, cl::NDRange(((Params.particleCount + 399) / 400) * 400), cl::NDRange(400), NULL, PerfData.GetTrackerEvent("computeScaling", iterationIndex));
 }
 
 void Simulation::updateCells()
 {
-    //SaveFile(mQueue, mCellsBuffer, "cells_before");
-
-    int param = 0;
-    mKernels["updateCells"].setArg(param++, mParameters);
-    mKernels["updateCells"].setArg(param++, mInKeysBuffer);
-    mKernels["updateCells"].setArg(param++, mCellsBuffer);
-    mKernels["updateCells"].setArg(param++, Params.particleCount);
-    mQueue.enqueueNDRangeKernel(mKernels["updateCells"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updateCells"));
-
-    //SaveFile(mQueue, mCellsBuffer, "cells");
-    //SaveFile(mQueue, mParticlesListBuffer, "friendlist2");
+    int param = 0; cl::Kernel kernel = mKernels["updateCells"];
+    kernel.setArg(param++, mParameters);
+    kernel.setArg(param++, mInKeysBuffer);
+    kernel.setArg(param++, mCellsBuffer);
+    kernel.setArg(param++, Params.particleCount);
+    mQueue.enqueueNDRangeKernel(kernel, 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("updateCells"));
 }
 
 void Simulation::radixsort()
 {
-    int param = 0;
-    mKernels["computeKeys"].setArg(param++, mParameters);
-    mKernels["computeKeys"].setArg(param++, mPredictedPingBuffer);
-    mKernels["computeKeys"].setArg(param++, mInKeysBuffer);
-    mKernels["computeKeys"].setArg(param++, mInPermutationBuffer);
-    mKernels["computeKeys"].setArg(param++, Params.particleCount);
-    mQueue.enqueueNDRangeKernel(mKernels["computeKeys"], 0, cl::NDRange(_NKEYS), mLocalRange, NULL, PerfData.GetTrackerEvent("computeKeys"));
-
-    // // DEBUG
-    // cl_uint *keys = new cl_uint[_NKEYS];
-    // cl_uint *permutation = new cl_uint[_NKEYS];
-    // mQueue.finish();
-    // mQueue.enqueueReadBuffer(mInKeysBuffer, CL_TRUE, 0, sizeof(cl_uint) * _NKEYS, keys);
-    // mQueue.enqueueReadBuffer(mInPermutationBuffer, CL_TRUE, 0, sizeof(cl_uint) * _NKEYS, permutation);
-    // mQueue.finish();
-    // cout << "before sort:" << endl;
-    // cout << "keys: ";
-    // for (unsigned int i = 0; i < _NKEYS; ++i)
-    // {
-    //     cout << i<<"="<<keys[i] << ",";
-    // }
-    // cout << endl;
-    // cout << "permu: ";
-    // for (unsigned int i = 0; i < _NKEYS; ++i)
-    // {
-    //     cout << i<<"="<<permutation[i] << ",";
-    // }
-    // cout << endl;
+    int param = 0; cl::Kernel kernel = mKernels["computeKeys"];
+    kernel.setArg(param++, mParameters);
+    kernel.setArg(param++, mPredictedPingBuffer);
+    kernel.setArg(param++, mInKeysBuffer);
+    kernel.setArg(param++, mInPermutationBuffer);
+    kernel.setArg(param++, Params.particleCount);
+    mQueue.enqueueNDRangeKernel(kernel, 0, cl::NDRange(mKeysCount), mLocalRange, NULL, PerfData.GetTrackerEvent("computeKeys"));
 
     for (size_t pass = 0; pass < _PASS; pass++)
     {
         // Histogram(pass);
         const size_t h_nblocitems = _ITEMS;
         const size_t h_nbitems = _GROUPS * _ITEMS;
-        param = 0;
-        mKernels["histogram"].setArg(param++, mInKeysBuffer);
-        mKernels["histogram"].setArg(param++, mHistogramBuffer);
-        mKernels["histogram"].setArg(param++, pass);
-        mKernels["histogram"].setArg(param++, sizeof(cl_uint) * _RADIX * _ITEMS, NULL);
-        mKernels["histogram"].setArg(param++, _NKEYS);
-        mQueue.enqueueNDRangeKernel(mKernels["histogram"], 0, cl::NDRange(h_nbitems), cl::NDRange(h_nblocitems), NULL, PerfData.GetTrackerEvent("histogram", pass));
+        param = 0; kernel = mKernels["histogram"];
+        kernel.setArg(param++, mInKeysBuffer);
+        kernel.setArg(param++, mHistogramBuffer);
+        kernel.setArg(param++, pass);
+        kernel.setArg(param++, sizeof(cl_uint) * _RADIX * _ITEMS, NULL);
+        kernel.setArg(param++, mKeysCount);
+        mQueue.enqueueNDRangeKernel(kernel, 0, cl::NDRange(h_nbitems), cl::NDRange(h_nblocitems), NULL, PerfData.GetTrackerEvent("histogram", pass));
 
         // ScanHistogram();
+        param = 0; kernel = mKernels["scanhistograms"];
         const size_t sh1_nbitems = _RADIX * _GROUPS * _ITEMS / 2;
         const size_t sh1_nblocitems = sh1_nbitems / _HISTOSPLIT ;
         const int maxmemcache = max(_HISTOSPLIT, _ITEMS * _GROUPS * _RADIX / _HISTOSPLIT);
-        mKernels["scanhistograms"].setArg(0, mHistogramBuffer);
-        mKernels["scanhistograms"].setArg(1, sizeof(cl_uint)* maxmemcache, NULL);
-        mKernels["scanhistograms"].setArg(2, mGlobSumBuffer);
-        mQueue.enqueueNDRangeKernel(mKernels["scanhistograms"], 0, cl::NDRange(sh1_nbitems), cl::NDRange(sh1_nblocitems), NULL, PerfData.GetTrackerEvent("scanhistograms1", pass));
+        kernel.setArg(param++, mHistogramBuffer);
+        kernel.setArg(param++, sizeof(cl_uint)* maxmemcache, NULL);
+        kernel.setArg(param++, mGlobSumBuffer);
+        mQueue.enqueueNDRangeKernel(kernel, 0, cl::NDRange(sh1_nbitems), cl::NDRange(sh1_nblocitems), NULL, PerfData.GetTrackerEvent("scanhistograms1", pass));
         mQueue.finish();
 
+        param = 0; kernel = mKernels["scanhistograms"];
         const size_t sh2_nbitems = _HISTOSPLIT / 2;
         const size_t sh2_nblocitems = sh2_nbitems;
-        mKernels["scanhistograms"].setArg(0, mGlobSumBuffer);
-        mKernels["scanhistograms"].setArg(2, mHistoTempBuffer);
-        mQueue.enqueueNDRangeKernel(mKernels["scanhistograms"], 0, cl::NDRange(sh2_nbitems), cl::NDRange(sh2_nblocitems), NULL, PerfData.GetTrackerEvent("scanhistograms2", pass));
+        kernel.setArg(0, mGlobSumBuffer);
+        kernel.setArg(2, mHistoTempBuffer);
+        mQueue.enqueueNDRangeKernel(kernel, 0, cl::NDRange(sh2_nbitems), cl::NDRange(sh2_nblocitems), NULL, PerfData.GetTrackerEvent("scanhistograms2", pass));
 
+        param = 0; kernel = mKernels["pastehistograms"];
         const size_t ph_nbitems = _RADIX * _GROUPS * _ITEMS / 2;
         const size_t ph_nblocitems = ph_nbitems / _HISTOSPLIT;
-        param = 0;
-        mKernels["pastehistograms"].setArg(param++, mHistogramBuffer);
-        mKernels["pastehistograms"].setArg(param++, mGlobSumBuffer);
-        mQueue.enqueueNDRangeKernel(mKernels["pastehistograms"], 0, cl::NDRange(ph_nbitems), cl::NDRange(ph_nblocitems), NULL, PerfData.GetTrackerEvent("pastehistograms", pass));
+        kernel.setArg(param++, mHistogramBuffer);
+        kernel.setArg(param++, mGlobSumBuffer);
+        mQueue.enqueueNDRangeKernel(kernel, 0, cl::NDRange(ph_nbitems), cl::NDRange(ph_nblocitems), NULL, PerfData.GetTrackerEvent("pastehistograms", pass));
 
         // Reorder(pass);
+        param = 0; kernel = mKernels["reorder"];
         const size_t r_nblocitems = _ITEMS;
         const size_t r_nbitems = _GROUPS * _ITEMS;
-        param = 0;
-        mKernels["reorder"].setArg(param++, mInKeysBuffer);
-        mKernels["reorder"].setArg(param++, mOutKeysBuffer);
-        mKernels["reorder"].setArg(param++, mHistogramBuffer);
-        mKernels["reorder"].setArg(param++, pass);
-        mKernels["reorder"].setArg(param++, mInPermutationBuffer);
-        mKernels["reorder"].setArg(param++, mOutPermutationBuffer);
-        mKernels["reorder"].setArg(param++, sizeof(cl_uint)* _RADIX * _ITEMS, NULL);
-        mKernels["reorder"].setArg(param++, _NKEYS);
-        mQueue.enqueueNDRangeKernel(mKernels["reorder"], 0, cl::NDRange(r_nbitems), cl::NDRange(r_nblocitems), NULL, PerfData.GetTrackerEvent("reorder", pass));
+        kernel.setArg(param++, mInKeysBuffer);
+        kernel.setArg(param++, mOutKeysBuffer);
+        kernel.setArg(param++, mHistogramBuffer);
+        kernel.setArg(param++, pass);
+        kernel.setArg(param++, mInPermutationBuffer);
+        kernel.setArg(param++, mOutPermutationBuffer);
+        kernel.setArg(param++, sizeof(cl_uint)* _RADIX * _ITEMS, NULL);
+        kernel.setArg(param++, mKeysCount);
+        mQueue.enqueueNDRangeKernel(kernel, 0, cl::NDRange(r_nbitems), cl::NDRange(r_nblocitems), NULL, PerfData.GetTrackerEvent("reorder", pass));
 
-        cl::Buffer tmp = mInKeysBuffer;
-        mInKeysBuffer = mOutKeysBuffer;
-        mOutKeysBuffer = tmp;
-
-        tmp = mInPermutationBuffer;
-        mInPermutationBuffer = mOutPermutationBuffer;
-        mOutPermutationBuffer = tmp;
+        SWAP(cl::Buffer, mInKeysBuffer, mOutKeysBuffer);
+        SWAP(cl::Buffer, mInPermutationBuffer, mOutPermutationBuffer);
     }
 
-    // // DEBUG
-    // mQueue.finish();
-    // mQueue.enqueueReadBuffer(mInKeysBuffer, CL_TRUE, 0, sizeof(cl_uint) * _NKEYS, keys);
-    // mQueue.enqueueReadBuffer(mInPermutationBuffer, CL_TRUE, 0, sizeof(cl_uint) * _NKEYS, permutation);
-    // mQueue.finish();
-    // cout << "before sort:" << endl;
-    // cout << "keys: ";
-    // for (unsigned int i = 0; i < _NKEYS; ++i)
-    // {
-    //     cout << i<<"="<<keys[i] << ",";
-    // }
-    // cout << endl;
-    // cout << "permu: ";
-    // for (unsigned int i = 0; i < _NKEYS; ++i)
-    // {
-    //     cout << i<<"="<<permutation[i] << ",";
-    // }
-    // cout << endl;
-    // delete[] keys;
-    // delete[] permutation;
-
-    // Lock Yang buffer (Yin is already locked)
-    //vector<cl::Memory> sharedBuffers;
-    //sharedBuffers.push_back(mPositionsYangBuffer);
-    //mQueue.enqueueAcquireGLObjects(&sharedBuffers);
-
     // Execute particle reposition
-    param = 0;
-    mKernels["sortParticles"].setArg(param++, mInPermutationBuffer);
-    mKernels["sortParticles"].setArg(param++, mPositionsPingBuffer);
-    mKernels["sortParticles"].setArg(param++, mPositionsPongBuffer);
-    mKernels["sortParticles"].setArg(param++, mPredictedPingBuffer);
-    mKernels["sortParticles"].setArg(param++, mPredictedPongBuffer);
-    mKernels["sortParticles"].setArg(param++, Params.particleCount);
-    mQueue.enqueueNDRangeKernel(mKernels["sortParticles"], 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("sortParticles"));
-
-    // UnLock Yang buffer
-    //mQueue.enqueueReleaseGLObjects(&sharedBuffers);
+    param = 0; kernel = mKernels["sortParticles"];
+    kernel.setArg(param++, mInPermutationBuffer);
+    kernel.setArg(param++, mPositionsPingBuffer);
+    kernel.setArg(param++, mPositionsPongBuffer);
+    kernel.setArg(param++, mPredictedPingBuffer);
+    kernel.setArg(param++, mPredictedPongBuffer);
+    kernel.setArg(param++, Params.particleCount);
+    mQueue.enqueueNDRangeKernel(kernel, 0, mGlobalRange, mLocalRange, NULL, PerfData.GetTrackerEvent("sortParticles"));
 
     // Double buffering of positions and velocity buffers
     SWAP(cl::BufferGL, mPositionsPingBuffer, mPositionsPongBuffer);
@@ -627,19 +506,29 @@ void Simulation::radixsort()
     SWAP(GLuint,       mSharedPingBufferID,  mSharedPongBufferID);
 }
 
-void Simulation::Step()
+void Simulation::LockGLObjects()
 {
-    cycleCounter++;
-
-    // Why is this here?
+    // Make sure OpenGL finish doing things (This is required according to OpenCL spec, see enqueueAcquireGLObjects)
     glFinish();
 
-    // Enqueue GL buffer acquire
-    vector<cl::Memory> sharedBuffers;
-    sharedBuffers.push_back(mPositionsPingBuffer);
-    sharedBuffers.push_back(mPositionsPongBuffer);
-    sharedBuffers.push_back(mParticlePosImg);
-    mQueue.enqueueAcquireGLObjects(&sharedBuffers);
+    // Request lock
+    mQueue.enqueueAcquireGLObjects(&mGLLockList);
+}
+
+void Simulation::UnlockGLObjects()
+{
+    // Release lock
+    mQueue.enqueueReleaseGLObjects(&mGLLockList);
+    mQueue.finish();
+}
+
+void Simulation::Step()
+{
+    // Lock OpenGL objects
+    LockGLObjects();
+
+    // Inc sample counter
+    cycleCounter++;
 
     // Predicit positions
     this->predictPositions();
@@ -664,23 +553,6 @@ void Simulation::Step()
 
         // Compute position delta
         this->computeDelta(i);
-        // mQueue.finish();
-
-        // printf("iteration %d\n", i);
-
-        // cl_uint *stats = new cl_uint[2];
-        // stats[0] = 0;
-        // stats[1] = 0;
-        // mQueue.enqueueReadBuffer(mStatsBuffer, CL_TRUE, 0, sizeof(cl_uint) * 2, stats);
-
-        // std::cout << "hits: " << stats[0] << std::endl;
-        // std::cout << "miss: " << stats[1] << std::endl;
-        // std::cout << "total: " << stats[0] + stats[1] << std::endl;
-
-        // stats[0] = 0;
-        // stats[1] = 0;
-        // mQueue.enqueueWriteBuffer(mStatsBuffer, CL_TRUE, 0, sizeof(cl_uint) * 2, stats);
-        // mQueue.finish();
 
         // Update predicted position
         this->updatePredicted(i);
@@ -696,11 +568,9 @@ void Simulation::Step()
     this->applyViscosity();
     this->applyVorticity();
 
-    // Update particle buffers
-
     // [DEBUG] Read back friends information (if needed)
-    if (bReadFriendsList || bDumpParticlesData)
-        mQueue.enqueueReadBuffer(mFriendsListBuffer, CL_TRUE, 0, sizeof(cl_uint) * Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle), mFriendsList);
+    //if (bReadFriendsList || bDumpParticlesData)
+        // TODO: Get frients list to host
 
     // [DEBUG] Do we need to dump particle data
     if (bDumpParticlesData)
@@ -708,37 +578,15 @@ void Simulation::Step()
         // Turn off flag
         bDumpParticlesData = false;
 
-        // Read data
-        mQueue.enqueueReadBuffer(mPositionsPingBuffer, CL_TRUE, 0, mBufferSizeParticles, mPositions);
-        mQueue.finish();
-
-        // Save to disk
-        ofstream f("particles_pos.bin", ios::out | ios::trunc | ios::binary);
-        f.seekp(0);
-        f.write((const char *)mPositions, mBufferSizeParticles);
-        f.close();
+        // TODO: Dump particles to disk
     }
 
     // Release OpenGL shared object, allowing openGL do to it's thing...
-    mQueue.enqueueReleaseGLObjects(&sharedBuffers);
-    mQueue.finish();
+    UnlockGLObjects();
 
     // Collect performance data
     PerfData.UpdateTimings();
 
     // Allow OpenCL logger to process
     oclLog.CycleExecute(mQueue);
-}
-
-void Simulation::dumpData(cl_float4 * (&positions), cl_float4 * (&velocities))
-{
-    mQueue.enqueueReadBuffer(mPositionsPingBuffer, CL_TRUE, 0, mBufferSizeParticles, mPositions);
-    mQueue.enqueueReadBuffer(mVelocitiesBuffer, CL_TRUE, 0, mBufferSizeParticles, mVelocities);
-
-    // just a safety measure to be absolutely sure everything is transferred
-    // from device to host
-    mQueue.finish();
-
-    positions = mPositions;
-    velocities = mVelocities;
 }

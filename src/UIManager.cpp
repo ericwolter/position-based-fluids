@@ -245,6 +245,11 @@ void DrawPerformanceGraph()
 
 void DrawFriendsHistogram()
 {
+/*
+    COMMENTS ABOUT THIS CODE:
+      1. The internal structure of the friends list was changed, this code does not reflect this change -- YET
+      2. "mSim->mFriendsList" does not exists anymore, there is a need to create some alternative to this...
+
     // Histogram
     int Histogram[32];
     memset(Histogram, 0, sizeof(Histogram));
@@ -305,7 +310,7 @@ void DrawFriendsHistogram()
         tw.DrawText(twFont, screenX1 + 2, HistBottom - 12, 0xffff0000u, 0);
     }
 
-    tw.EndDraw();
+    tw.EndDraw();*/
 }
 
 void DrawAntTweakBar()

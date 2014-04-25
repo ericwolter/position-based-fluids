@@ -38,8 +38,9 @@ private:
     // Create cached buffers
     cl::Memory CreateCachedBuffer(cl::ImageFormat& format, int elements);
 
-    // Copy current positions and velocities
-    void dumpData( cl_float4 * (&positions), cl_float4 * (&velocities) );
+    // Lock and unlock opengl objects
+    void LockGLObjects();
+    void UnlockGLObjects();
 
 public:
 
@@ -56,11 +57,6 @@ public:
     // ranges used for executing the kernels
     cl::NDRange mGlobalRange;
     cl::NDRange mLocalRange;
-
-    // OCL buffer sizes
-    size_t mBufferSizeParticles;
-    size_t mBufferSizeCells;
-    size_t mBufferSizeParticlesList;
 
     // The device memory buffers holding the simulation data
     cl::Buffer   mCellsBuffer;
@@ -79,7 +75,8 @@ public:
 
     cl::Image2DGL mParticlePosImg;
 
-    // Radix buffers
+    // Radix related
+    cl_uint    mKeysCount;
     cl::Buffer mInKeysBuffer;
     cl::Buffer mInPermutationBuffer;
     cl::Buffer mOutKeysBuffer;
@@ -87,13 +84,9 @@ public:
     cl::Buffer mHistogramBuffer;
     cl::Buffer mGlobSumBuffer;
     cl::Buffer mHistoTempBuffer;
-    cl::Buffer mStatsBuffer;
 
-    // Lengths of each cell in each direction
-    cl_float4 mCellLength;
-
-    // Array for the cells
-    cl_uint *mCells;
+    // OpenGL locking related
+    vector<cl::Memory> mGLLockList;
 
     // Private member functions
     void updateCells();
@@ -151,13 +144,6 @@ public:
     bool      bReadFriendsList;
     bool      bDumpParticlesData;
     cl_float  fWavePos;
-
-    // debug buffers (placed in host memory)
-    cl_float4 *mPositions;
-    cl_float4 *mVelocities;
-    cl_float4 *mPredictions;
-    cl_float4 *mDeltas;
-    cl_uint   *mFriendsList;
 };
 
 #endif // __SIMULATION_HPP

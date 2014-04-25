@@ -12,7 +12,8 @@
 
 using namespace std;
 
-#define DivCeil(num, divider) ((num + divider - 1) / divider) 
+#define DivCeil(num, divider) (((num) + (divider) - 1) / (divider)) 
+#define IntCeil(num, divider) ((((num) + (divider) - 1) / (divider)) * (divider))
 #define SWAP(t, a, b) { t tmp = a; a = b; b = tmp; } 
 
 class OCLUtils

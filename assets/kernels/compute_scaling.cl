@@ -29,6 +29,7 @@ __kernel void computeScaling(__constant struct Parameters *Params,
     // Read particle "i" position
     float3 particle_i = cbufferf_read(imgPredicted, i).xyz;
     
+    // Cache parameters
     const float e = Params->epsilon * Params->restDensity;
 
     // Sum of rho_i, |nabla p_k C_i|^2 and nabla p_k C_i for k = i
