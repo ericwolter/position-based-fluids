@@ -111,7 +111,7 @@ void CVisual::setupProjection()
     // Compute projection matrix
     float aspect = mFrameWidth / (GLfloat) mFrameHeight;
     float fovy = 45.0f;
-    mProjectionMatrix = glm::perspective(fovy, aspect, 0.1f, 10.0f);
+    mProjectionMatrix = glm::perspective(fovy, aspect, 0.1f, 1000.0f);
     mInvProjectionMatrix = glm::inverse(mProjectionMatrix);
 
     // compute mWidthOfNearPlane

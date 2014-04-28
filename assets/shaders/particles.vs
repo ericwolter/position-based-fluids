@@ -22,7 +22,7 @@ void main()
     frag_particleIndex = gl_VertexID; 
  
     // Forward velocity to fragment shader
-    frag_velocity = position.w;
+    frag_velocity = position.w / 20;
     
     // Model -> View space 
     vec4 eye_position = modelViewMatrix * vec4(position.xyz, 1.0);

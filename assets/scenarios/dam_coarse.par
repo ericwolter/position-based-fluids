@@ -1,41 +1,41 @@
 # Simulation settings
-ParticleCount           100000
+ParticleCount           64000
 SetupSpacing            0.55
 ResetSimOnChange        0
 
 # Bounds related
-XMin                    0.0
-XMax                    2.0
+XMin                    -30.0
+XMax                    90.0
 YMin                    0.0
-YMax                    1.0
-ZMin                    0.0
-ZMax                    1.0
+YMax                    60.0
+ZMin                    -30.0
+ZMax                    30.0
 WaveGenAmp              0.3
 WaveGenFreq             0.20
 WaveGenDuty             4.0
 
 # Simulation related
-TimeStep                0.022
+TimeStep                0.016
 SubSteps                1
-SimIterations           3
-SmoothLen               0.035
-RestDensity             110000
-Garvity                 0.5
-Epsilon                 0.1
+SimIterations           5
+SmoothLen               2.0
+RestDensity             1.0
+Garvity                 10.0
+Epsilon                 5.0
 VorticityFactor         0.0000001
 ViscosityFactor         0.1
-SurfaceTenstionK       -0.0001
+SurfaceTenstionK       -0.1
 SurfaceTenstionDist     0.1
 
 # Grid related
-GridBufferSize          200000
+GridBufferSize          128000
 
 # Radix related
 SegmentSize             16
 SortIterations          6
 
 # Rendering related
-ParticleRenderSize      0.017
+ParticleRenderSize      0.3
 
 # Kernels Setup
 EnableCachedBuffers     0

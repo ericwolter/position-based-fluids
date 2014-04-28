@@ -116,7 +116,7 @@ void ZPR_WorldToViewport(glm::vec3 World, glm::vec3 &View)
 void ZPR_Reset()
 {
     camLookAt = glm::vec3(0, 0, 0);
-    camEye    = glm::vec3(0, 0, 7);
+    camEye    = glm::vec3(0, 0, 100);
     camUp     = glm::vec3(0, 1, 0);
     ComputeMVMatrix();
 }
