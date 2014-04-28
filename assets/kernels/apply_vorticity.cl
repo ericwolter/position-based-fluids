@@ -56,19 +56,31 @@ __kernel void applyVorticity(
                 if (fabs(particle_j.w) > 1e-8f)
                 {
                     const float r_length = sqrt(r_length_2);
-                    const float3 gradient_spiky = -1.0f * r / (r_length)
+                    const float3 gradient_spiky = r / (r_length)
                                                   * (Params->h - r_length)
                                                   * (Params->h - r_length);
 
                     const float omega_length = fast_length(omegas[j_index].xyz);
-                    eta += (omega_length / particle_j.w) * gradient_spiky;
+                    
+                    // TODO: the standard sph gradient operator scales the quantity by the local density
+                    // however daniel just omits that... This should probably be corrected in the future
+                    //eta += (omega_length / particle_j.w) * gradient_spiky;
+                    eta += omega_length * gradient_spiky;
                 }
             }
         }
     }
 
-    const float3 eta_N = normalize(eta * GRAD_SPIKY_FACTOR);
-    const float3 vorticityForce = Params->vorticityFactor * cross(eta_N, omegas[i].xyz);
+    //const float3 eta_N = normalize(eta * -GRAD_SPIKY_FACTOR);
+    //const float3 vorticityForce = Params->vorticityFactor * cross(eta, omegas[i].xyz);
+    eta *= -GRAD_SPIKY_FACTOR;
+ 	
+ 	float l = fast_length(eta);
+ 	if(l>0) {
+ 		eta /= l;
+ 	}
+    const float3 vorticityForce = Params->vorticityFactor * cross(eta, omegas[i].xyz);    
+    
     const float3 vorticityVelocity = vorticityForce * Params->timeStep;
 
     velocities[i] += (float4)(vorticityVelocity, 0.0f);

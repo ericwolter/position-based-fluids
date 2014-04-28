@@ -82,6 +82,6 @@ __kernel void applyViscosity(
 
     // save omega for later calculation of vorticity
     // cross product is compatible with scalar multiplication
-    omega_i *= GRAD_SPIKY_FACTOR;
+    omega_i *= -GRAD_SPIKY_FACTOR;
     omegas[i] = (float4)(omega_i, 0.0f);
 }

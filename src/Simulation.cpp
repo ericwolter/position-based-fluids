@@ -566,7 +566,7 @@ void Simulation::Step()
 
     // Update vorticity and Viscosity
     this->applyViscosity();
-    //this->applyVorticity();
+    this->applyVorticity();
 
     // [DEBUG] Read back friends information (if needed)
     //if (bReadFriendsList || bDumpParticlesData)
