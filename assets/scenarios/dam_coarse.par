@@ -1,5 +1,5 @@
 # Simulation settings
-ParticleCount           64000
+ParticleCount           100000
 SetupSpacing            0.55
 ResetSimOnChange        0
 
@@ -15,9 +15,9 @@ WaveGenFreq             0.20
 WaveGenDuty             4.0
 
 # Simulation related
-TimeStep                0.016
+TimeStep                0.022
 SubSteps                1
-SimIterations           5
+SimIterations           3
 SmoothLen               2.0
 RestDensity             1.0
 Garvity                 10.0
@@ -38,4 +38,4 @@ SortIterations          6
 ParticleRenderSize      1.0
 
 # Kernels Setup
-EnableCachedBuffers     0
+EnableCachedBuffers     1

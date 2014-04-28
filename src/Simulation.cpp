@@ -388,6 +388,7 @@ void Simulation::computeDelta(int iterationIndex)
     kernel.setArg(param++, mParameters);
     kernel.setArg(param++, oclLog.GetDebugBuffer());
     kernel.setArg(param++, mDeltaBuffer);
+    kernel.setArg(param++, mPositionsPingBuffer);
     kernel.setArg(param++, mPredictedPingBuffer); // xyz=Predicted z=Scaling
     kernel.setArg(param++, mFriendsListBuffer);
     kernel.setArg(param++, fWavePos);

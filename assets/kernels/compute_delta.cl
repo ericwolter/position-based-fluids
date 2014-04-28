@@ -1,6 +1,43 @@
+float3 BouncePointQuad(float3 PrevPos, float3 NextPos, float3 B, float3 E0, float3 E1, float EdgeOffset)
+{
+    // Quad Precalc
+    const float a = dot(E0, E0); 
+    const float b = dot(E0, E1); 
+    const float c = dot(E1, E1); 
+    const float invdet = 1.0 / (a * c - b * b);    
+    const float3 planeNorm  = normalize(cross(E0, E1)); 
+    const float3 randOffset = planeNorm * EdgeOffset;
+
+    // Compute factors
+    const float3 D = B - NextPos;
+    const float e = dot(E1, D);
+    const float d = dot(E0, D);
+
+    // Check if NextPos is in quad
+    const float s = invdet * (b * e - c * d);
+    const float t = invdet * (b * d - a * e);
+    if ((s < 0) || (s > 1) || (t < 0) || (t > 1))
+        return NextPos;
+
+    // Check NextPos if cull (should be "inside")
+    const float3 planePos = B + E0 * s + E1 * t + randOffset;
+    const float3 deltaP   = NextPos - planePos;
+    if (dot(planeNorm, deltaP) > 0)
+        return NextPos;
+
+    // Check NextPos thickness (should be within force zone)
+    float normal_velocity = dot(planeNorm, PrevPos - NextPos);
+    if (length(deltaP) > EdgeOffset + normal_velocity)
+        return NextPos;
+        
+    // Move point surface
+    return planePos;
+}
+
 __kernel void computeDelta(__constant struct Parameters *Params,
                            volatile __global int *debugBuf,
                            __global float4 *delta,
+                           const __global float4 *positions,
                            cbufferf_readonly imgPredicted, // xyz=predicted, w=scaling
                            const __global int *friends_list,
                            const float wave_generator,
@@ -114,33 +151,21 @@ __kernel void computeDelta(__constant struct Parameters *Params,
 
     // equation (12)
     float3 delta_p = (-GRAD_SPIKY_FACTOR*sum) / Params->restDensity;
-
-    float randDist = 0.005f;
     float3 future = particle_i.xyz + delta_p;
 
-    // Prime the random... DO NOT REMOVE
-    frand(&randSeed);
-    frand(&randSeed);
-    frand(&randSeed);
+    // Compute edge offset
+    float3 noisePos = future * 5 / Params->h;
+    float edgeOffset = (3 + sin(noisePos.x)+sin(noisePos.y)+sin(noisePos.z)) * Params->h * 0.03f;
 
     // Clamp Y
-    if (future.y < Params->yMin) future.y = Params->yMin + frand(&randSeed) * randDist;
-    if (future.z < Params->zMin) future.z = Params->zMin + frand(&randSeed) * randDist;
-    else if (future.z > Params->zMax) future.z = Params->zMax - frand(&randSeed) * randDist;
-    if (future.x < (Params->xMin + wave_generator))  future.x = Params->xMin + wave_generator + frand(&randSeed) * randDist;
-    else if (future.x > (Params->xMax))  future.x = Params->xMax                  - frand(&randSeed) * randDist;
+    //future.y = max(future.y, Params->yMin + edgeOffset);
+    future.z = clamp(future.z, Params->zMin + edgeOffset, Params->zMax + edgeOffset);
+    future.x = clamp(future.x, Params->xMin + edgeOffset + wave_generator, Params->xMax + edgeOffset);
+    
+    //future = BouncePointQuad(positions[i].xyz, future, (float3)(  0,  0,  0), (float3)(0, 0, 1.1), (float3)(4.1, 0, 0), edgeOffset);
+    future = BouncePointQuad(positions[i].xyz, future,   (float3)(-40,  0,-40), (float3)(0, 0, 80), (float3)(60, 0, 0), edgeOffset);
+    future = BouncePointQuad(positions[i].xyz, future,   (float3)(  0,-40,-40), (float3)(0, 0, 80), (float3)(60, 0, 0), edgeOffset);
 
     // Compute delta
     delta[i].xyz = future - particle_i.xyz;
-
-//    if(group_id == 0) {
-  //      printf("%d: hits: %d vs miss: %d\n", i, localHit,localMiss);
-    //}
-
-    // #if defined(USE_DEBUG)
-    //printf("compute_delta: result: i: %d (N=%d)\ndelta: [%f,%f,%f,%f]\n",
-    //      i, NeighborCount,
-    //      delta[i].x, delta[i].y, delta[i].z, minR);
-    //printf("Particle i=%d: Neighbors=%d/%d ClosestParticle=%fh\n", i, NeighborCount, ScanCount, minR/Params->h);
-    // #endif
 }

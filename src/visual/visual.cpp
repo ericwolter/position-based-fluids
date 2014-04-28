@@ -35,7 +35,7 @@ CVisual::CVisual (const int windowWidth, const int windowHeight)
       UICmd_ResetSimulation(false),
       UICmd_PauseSimulation(false),
       UICmd_FriendsHistogarm(false),
-      UICmd_RenderMode(0),
+      UICmd_RenderMode(1),
       mWindowWidth(windowWidth),
       mWindowHeight(windowHeight),
       mCycleID(0),
