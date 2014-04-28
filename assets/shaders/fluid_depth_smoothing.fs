@@ -213,6 +213,9 @@ void SampleDensityAndGradient(vec3 worldPos, out float density, out vec3 gradien
     // scale by factors
     density  *=  1; // poly6Factor;
     gradient *= -6; // poly6GradFactor;
+    //density  *= 0.00305992f;
+    //gradient *= -0.223812f;
+    
 }
 
 void main()
@@ -233,7 +236,7 @@ void main()
     vec3 pixelCamNorm = normalize(cameraPos - modelPos);
     
     // Select shell target density
-    float TargetDensity = 1.0 / 400000000.0;
+    float TargetDensity = 1.0 / 1.0;
     
     // define variables
     float density;

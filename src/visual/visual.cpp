@@ -259,7 +259,7 @@ void CVisual::renderFluidSmoothDepth()
     glUniformMatrix4fv(UniformLoc("iMV_Matrix"), 1, GL_FALSE, glm::value_ptr(ZPR_InvModelViewMatrix));
     glUniformMatrix4fv(UniformLoc("MV_Matrix"),  1, GL_FALSE, glm::value_ptr(ZPR_ModelViewMatrix));
     glUniformMatrix4fv(UniformLoc("Proj_Matrix"), 1, GL_FALSE, glm::value_ptr(mProjectionMatrix));
-    glUniform2f(UniformLoc("depthRange"), 0.1f, 10.0f);
+    glUniform2f(UniformLoc("depthRange"), 0.1f, 1000.0f);
     glUniform2fv(UniformLoc("invFocalLen"), 1, glm::value_ptr(mInvFocalLen));
     glUniform1f(UniformLoc("smoothLength"), Params.h);
     glUniform1i(UniformLoc("particlesCount"), Params.particleCount);
@@ -327,7 +327,7 @@ void CVisual::renderFluidFinal(GLuint depthTexture)
     glUniformMatrix4fv(UniformLoc("invProjectionMatrix"), 1, GL_FALSE, glm::value_ptr(mInvProjectionMatrix));
     glUniformMatrix4fv(UniformLoc("iMV_Matrix"), 1, GL_FALSE, glm::value_ptr(ZPR_InvModelViewMatrix));
     glUniformMatrix4fv(UniformLoc("MV_Matrix"),  1, GL_FALSE, glm::value_ptr(ZPR_ModelViewMatrix));
-    glUniform2f(UniformLoc("depthRange"), 0.1f, 10.0f);
+    glUniform2f(UniformLoc("depthRange"), 0.1f, 1000.0f);
     glUniform2fv(UniformLoc("invFocalLen"), 1, glm::value_ptr(mInvFocalLen));
 
     OGLU_RenderQuad(0, 0, 1.0, 1.0);

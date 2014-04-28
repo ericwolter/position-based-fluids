@@ -35,7 +35,7 @@ SegmentSize             16
 SortIterations          6
 
 # Rendering related
-ParticleRenderSize      0.3
+ParticleRenderSize      1.0
 
 # Kernels Setup
 EnableCachedBuffers     0
