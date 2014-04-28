@@ -67,8 +67,11 @@ __kernel void applyViscosity(
                                                   * (Params->h - r_length);
                     // the gradient has to be negated because it is with respect to p_j
                     omega_i += cross(v, gradient_spiky);
-
-                    viscosity_sum += (1.0f / particle_j.w) * v * (h2_r2_diff * h2_r2_diff * h2_r2_diff);
+                    
+                    // the original ghost sph paper scales the term with the neighbors density
+                    // however formula in the PBF paper omits this term which seems incorrect...
+                    //viscosity_sum += (1.0f / particle_j.w) * v * (h2_r2_diff * h2_r2_diff * h2_r2_diff);
+                    viscosity_sum += v * (h2_r2_diff * h2_r2_diff * h2_r2_diff);
                 }
             }
         }

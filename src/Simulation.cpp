@@ -565,7 +565,7 @@ void Simulation::Step()
     this->updateVelocities();
 
     // Update vorticity and Viscosity
-    //this->applyViscosity();
+    this->applyViscosity();
     //this->applyVorticity();
 
     // [DEBUG] Read back friends information (if needed)

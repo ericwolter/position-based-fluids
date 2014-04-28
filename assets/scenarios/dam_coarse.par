@@ -22,8 +22,8 @@ SmoothLen               2.0
 RestDensity             1.0
 Garvity                 10.0
 Epsilon                 5.0
-VorticityFactor         0.0000001
-ViscosityFactor         0.1
+VorticityFactor         5.0
+ViscosityFactor         0.01
 SurfaceTenstionK       -0.1
 SurfaceTenstionDist     0.1
 
