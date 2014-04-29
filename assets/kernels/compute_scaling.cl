@@ -2,7 +2,7 @@ __kernel void computeScaling(__constant struct Parameters *Params,
                              cbufferf_readonly imgPredicted,
                              __global float *density,
                              __global float *lambda,
-                             const __global int *friends_list,
+                             const __global int4 *friends_list,
                              const int N)
 {
     // Scaling = lambda
@@ -37,60 +37,50 @@ __kernel void computeScaling(__constant struct Parameters *Params,
     float gradient_sum_k = 0.0f;
     float3 gradient_sum_k_i = (float3) 0.0f;
 
-    // read number of friends
-    int totalFriends = 0;
-    int circleParticles[MAX_FRIENDS_CIRCLES];
-    for (int j = 0; j < MAX_FRIENDS_CIRCLES; j++)
-        totalFriends += circleParticles[j] = friends_list[j * MAX_PARTICLES_COUNT + i];
-
-    int proccedFriends = 0;
-    for (int iCircle = 0; iCircle < MAX_FRIENDS_CIRCLES; iCircle++)
+    for (int o = 0; o < 9; ++o)
     {
-        // Check if we want to process/skip next friends circle
-        if (((float)proccedFriends) / totalFriends > 0.6f)
-            continue;
+        int3 neighborCells = friends_list[i + N * o].xyz;
 
-        // Add next circle to process count
-        proccedFriends += circleParticles[iCircle];
-
-        // Compute friends start offset
-        int baseIndex = FRIENDS_BLOCK_SIZE +                                      // Skip friendsCount block
-                        iCircle * (MAX_PARTICLES_COUNT * MAX_FRIENDS_IN_CIRCLE) + // Offset to relevent circle
-                        i;                                                        // Offset to particle_index                              
-
-        // Process friends in circle
-        for (int iFriend = 0; iFriend < circleParticles[iCircle]; iFriend++)
+        for(int d = 0; d < 2; ++d)
         {
-            // Read friend index from friends_list
-            const int j_index = friends_list[baseIndex + iFriend * MAX_PARTICLES_COUNT];
+            int data = neighborCells[d];
+            int entries = data >> 24;
+            data = data & 0xFFFFFF;
 
-            // Get j particle data
-            const float3 position_j = cbufferf_read(imgPredicted, j_index).xyz;
+            if (data == END_OF_CELL_LIST) continue;
 
-            const float3 r = particle_i - position_j;
-            const float r_length_2 = dot(r,r);
-
-            // Required for numerical stability
-            if (r_length_2 < Params->h_2)
+            for(int j_index = data; j_index < data +entries; ++j_index)
             {
-                const float r_length = sqrt(r_length_2);
+                if(j_index == i) continue;
 
-                // CAUTION: the two spiky kernels are only the same
-                // because the result is only used sqaured
-                // equation (8), if k = i
-                const float h_r_diff = Params->h - r_length;
-                const float3 gradient_spiky = GRAD_SPIKY_FACTOR * h_r_diff * h_r_diff *
-                                              r / r_length;
+                // Get j particle data
+                const float3 position_j = cbufferf_read(imgPredicted, j_index).xyz;
 
-                // equation (2)
-                const float h2_r2_diff = Params->h_2 - r_length_2;
-                density_sum += h2_r2_diff * h2_r2_diff * h2_r2_diff;
+                const float3 r = particle_i - position_j;
+                const float r_length_2 = dot(r,r);
 
-                // equation (9), denominator, if k = j
-                gradient_sum_k += dot(gradient_spiky, gradient_spiky);
+                // Required for numerical stability
+                if (r_length_2 < Params->h_2)
+                {
+                    const float r_length = sqrt(r_length_2);
 
-                // equation (8), if k = i
-                gradient_sum_k_i += gradient_spiky;
+                    // CAUTION: the two spiky kernels are only the same
+                    // because the result is only used sqaured
+                    // equation (8), if k = i
+                    const float h_r_diff = Params->h - r_length;
+                    const float3 gradient_spiky = GRAD_SPIKY_FACTOR * h_r_diff * h_r_diff *
+                                                  r / r_length;
+
+                    // equation (2)
+                    const float h2_r2_diff = Params->h_2 - r_length_2;
+                    density_sum += h2_r2_diff * h2_r2_diff * h2_r2_diff;
+
+                    // equation (9), denominator, if k = j
+                    gradient_sum_k += dot(gradient_spiky, gradient_spiky);
+
+                    // equation (8), if k = i
+                    gradient_sum_k_i += gradient_spiky;
+                }                
             }
         }
     }

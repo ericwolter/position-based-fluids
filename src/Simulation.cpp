@@ -249,7 +249,7 @@ void Simulation::InitCells()
     OCL_InitMemory(mQueue, mCellsBuffer, (void*)&END_OF_CELL_LIST, sizeof(END_OF_CELL_LIST));
 
     // Init Friends list buffer
-    mFriendsListBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.particleCount * Params.friendsCircles * (1 + Params.particlesPerCircle) * sizeof(cl_uint));
+    mFriendsListBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.particleCount * 9 * sizeof(cl_int4));
     OCL_InitMemory(mQueue, mFriendsListBuffer);
 }
 
@@ -566,8 +566,8 @@ void Simulation::Step()
     this->updateVelocities();
 
     // Update vorticity and Viscosity
-    this->applyViscosity();
-    this->applyVorticity();
+    //this->applyViscosity();
+    //this->applyVorticity();
 
     // [DEBUG] Read back friends information (if needed)
     //if (bReadFriendsList || bDumpParticlesData)

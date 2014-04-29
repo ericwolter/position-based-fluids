@@ -28,7 +28,7 @@ SurfaceTenstionK       -0.1
 SurfaceTenstionDist     0.1
 
 # Grid related
-GridBufferSize          128000
+GridBufferSize          200000
 
 # Radix related
 SegmentSize             16
@@ -38,4 +38,4 @@ SortIterations          6
 ParticleRenderSize      1.0
 
 # Kernels Setup
-EnableCachedBuffers     1
+EnableCachedBuffers     0

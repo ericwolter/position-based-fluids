@@ -39,7 +39,7 @@ __kernel void computeDelta(__constant struct Parameters *Params,
                            __global float4 *delta,
                            const __global float4 *positions,
                            cbufferf_readonly imgPredicted, // xyz=predicted, w=scaling
-                           const __global int *friends_list,
+                           const __global int4 *friends_list,
                            const float wave_generator,
                            const int N)
 {
@@ -78,73 +78,62 @@ __kernel void computeDelta(__constant struct Parameters *Params,
     int localMiss = 0;
 #endif
 
-    // read number of friends
-    int totalFriends = 0;
-    int circleParticles[MAX_FRIENDS_CIRCLES];
-    for (int j = 0; j < MAX_FRIENDS_CIRCLES; j++)
-        totalFriends += circleParticles[j] = friends_list[j * MAX_PARTICLES_COUNT + i];
-
-    int proccedFriends = 0;
-
-    for (int iCircle = 0; iCircle < MAX_FRIENDS_CIRCLES; iCircle++)
+    for (int o = 0; o < 9; ++o)
     {
-        // Check if we want to process/skip next friends circle
-        if (((float)proccedFriends) / totalFriends > 0.5f)
-            continue;
+        int3 neighborCells = friends_list[i + N * o].xyz;
 
-        // Add next circle to process count
-        proccedFriends += circleParticles[iCircle];
-
-        // Compute friends start offset
-        int baseIndex = FRIENDS_BLOCK_SIZE +                                      // Skip friendsCount block
-                        iCircle * (MAX_PARTICLES_COUNT * MAX_FRIENDS_IN_CIRCLE) + // Offset to relevent circle
-                        i;   
-
-        // Process friends in circle
-        for (int iFriend = 0; iFriend < circleParticles[iCircle]; iFriend++)
+        for(int d = 0; d < 2; ++d)
         {
-            // Read friend index from friends_list
-            const int j_index = friends_list[baseIndex + iFriend * MAX_PARTICLES_COUNT];
+            int data = neighborCells[d];
+            int entries = data >> 24;
+            data = data & 0xFFFFFF;
 
-            // Get particle "j" position
-#ifdef LOCALMEM
-            float4 particle_j;
-            if (j_index / local_size == group_id)
+            if (data == END_OF_CELL_LIST) continue;
+
+            for(int j_index = data; j_index < data +entries; ++j_index)
             {
-                particle_j = loc_predicted[j_index % local_size];
-            //     localHit++;
-            //     atomic_inc(&stats[0]);
-            }
-            else
-            {
-                particle_j = cbufferf_read(imgPredicted, j_index);
-            //     localMiss++;
-            //     atomic_inc(&stats[1]);
-            }
-#else
-            const float4 particle_j = cbufferf_read(imgPredicted, j_index);
-#endif
+                if(j_index == i) continue;
 
-            // Compute r, length(r) and length(r)^2
-            const float3 r         = particle_i.xyz - particle_j.xyz;
-            const float r_length_2 = dot(r, r);
+                // Get particle "j" position
+    #ifdef LOCALMEM
+                float4 particle_j;
+                if (j_index / local_size == group_id)
+                {
+                    particle_j = loc_predicted[j_index % local_size];
+                //     localHit++;
+                //     atomic_inc(&stats[0]);
+                }
+                else
+                {
+                    particle_j = cbufferf_read(imgPredicted, j_index);
+                //     localMiss++;
+                //     atomic_inc(&stats[1]);
+                }
+    #else
+                const float4 particle_j = cbufferf_read(imgPredicted, j_index);
+    #endif
 
-            if (r_length_2 < h_2_cache)
-            {
-                const float r_length   = sqrt(r_length_2);
+                // Compute r, length(r) and length(r)^2
+                const float3 r         = particle_i.xyz - particle_j.xyz;
+                const float r_length_2 = dot(r, r);
 
-                const float3 gradient_spiky = r / (r_length) *
-                                              (h_cache - r_length) *
-                                              (h_cache - r_length);
+                if (r_length_2 < h_2_cache)
+                {
+                    const float r_length   = sqrt(r_length_2);
 
-                const float r_2_diff = h_2_cache - r_length_2;
-                const float poly6_r = r_2_diff * r_2_diff * r_2_diff;
+                    const float3 gradient_spiky = r / (r_length) *
+                                                  (h_cache - r_length) *
+                                                  (h_cache - r_length);
 
-                const float r_q_radio = poly6_r / poly6_q;
-                const float s_corr = Params->surfaceTenstionK * r_q_radio * r_q_radio * r_q_radio * r_q_radio;
+                    const float r_2_diff = h_2_cache - r_length_2;
+                    const float poly6_r = r_2_diff * r_2_diff * r_2_diff;
 
-                // Sum for delta p of scaling factors and grad spiky (equation 12)
-                sum += (particle_i.w + particle_j.w + s_corr) * gradient_spiky;
+                    const float r_q_radio = poly6_r / poly6_q;
+                    const float s_corr = Params->surfaceTenstionK * r_q_radio * r_q_radio * r_q_radio * r_q_radio;
+
+                    // Sum for delta p of scaling factors and grad spiky (equation 12)
+                    sum += (particle_i.w + particle_j.w + s_corr) * gradient_spiky;
+                }
             }
         }
     }
@@ -158,13 +147,13 @@ __kernel void computeDelta(__constant struct Parameters *Params,
     float edgeOffset = (3 + sin(noisePos.x)+sin(noisePos.y)+sin(noisePos.z)) * Params->h * 0.03f;
 
     // Clamp Y
-    //future.y = max(future.y, Params->yMin + edgeOffset);
+    future.y = max(future.y, Params->yMin + edgeOffset);
     future.z = clamp(future.z, Params->zMin + edgeOffset, Params->zMax + edgeOffset);
     future.x = clamp(future.x, Params->xMin + edgeOffset + wave_generator, Params->xMax + edgeOffset);
     
     //future = BouncePointQuad(positions[i].xyz, future, (float3)(  0,  0,  0), (float3)(0, 0, 1.1), (float3)(4.1, 0, 0), edgeOffset);
-    future = BouncePointQuad(positions[i].xyz, future,   (float3)(-40,  0,-40), (float3)(0, 0, 80), (float3)(60, 0, 0), edgeOffset);
-    future = BouncePointQuad(positions[i].xyz, future,   (float3)(  0,-40,-40), (float3)(0, 0, 80), (float3)(60, 0, 0), edgeOffset);
+    //future = BouncePointQuad(positions[i].xyz, future,   (float3)(-40,  0,-40), (float3)(0, 0, 80), (float3)(60, 0, 0), edgeOffset);
+    //future = BouncePointQuad(positions[i].xyz, future,   (float3)(  0,-40,-40), (float3)(0, 0, 80), (float3)(60, 0, 0), edgeOffset);
 
     // Compute delta
     delta[i].xyz = future - particle_i.xyz;
