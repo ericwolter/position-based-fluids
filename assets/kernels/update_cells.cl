@@ -1,6 +1,6 @@
 __kernel void updateCells(__constant struct Parameters* Params,
 						  const __global int *keys,
-						  __global uint *cells,
+						  __global int *cells,
                          const uint N)
 {
     const uint i = get_global_id(0);

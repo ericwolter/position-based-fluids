@@ -44,6 +44,7 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
         (int3) (-1, 1, -1),
         (int3) (-1, 1, 0),
         (int3) (-1, 1, 1),
+
         (int3) (0, -1, -1),
         (int3) (0, -1, 0),
         (int3) (0, -1, 1),
@@ -53,6 +54,7 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
         (int3) (0, 1, -1),
         (int3) (0, 1, 0),
         (int3) (0, 1, 1),
+
         (int3) (1, -1, -1),
         (int3) (1, -1, 0),
         (int3) (1, -1, 1),
@@ -61,7 +63,7 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
         (int3) (1, 0, 1),
         (int3) (1, 1, -1),
         (int3) (1, 1, 0),
-        (int3) (1, 1, 1),
+        (int3) (1, 1, 1)
     };
 
     int neighborCells[27];
@@ -71,8 +73,17 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
 
     for (int o = 0; o < 27; ++o)
     {
-        uint cell_index = calcGridHash(current_cell + gridoffsets[o]);
-        uint2 cell_boundary = (uint2)(cells[cell_index*2+0], cells[cell_index*2+1]);
+        int3 offset_cell = current_cell + gridoffsets[o];
+        uint cell_index = calcGridHash(offset_cell);
+        // if(i==0) {
+        //     printf("friend: %d, current_cell(%d,%d,%d), gridoffsets(%d,%d,%d), offset_cell(%d,%d,%d), cell_index: %d\n",
+        //             i,          
+        //             current_cell.x,current_cell.y,current_cell.z, 
+        //             gridoffsets[o].x,gridoffsets[o].y,gridoffsets[o].z, 
+        //             offset_cell.x,offset_cell.y,offset_cell.z, 
+        //             cell_index);
+        // }
+        int2 cell_boundary = (int2)(cells[cell_index*2+0], cells[cell_index*2+1]);
 
         if(cell_boundary.x == END_OF_CELL_LIST)
         {
@@ -84,10 +95,17 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
             neighborCells[o] = cell_boundary.x + ((cell_boundary.y - cell_boundary.x + 1) << 24);
         }
 
+        // if(i==0) {
+        //     printf("friend: %d, %d: (%d,%d,%d)\n",i,o,cell_boundary.x,cell_boundary.y - cell_boundary.x + 1,neighborCells[o]);
+        // }
+
     }
 
     for (int o = 0; o < 9; ++o)
     {
+        // if(i==0) {
+        //     printf("friend: %d, %d: (%d,%d,%d)\n",i,o,neighborCells[o*3+0],neighborCells[o*3+1],neighborCells[o*3+2]);
+        // }
         friends_list[i + N * o] = (int4)(neighborCells[o*3+0],neighborCells[o*3+1],neighborCells[o*3+2],0); 
     }    
 }

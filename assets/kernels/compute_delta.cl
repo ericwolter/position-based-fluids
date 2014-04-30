@@ -82,7 +82,7 @@ __kernel void computeDelta(__constant struct Parameters *Params,
     {
         int3 neighborCells = friends_list[i + N * o].xyz;
 
-        for(int d = 0; d < 2; ++d)
+        for(int d = 0; d < 3; ++d)
         {
             int data = neighborCells[d];
             int entries = data >> 24;

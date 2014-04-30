@@ -245,7 +245,7 @@ void Simulation::InitBuffers()
 void Simulation::InitCells()
 {
     // Write buffer for cells
-    mCellsBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.gridBufSize * 2 * sizeof(cl_uint));
+    mCellsBuffer = cl::Buffer(mCLContext, CL_MEM_READ_WRITE, Params.gridBufSize * 2 * sizeof(cl_int));
     OCL_InitMemory(mQueue, mCellsBuffer, (void*)&END_OF_CELL_LIST, sizeof(END_OF_CELL_LIST));
 
     // Init Friends list buffer
@@ -541,13 +541,77 @@ void Simulation::Step()
     // Update cells
     this->updateCells();
 
+    //mQueue.finish();
+    //OCL_CopyBufferToHost  cellcopy(mQueue, mCellsBuffer);
+    //ofstream cellfile("cells.txt");
+    //cellfile << "index\tcellStart\tcellEnd\t\tcellCount" << endl; 
+    //for (int i = 0; i < cellcopy.size / 4; i+=2)
+    //{
+    //    int start = cellcopy.pIntegers[i+0];
+    //    int end = cellcopy.pIntegers[i+1];
+    //    int count = end-start+1;
+
+    //    cellfile << i / 2 << "\t\t" << start << "\t" << end << "\t" << count << endl;
+    //}
+
     // Build friends list
     this->buildFriendsList();
+
+    //mQueue.finish();
+    //OCL_CopyBufferToHost friendcopy(mQueue, mFriendsListBuffer);
+    //ofstream friendfile("friends.txt");
+    //friendfile << "pIndex\tcgIndex\tindices\t\t\t\traw\t\t\t\t\tdata" << endl; 
+    //for (int i = 0; i < Params.particleCount; i++) // particles
+    //{
+    //    for (int j = 0; j < 9; j++) // each particles has 9 cell groups
+    //    {
+    //        int index0 = i * 4 + j * (Params.particleCount * 4) + 0;
+    //        int data0 = friendcopy.pIntegers[index0];
+    //        int start0 = END_OF_CELL_LIST;
+    //        int entries0 = END_OF_CELL_LIST;
+    //        if(data0 != END_OF_CELL_LIST) {
+    //            start0 = data0 & 0xFFFFFF;
+    //            entries0 = data0 >> 24;
+    //        }
+    //        int index1 = i * 4 + j * (Params.particleCount * 4) + 1;
+    //        int data1 = friendcopy.pIntegers[index1];
+    //        int start1 = END_OF_CELL_LIST;
+    //        int entries1 = END_OF_CELL_LIST;
+    //        if(data1 != END_OF_CELL_LIST) {
+    //            start1 = data1 & 0xFFFFFF;
+    //            entries1 = data1 >> 24;
+    //        }
+    //        int index2 = i * 4 + j * (Params.particleCount * 4) + 2;
+    //        int data2 = friendcopy.pIntegers[index2];
+    //        int start2 = END_OF_CELL_LIST;
+    //        int entries2 = END_OF_CELL_LIST;
+    //        if(data2 != END_OF_CELL_LIST) {
+    //            start2 = data2 & 0xFFFFFF;
+    //            entries2 = data2 >> 24;
+    //        }
+    //        int index3 = i * 4 + j * (Params.particleCount * 4) + 3;
+    //        int data3 = friendcopy.pIntegers[index3];
+    //        int start3 = END_OF_CELL_LIST;
+    //        int entries3 = END_OF_CELL_LIST;
+    //        if(data3 != END_OF_CELL_LIST) {
+    //            start3 = data3 & 0xFFFFFF;
+    //            entries3 = data3 >> 24;
+    //        }
+
+    //        friendfile << i << "\t\t" << j << "\t\t";
+    //        friendfile << "(" << index0 << "," << index1 << "," << index2 << "," << index3 << ")" << "\t";
+    //        friendfile << "(" << data0 << "," << data1 << "," << data2 << "," << data3 << ")" << "\t";
+    //        friendfile << "(" << start0 << "|" << entries0 << "," << start1 << "|" << entries1 << "," << start2 << "|" << entries2 << "," << start3 << "|" << entries3 << ")" << "\t";
+    //        friendfile << endl;
+    //    }
+    //}
 
     for (unsigned int i = 0; i < Params.simIterations; ++i)
     {
         // Compute scaling value
         this->computeScaling(i);
+        //mQueue.finish();
+        //cout << "[end] scaling: " << i << endl;
 
         // Place lambda in "mPredictedPingBuffer[x].w"
         this->packData(mPredictedPingBuffer, mPredictedPongBuffer, mLambdaBuffer, i);

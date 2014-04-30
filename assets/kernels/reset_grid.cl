@@ -1,6 +1,6 @@
 __kernel void resetGrid(__constant struct Parameters *Params,
                           const __global int *keys,
-                        __global uint2 *cells,
+                        __global int2 *cells,
                         const int N)
 {
     const int i = get_global_id(0);

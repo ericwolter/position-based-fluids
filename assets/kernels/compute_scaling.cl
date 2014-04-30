@@ -7,7 +7,7 @@ __kernel void computeScaling(__constant struct Parameters *Params,
 {
     // Scaling = lambda
     const int i = get_global_id(0);
-
+    
     // const size_t local_size = 400;
     // const uint li = get_local_id(0);
     // const uint group_id = get_group_id(0);
@@ -41,15 +41,18 @@ __kernel void computeScaling(__constant struct Parameters *Params,
     {
         int3 neighborCells = friends_list[i + N * o].xyz;
 
-        for(int d = 0; d < 2; ++d)
+        for(int d = 0; d < 3; ++d)
         {
             int data = neighborCells[d];
+            if (data == END_OF_CELL_LIST) continue;
             int entries = data >> 24;
             data = data & 0xFFFFFF;
 
-            if (data == END_OF_CELL_LIST) continue;
+            // if(i==0) {
+            //     printf("scaling: %d, %d,%d: (%d,%d)\n",i,o,d,data,entries);
+            // }
 
-            for(int j_index = data; j_index < data +entries; ++j_index)
+            for(int j_index = data; j_index < data + entries; ++j_index)
             {
                 if(j_index == i) continue;
 
