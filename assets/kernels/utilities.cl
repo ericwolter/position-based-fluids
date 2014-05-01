@@ -78,6 +78,11 @@ int expandBits(int x)
 
 int mortonNumber(int3 gridPos)
 {
+    // int3 weights = (int3)(128,128*128,1);
+    // int3 notzero = (int3)(31,31,31);
+    // int3 tmpAdd = gridPos + notzero; 
+    // int tmpWeight = tmpAdd.x * weights.x + tmpAdd.y * weights.y + tmpAdd.z * weights.z;
+    // return tmpWeight;
     return expandBits(gridPos.x) | (expandBits(gridPos.y) << 1) | (expandBits(gridPos.z) << 2);
 }
 

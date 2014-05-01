@@ -10,6 +10,7 @@
 #include <cmath>
 #include <sstream>
 #include <algorithm>
+#include <ctime>
 
 using namespace std;
 
@@ -606,12 +607,16 @@ void Simulation::Step()
     //    }
     //}
 
+    double start, end;
     for (unsigned int i = 0; i < Params.simIterations; ++i)
     {
+        //mQueue.finish();
+        //start = glfwGetTime();
         // Compute scaling value
         this->computeScaling(i);
         //mQueue.finish();
-        //cout << "[end] scaling: " << i << endl;
+        //end = glfwGetTime();
+        //cout << "[end] scaling: " << i << " took: "<< (end-start)*1000 << "msec" << endl;
 
         // Place lambda in "mPredictedPingBuffer[x].w"
         this->packData(mPredictedPingBuffer, mPredictedPongBuffer, mLambdaBuffer, i);

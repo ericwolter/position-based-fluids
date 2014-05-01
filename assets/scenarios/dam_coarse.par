@@ -28,7 +28,7 @@ SurfaceTenstionK       -0.1
 SurfaceTenstionDist     0.1
 
 # Grid related
-GridBufferSize          200000
+GridBufferSize          400000
 
 # Radix related
 SegmentSize             16

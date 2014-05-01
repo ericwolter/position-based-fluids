@@ -98,7 +98,6 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
         // if(i==0) {
         //     printf("friend: %d, %d: (%d,%d,%d)\n",i,o,cell_boundary.x,cell_boundary.y - cell_boundary.x + 1,neighborCells[o]);
         // }
-
     }
 
     for (int o = 0; o < 9; ++o)
