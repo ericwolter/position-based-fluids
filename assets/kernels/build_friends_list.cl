@@ -101,7 +101,7 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
             int c = cell_boundary.x;
 
             if (cell == -1) cell = c;
-            if (c != -1
+            if (c != -1)
             {
                 int end = cell_boundary.y + 1;
                 entries += end - c;
