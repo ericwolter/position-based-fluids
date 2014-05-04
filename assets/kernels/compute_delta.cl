@@ -78,21 +78,22 @@ __kernel void computeDelta(__constant struct Parameters *Params,
     int localMiss = 0;
 #endif
 
-    for (int o = 0; o < 9; ++o)
+    for (int o = 0; o < 3; ++o)
     {
-        int3 neighborCells = friends_list[i + N * o].xyz;
+        int3 neighborCells = friends_list[i * 3 + o].xyz;
 
         for(int d = 0; d < 3; ++d)
         {
             int data = neighborCells[d];
+            bool isEmpty = data == END_OF_CELL_LIST;
+            if (isEmpty) continue;
             int entries = data >> 24;
             data = data & 0xFFFFFF;
 
-            if (data == END_OF_CELL_LIST) continue;
-
-            for(int j_index = data; j_index < data +entries; ++j_index)
+            for(int j_index = data; j_index < data + entries; ++j_index)
             {
-                if(j_index == i) continue;
+                bool isIdentical = j_index == i;
+                if(isIdentical) continue;
 
                 // Get particle "j" position
     #ifdef LOCALMEM

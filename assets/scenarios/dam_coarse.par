@@ -4,12 +4,12 @@ SetupSpacing            0.55
 ResetSimOnChange        0
 
 # Bounds related
-XMin                    -30.0
-XMax                    90.0
-YMin                    0.0
-YMax                    60.0
-ZMin                    -30.0
-ZMax                    30.0
+XMin                    -50.0
+XMax                    50.0
+YMin                    -50.0
+YMax                    50.0
+ZMin                    -50.0
+ZMax                    50.0
 WaveGenAmp              0.3
 WaveGenFreq             0.20
 WaveGenDuty             4.0

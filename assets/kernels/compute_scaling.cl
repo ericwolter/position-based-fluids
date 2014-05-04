@@ -37,9 +37,9 @@ __kernel void computeScaling(__constant struct Parameters *Params,
     float gradient_sum_k = 0.0f;
     float3 gradient_sum_k_i = (float3) 0.0f;
 
-    for (int o = 0; o < 9; ++o)
+    for (int o = 0; o < 3; ++o)
     {
-        int3 neighborCells = friends_list[i + N * o].xyz;
+        int3 neighborCells = friends_list[i * 3 + o].xyz;
 
         for(int d = 0; d < 3; ++d)
         {

@@ -34,47 +34,93 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
     // Read "i" particles data
     float3 predicted_i = cbufferf_read(imgPredicted, i).xyz;
 
-    const int3 gridoffsets[27] = {
-        (int3) (-1, -1, -1),
-        (int3) (-1, -1, 0),
-        (int3) (-1, -1, 1),
-        (int3) (-1, 0, -1),
-        (int3) (-1, 0, 0),
-        (int3) (-1, 0, 1),
-        (int3) (-1, 1, -1),
-        (int3) (-1, 1, 0),
-        (int3) (-1, 1, 1),
+    // const int3 gridoffsets[27] = {
+    //     (int3) (-1, -1, -1),
+    //     (int3) (-1, -1, 0),
+    //     (int3) (-1, -1, 1),
+    //     (int3) (-1, 0, -1),
+    //     (int3) (-1, 0, 0),
+    //     (int3) (-1, 0, 1),
+    //     (int3) (-1, 1, -1),
+    //     (int3) (-1, 1, 0),
+    //     (int3) (-1, 1, 1),
 
-        (int3) (0, -1, -1),
-        (int3) (0, -1, 0),
-        (int3) (0, -1, 1),
-        (int3) (0, 0, -1),
-        (int3) (0, 0, 0),
-        (int3) (0, 0, 1),
-        (int3) (0, 1, -1),
-        (int3) (0, 1, 0),
-        (int3) (0, 1, 1),
+    //     (int3) (0, -1, -1),
+    //     (int3) (0, -1, 0),
+    //     (int3) (0, -1, 1),
+    //     (int3) (0, 0, -1),
+    //     (int3) (0, 0, 0),
+    //     (int3) (0, 0, 1),
+    //     (int3) (0, 1, -1),
+    //     (int3) (0, 1, 0),
+    //     (int3) (0, 1, 1),
 
-        (int3) (1, -1, -1),
-        (int3) (1, -1, 0),
-        (int3) (1, -1, 1),
-        (int3) (1, 0, -1),
-        (int3) (1, 0, 0),
-        (int3) (1, 0, 1),
-        (int3) (1, 1, -1),
-        (int3) (1, 1, 0),
-        (int3) (1, 1, 1)
+    //     (int3) (1, -1, -1),
+    //     (int3) (1, -1, 0),
+    //     (int3) (1, -1, 1),
+    //     (int3) (1, 0, -1),
+    //     (int3) (1, 0, 0),
+    //     (int3) (1, 0, 1),
+    //     (int3) (1, 1, -1),
+    //     (int3) (1, 1, 0),
+    //     (int3) (1, 1, 1)
+    // };
+    const int3 gridoffsets[9] = {
+            (int3) (0, -1, -1),
+            (int3) (0, -1, 0),
+            (int3) (0, -1, 1),
+            (int3) (0, 0, -1),
+            (int3) (0, 0, 0),
+            (int3) (0, 0, 1),
+            (int3) (0, 1, -1),
+            (int3) (0, 1, 0),
+            (int3) (0, 1, 1)
     };
 
-    int neighborCells[27];
+    const int3 gridxoffset = (int3) (1, 0, 0);
+
+    // int neighborCells[27];
+    int neighborCells[9];
 
     // Start grid scan
     int3 current_cell = convert_int3(predicted_i / Params->h);
 
-    for (int o = 0; o < 27; ++o)
+    for (int o = 0; o < 9; ++o)
     {
-        int3 offset_cell = current_cell + gridoffsets[o];
-        uint cell_index = calcGridHash(offset_cell);
+        int numcells = 0;
+        int entries = 0;
+        int cell = -1;
+
+        for (int j = -1; j <= 1; ++j)
+        {
+            int3 offset_cell = current_cell + gridoffsets[o] + j * gridxoffset;
+            uint cell_index = calcGridHash(offset_cell);  
+
+            int2 cell_boundary = (int2)(cells[cell_index*2+0], cells[cell_index*2+1]);
+
+            int c = cell_boundary.x;
+
+            if (cell == -1) cell = c;
+            if (c != -1
+            {
+                int end = cell_boundary.y + 1;
+                entries += end - c;
+            }
+        }
+
+        if(cell == END_OF_CELL_LIST)
+        {
+            neighborCells[o] = -1;
+        }
+        else 
+        {
+            neighborCells[o] = cell + (entries<<24);   
+        }
+
+        //neighborCells[o] = cell + (entries<<24);
+
+        
+        
         // if(i==0) {
         //     printf("friend: %d, current_cell(%d,%d,%d), gridoffsets(%d,%d,%d), offset_cell(%d,%d,%d), cell_index: %d\n",
         //             i,          
@@ -83,28 +129,17 @@ __kernel void buildFriendsList(__constant struct Parameters *Params,
         //             offset_cell.x,offset_cell.y,offset_cell.z, 
         //             cell_index);
         // }
-        int2 cell_boundary = (int2)(cells[cell_index*2+0], cells[cell_index*2+1]);
-
-        if(cell_boundary.x == END_OF_CELL_LIST)
-        {
-            neighborCells[o] = cell_boundary.x;
-        }
-        else 
-        {
-            // number of particles in a cell: cell_end_index - cell_start_index + 1
-            neighborCells[o] = cell_boundary.x + ((cell_boundary.y - cell_boundary.x + 1) << 24);
-        }
 
         // if(i==0) {
         //     printf("friend: %d, %d: (%d,%d,%d)\n",i,o,cell_boundary.x,cell_boundary.y - cell_boundary.x + 1,neighborCells[o]);
         // }
     }
 
-    for (int o = 0; o < 9; ++o)
+    for (int o = 0; o < 3; ++o)
     {
         // if(i==0) {
         //     printf("friend: %d, %d: (%d,%d,%d)\n",i,o,neighborCells[o*3+0],neighborCells[o*3+1],neighborCells[o*3+2]);
         // }
-        friends_list[i + N * o] = (int4)(neighborCells[o*3+0],neighborCells[o*3+1],neighborCells[o*3+2],0); 
+        friends_list[i * 3 + o] = (int4)(neighborCells[o*3+0],neighborCells[o*3+1],neighborCells[o*3+2],0); 
     }    
 }
