@@ -1,8 +1,8 @@
 __kernel void computeScaling(__constant struct Parameters *Params,
                              cbufferf_readonly imgPredicted,
-                             __global float *density,
-                             __global float *lambda,
-                             const __global int4 *friends_list,
+                             __global float* restrict density,
+                             __global float* restrict lambda,
+                             const __global int4* restrict friends_list,
                              const int N)
 {
     // Scaling = lambda
@@ -44,7 +44,8 @@ __kernel void computeScaling(__constant struct Parameters *Params,
         for(int d = 0; d < 3; ++d)
         {
             int data = neighborCells[d];
-            if (data == END_OF_CELL_LIST) continue;
+            bool isEmpty = data == END_OF_CELL_LIST;
+            if (isEmpty) continue;
             int entries = data >> 24;
             data = data & 0xFFFFFF;
 
@@ -54,7 +55,8 @@ __kernel void computeScaling(__constant struct Parameters *Params,
 
             for(int j_index = data; j_index < data + entries; ++j_index)
             {
-                if(j_index == i) continue;
+                bool isIdentical = j_index == i;
+                if(isIdentical) continue;
 
                 // Get j particle data
                 const float3 position_j = cbufferf_read(imgPredicted, j_index).xyz;
@@ -62,8 +64,9 @@ __kernel void computeScaling(__constant struct Parameters *Params,
                 const float3 r = particle_i - position_j;
                 const float r_length_2 = dot(r,r);
 
+                bool isInRange = r_length_2 < Params->h_2;
                 // Required for numerical stability
-                if (r_length_2 < Params->h_2)
+                if (isInRange)
                 {
                     const float r_length = sqrt(r_length_2);
 

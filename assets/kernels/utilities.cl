@@ -112,7 +112,7 @@ void imgWriteui1(image2d_t img, int index, uint value)
     #define cbufferf_write(obj, index, data)    write_imagef(obj, (int2)((index) % 2048, (index) / 2048), data)
 #else
     #define cbufferf                            __global float4*
-    #define cbufferf_readonly                   const __global float4*
+    #define cbufferf_readonly                   const __global float4* restrict
     #define cbufferf_writeonly                  __global float4*
     #define cbufferf_read(obj, index)           obj[index]
     #define cbufferf_write(obj, index, data)    obj[index]=data

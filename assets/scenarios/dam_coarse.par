@@ -15,9 +15,9 @@ WaveGenFreq             0.20
 WaveGenDuty             4.0
 
 # Simulation related
-TimeStep                0.022
+TimeStep                0.016
 SubSteps                1
-SimIterations           3
+SimIterations           5
 SmoothLen               2.0
 RestDensity             1.0
 Garvity                 10.0
