@@ -70,11 +70,17 @@ void Runner::run(Simulation &simulation, CVisual &renderer)
             // Reset grid
             simulation.InitCells();
 
+            // Reload force masks
+            simulation.LoadForceMasks();
+
             // Init kernels
             KernelBuildOk = simulation.InitKernels();
 
             // Reset wavee
             waveTime = 0.0f;
+
+            // Load mesh
+            renderer.loadMesh();
 
             // Turn off sim reset request
             renderer.UICmd_ResetSimulation = false;

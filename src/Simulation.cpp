@@ -4,6 +4,7 @@
 #include "Resources.hpp"
 #include "ParamUtils.hpp"
 #include "ocl/OCLUtils.hpp"
+#include "SOIL.h"
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -253,6 +254,32 @@ void Simulation::InitCells()
     OCL_InitMemory(mQueue, mFriendsListBuffer);
 }
 
+void Simulation::LoadForceMasks()
+{
+    // Load file
+    int width = 0, height = 0, channels = 0;
+    byte* data = SOIL_load_image(getPathForTexture(string("Scene_fp_mask.png")).c_str(), &width, &height, &channels, 4);
+
+    // Clear alpha
+    for (int i = 0; i < width * height * 4; i+=4)
+    {
+        data[i+1] = 0;
+        data[i+2] = 0;
+        data[i+3] = 0;
+    }
+
+    // Create OpenCL image
+    mSurfacesMask = cl::Image2D(mCLContext, CL_MEM_READ_WRITE, cl::ImageFormat(CL_R, CL_UNSIGNED_INT32), width, height);
+
+    // Write data
+    cl::size_t<3> org, region; region[0] = width; region[1] = height; region[2] = 1;
+    mQueue.enqueueWriteImage(mSurfacesMask, true,  org, region, 0, 0, data);
+    //mQueue.enqueueReadImage(mSurfacesMask, true,  org, region, 0, 0, data);
+
+    // Release image data
+    SOIL_free_image_data(data);
+}
+
 int dumpSession = 0;
 int dumpCounter = 0;
 int cycleCounter = 0;
@@ -392,6 +419,7 @@ void Simulation::computeDelta(int iterationIndex)
     kernel.setArg(param++, mPredictedPingBuffer); // xyz=Predicted z=Scaling
     kernel.setArg(param++, mFriendsListBuffer);
     kernel.setArg(param++, fWavePos);
+    kernel.setArg(param++, mSurfacesMask);
     kernel.setArg(param++, Params.particleCount);
 
 #ifdef LOCALMEM

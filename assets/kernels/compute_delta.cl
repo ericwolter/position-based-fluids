@@ -1,4 +1,4 @@
-float3 BouncePointQuad(float3 PrevPos, float3 NextPos, float3 B, float3 E0, float3 E1, float EdgeOffset)
+float3 BouncePointQuad(/*volatile __global int *debugBuf, */float3 PrevPos, float3 NextPos, float3 B, float3 E0, float3 E1, __read_only image2d_t surfacesMask, int maskYOffset, int maskHeight, float EdgeOffset)
 {
     // Quad Precalc
     const float a = dot(E0, E0); 
@@ -16,7 +16,7 @@ float3 BouncePointQuad(float3 PrevPos, float3 NextPos, float3 B, float3 E0, floa
     // Check if NextPos is in quad
     const float s = invdet * (b * e - c * d);
     const float t = invdet * (b * d - a * e);
-    if ((s < 0) || (s > 1) || (t < 0) || (t > 1))
+    if ((s < 0) || (s > 1) || (t < 0) || (t > 1) /*|| (s + t > 1)*/)
         return NextPos;
 
     // Check NextPos if cull (should be "inside")
@@ -30,6 +30,13 @@ float3 BouncePointQuad(float3 PrevPos, float3 NextPos, float3 B, float3 E0, floa
     if (length(deltaP) > EdgeOffset + normal_velocity)
         return NextPos;
         
+    // Check against mask
+    const int2 coord = (int2)(t * 512.0, maskYOffset + s * maskHeight);
+    const int4 mask = read_imagei(surfacesMask, simpleSampler, coord);
+    //logPrintf4(debugBuf, TextToID(Data=), mask.x, mask.y, mask.z, mask.w); 
+    if (mask.x == 0)
+        return NextPos;
+        
     // Move point surface
     return planePos;
 }
@@ -41,6 +48,7 @@ __kernel void computeDelta(__constant struct Parameters *Params,
                            cbufferf_readonly imgPredicted, // xyz=predicted, w=scaling
                            const __global int *friends_list,
                            const float wave_generator,
+                           __read_only image2d_t surfacesMask,
                            const int N)
 {
     const int i = get_global_id(0);
@@ -155,16 +163,23 @@ __kernel void computeDelta(__constant struct Parameters *Params,
 
     // Compute edge offset
     float3 noisePos = future * 5 / Params->h;
-    float edgeOffset = (3 + sin(noisePos.x)+sin(noisePos.y)+sin(noisePos.z)) * Params->h * 0.03f;
+    float edgeOffset = 1.0+(3 + sin(noisePos.x)+sin(noisePos.y)+sin(noisePos.z)) * Params->h * 0.03f;
 
-    // Clamp Y
-    //future.y = max(future.y, Params->yMin + edgeOffset);
-    future.z = clamp(future.z, Params->zMin + edgeOffset, Params->zMax + edgeOffset);
-    future.x = clamp(future.x, Params->xMin + edgeOffset + wave_generator, Params->xMax + edgeOffset);
-    
-    //future = BouncePointQuad(positions[i].xyz, future, (float3)(  0,  0,  0), (float3)(0, 0, 1.1), (float3)(4.1, 0, 0), edgeOffset);
-    future = BouncePointQuad(positions[i].xyz, future,   (float3)(-40,  0,-40), (float3)(0, 0, 80), (float3)(60, 0, 0), edgeOffset);
-    future = BouncePointQuad(positions[i].xyz, future,   (float3)(  0,-40,-40), (float3)(0, 0, 80), (float3)(60, 0, 0), edgeOffset);
+    // Force plats (copy paste this section)
+    future = BouncePointQuad(positions[i].xyz, future, (float3)(  -165.8,   -106.4,    28.32), (float3)(  -15.39,    41.82,        0), (float3)(   52.28,    19.23,        0), surfacesMask, 0, 409, edgeOffset);
+    future = BouncePointQuad(positions[i].xyz, future, (float3)(  -158.5,   -126.3,   -37.11), (float3)(  -7.638,    20.76,     66.1), (float3)(   52.05,    19.15,        0), surfacesMask, 409, 643, edgeOffset);
+    future = BouncePointQuad(positions[i].xyz, future, (float3)(  -21.79,   -23.62,   -34.55), (float3)(   89.42,    39.44,        0), (float3)(  -27.26,    61.81,        0), surfacesMask, 1052, 740, edgeOffset);
+    future = BouncePointQuad(positions[i].xyz, future, (float3)(  -39.96,   -11.55,    29.95), (float3)(  -8.877,    49.84,        0), (float3)(   103.3,     18.4,        0), surfacesMask, 1792, 247, edgeOffset);
+    future = BouncePointQuad(positions[i].xyz, future, (float3)(  -180.5,    -64.4,   -37.25), (float3)(-0.0009671, -0.0003558,    66.38), (float3)(   22.87,   -62.17,        0), surfacesMask, 2039, 512, edgeOffset);
+    future = BouncePointQuad(positions[i].xyz, future, (float3)(    35.5,    2.278,   -35.25), (float3)(       0,        0,    65.91), (float3)(   21.74,    36.07,        0), surfacesMask, 2551, 801, edgeOffset);
+    future = BouncePointQuad(positions[i].xyz, future, (float3)(  -31.54,    1.768,   -8.499), (float3)(       0,        0,    15.86), (float3)(  -15.69,   -32.17,        0), surfacesMask, 3352, 226, edgeOffset);
+    future = BouncePointQuad(positions[i].xyz, future, (float3)(  -67.22,   -41.65,    7.364), (float3)(   11.45,        0,        0), (float3)(       0,        0,   -15.86), surfacesMask, 3578, 369, edgeOffset);
+    future = BouncePointQuad(positions[i].xyz, future, (float3)(  -65.91,   -42.02,    7.364), (float3)(       0,        0,   -15.87), (float3)(  -7.275,    4.603,        0), surfacesMask, 3947, 943, edgeOffset);
+    future = BouncePointQuad(positions[i].xyz, future, (float3)(   -9.05,   -4.783,   -8.792), (float3)(  -47.98,    -37.3,        0), (float3)(       0,        0,    16.45), surfacesMask, 4890, 1891, edgeOffset);
+    future = BouncePointQuad(positions[i].xyz, future, (float3)(  -53.98,   -25.37,    6.656), (float3)(   27.86,    34.59,        0), (float3)(   17.42,   -14.03,        0), surfacesMask, 6781, 1016, edgeOffset);
+    future = BouncePointQuad(positions[i].xyz, future, (float3)(  -48.37,   -30.96,   -7.792), (float3)(   21.75,   -10.61,        0), (float3)(   17.92,    36.76,        0), surfacesMask, 7797, 303, edgeOffset);
+    future = BouncePointQuad(positions[i].xyz, future, (float3)(  -48.28,    38.39,   -35.25), (float3)(       0,        0,    65.91), (float3)(   20.93,   -47.46,        0), surfacesMask, 8100, 650, edgeOffset);
+    future = BouncePointQuad(positions[i].xyz, future, (float3)(   36.56,    3.007,    30.66), (float3)(       0,        0,   -65.91), (float3)(  -64.89,   -11.56,        0), surfacesMask, 8750, 512, edgeOffset);
 
     // Compute delta
     delta[i].xyz = future - particle_i.xyz;

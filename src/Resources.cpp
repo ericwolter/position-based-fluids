@@ -93,6 +93,11 @@ const string getPathForTexture(const string texture)
     return getRootPath() + "/textures/" + texture;
 }
 
+const string getPathForObjects(const string object)
+{
+    return getRootPath() + "/objects/" + object;
+}
+
 const string getRootPath()
 {
     if (rootDirectory == "")

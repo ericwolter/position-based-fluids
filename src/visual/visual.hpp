@@ -13,6 +13,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 #include <AntTweakBar.h>
@@ -65,6 +66,8 @@ public:
 
     bool initShaders();
 
+    void loadMesh();
+
     void initImageBuffers();
 
     void setupProjection();
@@ -74,6 +77,8 @@ public:
     void parametersChanged();
 
     void renderParticles();
+
+    void renderMesh();
 
     void drawFullScreenTexture(GLuint textureID);
 
@@ -117,6 +122,7 @@ private:
     GLuint mFluidDepthSmoothProgID;
     GLuint mStandardCopyProgID;
     GLuint mStandardColorProgID;
+    GLuint mStandardMeshProgID;
     GLuint mVisibleScanProgID;
     GLuint mResetGridProgID;
     GLuint mResetGridChainProgID;
@@ -133,9 +139,9 @@ private:
 
     Simulation *mSimulation;
 
-    GLuint mWallTexture;
-
     ParticleRenderType mRenderType;
+
+    Mesh mesh;
 };
 
 #endif // _VISUAL_HPP

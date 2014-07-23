@@ -72,6 +72,7 @@ public:
     cl::Buffer   mDeltaBuffer;
     cl::Buffer   mOmegaBuffer;
     cl::Buffer   mParameters;
+    cl::Image2D  mSurfacesMask;
 
     cl::Image2DGL mParticlePosImg;
 
@@ -113,6 +114,9 @@ public:
 
     // Init Grid
     void InitCells();
+
+    // Load force masks
+    void LoadForceMasks();
 
     // Load and build kernels
     bool InitKernels();

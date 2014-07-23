@@ -125,4 +125,5 @@ public:
 
     void CreateVBO();
     void Draw(int nInstances);
+    void LoadObj(const string objFile);
 };

@@ -276,7 +276,7 @@ void main()
     
     // Convert viewspace to z-buffer depth
     float zbufferDepth = ViewSpaceDepth_to_ZBufferDepth(viewSpaceDepth);
-    
+    gl_FragDepth = zbufferDepth;
     // Compose result
     result = vec4(zbufferDepth, normalize(gradient));
 }

@@ -30,7 +30,7 @@ void OGSI_SetVisualizeStage(int stageIndex, bool saveInspectionToFile, float sam
     OGSI_SamplePixelCoordY = sampleY;
 }
 
-bool OGSI_InspectTexture(GLuint textureID, const char* szBufferTitle, float blitGain, float blitOffset)
+bool OGSI_InspectTexture(GLuint textureID, const char* szBufferTitle, int effect)
 {
     // Check if we should top rendering
     if (OGSI_StageToVisualize < OGSI_Stages_Count)
@@ -56,8 +56,7 @@ bool OGSI_InspectTexture(GLuint textureID, const char* szBufferTitle, float blit
 
         // Update uniforms
         OGLU_BindTextureToUniform("ImageSrc", 0, textureID);
-        glUniform1f(UniformLoc("offset"), blitOffset);
-        glUniform1f(UniformLoc("gain"),   blitGain);
+        glUniform1i(UniformLoc("effect"), effect);
     
         // Select target and render quad
         g_ScreenFBO.SetAsDrawTarget();

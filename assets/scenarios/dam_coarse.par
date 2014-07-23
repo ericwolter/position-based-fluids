@@ -1,7 +1,7 @@
 # Simulation settings
-ParticleCount           100000
+ParticleCount           50000
 SetupSpacing            0.55
-ResetSimOnChange        0
+ResetSimOnChange        1
 
 # Bounds related
 XMin                    -30.0
@@ -15,7 +15,7 @@ WaveGenFreq             0.20
 WaveGenDuty             4.0
 
 # Simulation related
-TimeStep                0.022
+TimeStep                0.025
 SubSteps                1
 SimIterations           3
 SmoothLen               2.0

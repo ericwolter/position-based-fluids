@@ -2,12 +2,17 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 
 #include <map>
 #include <fstream>
 #include <iostream>
+#include <sstream>
+#include <algorithm> 
+#include <functional>
+#include <cctype>
 using namespace std;
 
 //
@@ -338,9 +343,11 @@ GLuint OGLU_LoadProgram(const string programName, const string vertexSource, con
 void OGLU_RenderQuad(float left, float top, float width, float height)
 {
     // Define transform matrix according to required position
-    glm::mat4 transform = glm::scale(glm::translate(glm::mat4(), glm::vec3(left, 1.0 - height - top, 0.0)), glm::vec3(width, height, 0.0));
+    glm::mat3 indentity;
+    glm::mat4 modelviewMatrix = glm::scale(glm::translate(glm::mat4(), glm::vec3(left, 1.0 - height - top, 0.0)), glm::vec3(width, height, 0.0));
     glUniformMatrix4fv(UniformLoc("projectionMatrix"), 1, GL_FALSE, glm::value_ptr(glm::ortho<float>(0, 1, 0, 1)));
-    glUniformMatrix4fv(UniformLoc("modelViewMatrix"),  1, GL_FALSE, glm::value_ptr(transform));
+    glUniformMatrix4fv(UniformLoc("modelViewMatrix"),  1, GL_FALSE, glm::value_ptr(modelviewMatrix));
+    glUniformMatrix3fv(UniformLoc("normalMatrix"),     1, GL_FALSE, glm::value_ptr(indentity));
 
     // disable depth test
     glDisable(GL_DEPTH_TEST);
@@ -617,6 +624,116 @@ void FBO::SetAsDrawTarget()
     {
         GLenum buffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,  GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3, GL_COLOR_ATTACHMENT4, GL_COLOR_ATTACHMENT5};
         glDrawBuffers(ColorTargets, buffers);
+    }
+}
+
+// trim from start
+static inline std::string &ltrim(std::string &s) {
+        s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<int, int>(std::isspace))));
+        return s;
+}
+
+// trim from end
+static inline std::string &rtrim(std::string &s) {
+        s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<int, int>(std::isspace))).base(), s.end());
+        return s;
+}
+
+// trim from both ends
+static inline std::string &trim(std::string &s) {
+        return ltrim(rtrim(s));
+}
+
+std::vector<std::string> split(const std::string &s, char delim) 
+{
+    std::vector<std::string> elems;
+    std::stringstream ss(s);
+    std::string item;
+    while (std::getline(ss, item, delim)) 
+    {
+        if (!item.empty())
+            elems.push_back(item);
+    }
+    return elems;
+}
+
+void Mesh::LoadObj(const string objFile)
+{
+    ifstream in(objFile, ios::in);
+    if (!in) 
+        throw "Error opening obj file";
+ 
+    vector<glm::vec4> obj_vertices;
+    vector<glm::vec3> obj_normals;
+    vector<glm::vec2> obj_uvs;
+    map<string, int>  obj_to_mesh;
+
+    string line;
+    while (getline(in, line)) 
+    {
+        // Skip comments
+        line = trim(line);
+        if (line.substr(0,1) == "#") 
+            continue;
+        if (line.substr(0,1) == "") 
+            continue;
+
+        // Break line into it parts
+        vector<string> parts = split(line, ' ');
+
+        if (parts[0] == "v") 
+        {
+            glm::vec4 v; 
+            v.x = ::atof(parts[1].c_str());
+            v.y = ::atof(parts[2].c_str());
+            v.z = ::atof(parts[3].c_str());
+            v.w = 1.0;
+            obj_vertices.push_back(v);
+        }  
+        else if (parts[0] == "vn") 
+        {
+            glm::vec3 vn; 
+            vn.x = ::atof(parts[1].c_str());
+            vn.y = ::atof(parts[2].c_str());
+            vn.z = ::atof(parts[3].c_str());
+            obj_normals.push_back(vn);
+        }  
+        else if (parts[0] == "vt")
+        {
+            glm::vec2 uv; 
+            uv.x = ::atof(parts[1].c_str());
+            uv.y = ::atof(parts[2].c_str());
+            obj_uvs.push_back(uv);
+        }
+        else if (parts[0] == "f") 
+        {
+            for (int iVertex = 0; iVertex < 3; iVertex++)
+            {
+                // Get the "vertexIndex/textureIndex/normalIndex" part
+                string vertexIndices = parts[iVertex + 1];
+
+                // Check if we need to add a new vertex
+                if (obj_to_mesh.count(vertexIndices) == 0)
+                {
+                    // Decode indices
+                    vector<string> indices = split(vertexIndices, '/');
+                    GLushort index_vertex  = ::atoi(indices[0].c_str()) - 1;
+                    GLushort index_normal  = ::atoi(indices[2].c_str()) - 1;
+                    GLushort index_uvs     = ::atoi(indices[1].c_str()) - 1;
+
+                    // Add to vertex arrays
+                    vertices.push_back(obj_vertices[index_vertex]);
+                    normals.push_back(obj_normals[index_normal]);
+                    uvs.push_back(obj_uvs[index_uvs]);
+
+                    // Add to vertex map
+                    obj_to_mesh[vertexIndices] = vertices.size() - 1;
+                }
+
+                // Add to element list
+                elements.push_back(obj_to_mesh[vertexIndices]);
+            }
+        }
     }
 }
 
